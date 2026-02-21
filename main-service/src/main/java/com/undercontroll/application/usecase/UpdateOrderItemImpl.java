@@ -1,10 +1,10 @@
 package com.undercontroll.application.usecase;
 
 import com.undercontroll.domain.port.in.UpdateOrderItemPort;
-import com.undercontroll.domain.entity.OrderItem;
+import com.undercontroll.domain.model.OrderItem;
 import com.undercontroll.domain.exception.InvalidOrderItemException;
 import com.undercontroll.domain.exception.OrderItemNotFoundException;
-import com.undercontroll.infrastructure.persistence.repository.OrderItemJpaRepository;
+import com.undercontroll.domain.port.out.OrderItemRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -14,13 +14,13 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class UpdateOrderItemImpl implements UpdateOrderItemPort {
 
-    private final OrderItemJpaRepository repository;
+    private final OrderItemRepositoryPort orderItemRepositoryPort;
 
     @Override
     public Output execute(Input input) {
         validateUpdateOrderItem(input);
 
-        Optional<OrderItem> orderItem = repository.findById(input.orderItemId());
+        Optional<OrderItem> orderItem = orderItemRepositoryPort.findById(input.orderItemId());
 
         if (orderItem.isEmpty()) {
             throw new OrderItemNotFoundException("Could not found the order for update with id: %s".formatted(input.orderItemId()));
@@ -56,7 +56,7 @@ public class UpdateOrderItemImpl implements UpdateOrderItemPort {
             orderFound.setModel(input.model());
         }
 
-        repository.save(orderFound);
+        orderItemRepositoryPort.save(orderFound);
 
         return new Output(true, "Order item updated successfully");
     }

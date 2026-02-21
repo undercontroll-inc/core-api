@@ -1,11 +1,11 @@
 package com.undercontroll.application.usecase;
 
 import com.undercontroll.domain.port.in.CreatePasswordEventPort;
-import com.undercontroll.domain.entity.PasswordEvent;
-import com.undercontroll.domain.entity.enums.PasswordEventStatus;
-import com.undercontroll.domain.entity.enums.PasswordEventType;
+import com.undercontroll.domain.model.PasswordEvent;
+import com.undercontroll.domain.model.enums.PasswordEventStatus;
+import com.undercontroll.domain.model.enums.PasswordEventType;
 import com.undercontroll.domain.exception.InvalidPasswordResetException;
-import com.undercontroll.infrastructure.persistence.repository.PasswordEventRepository;
+import com.undercontroll.domain.port.out.PasswordEventRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -16,7 +16,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class CreatePasswordEventImpl implements CreatePasswordEventPort {
 
-    private final PasswordEventRepository repository;
+    private final PasswordEventRepositoryPort passwordEventRepositoryPort;
 
     @Override
     public Output execute(Input input) {
@@ -26,18 +26,19 @@ public class CreatePasswordEventImpl implements CreatePasswordEventPort {
             LocalDateTime now = LocalDateTime.now();
             LocalDateTime lastWeek = now.minusDays(7);
 
-            boolean alreadyChangedThePasswordInTheLastWeek = !repository
+            boolean alreadyChangedThePasswordInTheLastWeek = !passwordEventRepositoryPort
                     .findByCreatedAtBetweenAndType(lastWeek, now, PasswordEventType.RESET).isEmpty();
 
             if (alreadyChangedThePasswordInTheLastWeek) {
                 throw new InvalidPasswordResetException("Password has already been reset in the interval of a week");
             }
 
-            PasswordEvent activePassword = repository.findByStatusAndType(PasswordEventStatus.ACTIVE, PasswordEventType.RESET);
+            PasswordEvent activePassword = passwordEventRepositoryPort.findByStatusAndType(PasswordEventStatus.ACTIVE, PasswordEventType.RESET)
+                    .orElse(null);
 
             if (activePassword != null) {
                 activePassword.setStatus(PasswordEventStatus.USED);
-                repository.save(activePassword);
+                passwordEventRepositoryPort.save(activePassword);
             }
 
             value = input.value();
@@ -52,7 +53,7 @@ public class CreatePasswordEventImpl implements CreatePasswordEventPort {
                 .userPhone(input.userPhone())
                 .build();
 
-        PasswordEvent saved = repository.save(passwordEvent);
+        PasswordEvent saved = passwordEventRepositoryPort.save(passwordEvent);
 
         return new Output(
                 saved.getId().toString(),

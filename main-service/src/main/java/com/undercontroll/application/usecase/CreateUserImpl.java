@@ -1,15 +1,13 @@
 package com.undercontroll.application.usecase;
 
+import com.undercontroll.domain.model.enums.PasswordEventType;
+import com.undercontroll.domain.port.in.CreatePasswordEventPort;
 import com.undercontroll.domain.port.in.CreateUserPort;
-import com.undercontroll.domain.entity.User;
-import com.undercontroll.domain.entity.enums.PasswordEventType;
-import com.undercontroll.domain.entity.enums.UserType;
+import com.undercontroll.domain.model.User;
+import com.undercontroll.domain.model.enums.UserType;
 import com.undercontroll.domain.exception.InvalidUserException;
-import com.undercontroll.infrastructure.persistence.repository.UserJpaRepository;
-import com.undercontroll.application.service.TokenService;
-import com.undercontroll.application.service.PasswordEventService;
-import com.undercontroll.application.service.MetricsService;
-import com.undercontroll.infrastructure.web.dto.CreatePasswordEventRequest;
+import com.undercontroll.domain.port.out.UserRepositoryPort;
+import com.undercontroll.domain.port.out.MetricsPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -20,39 +18,41 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class CreateUserImpl implements CreateUserPort {
 
-    private final UserJpaRepository repository;
+    private final UserRepositoryPort userRepositoryPort;
+    private final CreatePasswordEventPort createPasswordEventPort;
     private final PasswordEncoder passwordEncoder;
-    private final PasswordEventService passwordEventService;
-    private final MetricsService metricsService;
+    private final MetricsPort metricsPort;
 
     @Override
     public Output execute(Input input) {
         try {
             validateCreateUserRequest(input);
 
-            Optional<User> existingUserByEmail = repository.findUserByEmail(input.email());
+            Optional<User> existingUserByEmail = userRepositoryPort.findByEmail(input.email());
             if (existingUserByEmail.isPresent()) {
                 throw new InvalidUserException("Email is already in use");
             }
 
-            Optional<User> existingUserByPhone = repository.findUserByPhone(input.phone());
+            Optional<User> existingUserByPhone = userRepositoryPort.findByPhone(input.phone());
             if (existingUserByPhone.isPresent()) {
                 throw new InvalidUserException("Phone is already in use");
             }
 
-            Optional<User> existingUserByCpf = repository.findUserByCpf(input.cpf());
+            Optional<User> existingUserByCpf = userRepositoryPort.findByCpf(input.cpf());
             if (existingUserByCpf.isPresent()) {
                 throw new InvalidUserException("CPF is already in use");
             }
 
             String password = input.userType().equals(UserType.ADMINISTRATOR)
                     ? passwordEncoder.encode(input.password())
-                    : passwordEncoder.encode(passwordEventService.create(new CreatePasswordEventRequest(
-                            PasswordEventType.CREATE,
-                            null,
-                            input.phone(),
-                            null
-                    )).getValue());
+                    : passwordEncoder.encode(createPasswordEventPort.execute(
+                            new CreatePasswordEventPort.Input(
+                                    PasswordEventType.CREATE,
+                                    null,
+                                    input.phone(),
+                                    null
+                            )
+                    ).value());
 
             User user = User.builder()
                     .name(input.name())
@@ -70,8 +70,8 @@ public class CreateUserImpl implements CreateUserPort {
                     .userType(input.userType())
                     .build();
 
-            repository.save(user);
-            metricsService.incrementAccountCreated();
+            userRepositoryPort.save(user);
+            metricsPort.incrementAccountCreated();
 
             return new Output(
                     input.name(),
@@ -85,7 +85,7 @@ public class CreateUserImpl implements CreateUserPort {
                     input.userType()
             );
         } catch (InvalidUserException e) {
-            metricsService.incrementAccountCreationFailed();
+            metricsPort.incrementAccountCreationFailed();
             throw e;
         }
     }

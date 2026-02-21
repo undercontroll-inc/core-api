@@ -1,8 +1,8 @@
 package com.undercontroll.infrastructure.web.api;
 
-import com.undercontroll.infrastructure.config.swagger.ApiResponseDocumentation.*;
+import com.undercontroll.infrastructure.config.ApiResponseDocumentation.*;
 import com.undercontroll.infrastructure.web.dto.*;
-import com.undercontroll.domain.entity.User;
+import com.undercontroll.domain.model.User;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -45,6 +45,10 @@ public interface UserApi {
     @GetApiResponses
     @SecurityRequirement(name = "Bearer Authentication")
     ResponseEntity<UserDto> getCostumerById(@Parameter(example = "1") Integer customerId);
+
+    @Operation(summary = "Listar todos os clientes com e-mail")
+    @SecurityRequirement(name = "Bearer Authentication")
+    ResponseEntity<List<UserDto>> getCustomersThatHaveEmail();
 
     @Operation(summary = "Buscar usuário por ID")
     @GetApiResponses

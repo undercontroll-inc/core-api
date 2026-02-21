@@ -1,7 +1,7 @@
 package com.undercontroll.domain.port.in;
 
-import com.undercontroll.domain.entity.enums.PeriodFilter;
-import com.undercontroll.domain.entity.enums.StatusFilter;
+import com.undercontroll.domain.model.enums.PeriodFilter;
+import com.undercontroll.domain.model.enums.StatusFilter;
 
 public interface GetTotalRevenuePort {
     record Input(

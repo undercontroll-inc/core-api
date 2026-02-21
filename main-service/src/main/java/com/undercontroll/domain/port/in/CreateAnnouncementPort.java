@@ -1,7 +1,6 @@
 package com.undercontroll.domain.port.in;
 
-import com.undercontroll.domain.entity.enums.AnnouncementType;
-import com.undercontroll.infrastructure.web.dto.AnnouncementDto;
+import com.undercontroll.domain.model.enums.AnnouncementType;
 
 import java.time.LocalDateTime;
 
@@ -9,6 +8,7 @@ public interface CreateAnnouncementPort {
     record Input(
             String title,
             String description,
+            String token,
             AnnouncementType type
     ) {}
 

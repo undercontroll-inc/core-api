@@ -1,6 +1,6 @@
 package com.undercontroll.domain.port.in;
 
-import com.undercontroll.domain.entity.enums.UserType;
+import com.undercontroll.domain.model.enums.UserType;
 
 public interface UpdateUserPort {
     record Input(

@@ -1,7 +1,8 @@
 package com.undercontroll.application.usecase;
 
+import com.undercontroll.domain.model.enums.PeriodFilter;
 import com.undercontroll.domain.port.in.GetProfitMarginPort;
-import com.undercontroll.infrastructure.persistence.repository.OrderJpaRepository;
+import com.undercontroll.domain.port.out.OrderRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -13,7 +14,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class GetProfitMarginImpl implements GetProfitMarginPort {
 
-    private final OrderJpaRepository orderRepository;
+    private final OrderRepositoryPort orderRepositoryPort;
 
     @Override
     @Cacheable(value = "dashboardMetrics", key = "#input.period().toString() + '-' + #input.status().toString() + '-profitMargin'")
@@ -25,15 +26,23 @@ public class GetProfitMarginImpl implements GetProfitMarginPort {
                 .map(Enum::name)
                 .collect(Collectors.toList());
 
-        Double totalRevenue = orderRepository.calculateTotalRevenueFiltered(startDate, statuses);
-        Double totalPartsCost = orderRepository.calculateTotalPartsCostFiltered(startDate, statusStrings);
+        Double totalRevenue = orderRepositoryPort.calculateTotalRevenueFiltered(startDate, statuses);
+        Double totalPartsCost = orderRepositoryPort.calculateTotalPartsCostFiltered(startDate, statusStrings);
         Double profitMargin = totalRevenue - totalPartsCost;
 
         return new Output(profitMargin);
     }
 
-    private LocalDate calculateStartDate(Object period) {
-        // This is a simplified version - implement based on your PeriodFilter enum
-        return null;
+    private LocalDate calculateStartDate(PeriodFilter period) {
+        if (period == null) return null;
+        
+        String periodStr = period.toString();
+        return switch (periodStr) {
+            case "LAST_7_DAYS" -> LocalDate.now().minusDays(7);
+            case "LAST_30_DAYS" -> LocalDate.now().minusDays(30);
+            case "LAST_90_DAYS" -> LocalDate.now().minusDays(90);
+            case "ALL_TIME" -> null;
+            default -> null;
+        };
     }
 }

@@ -1,6 +1,6 @@
 package com.undercontroll.infrastructure.web.api;
 
-import com.undercontroll.infrastructure.config.swagger.ApiResponseDocumentation.*;
+import com.undercontroll.infrastructure.config.ApiResponseDocumentation.*;
 import com.undercontroll.infrastructure.web.dto.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

@@ -1,11 +1,15 @@
-package com.undercontroll.controller.impl;
+package com.undercontroll.infrastructure.web.controller;
 
-import com.undercontroll.controller.AnnouncementApi;
-import com.undercontroll.dto.AnnouncementDto;
-import com.undercontroll.dto.CreateAnnouncementRequest;
-import com.undercontroll.dto.CreateAnnouncementResponse;
-import com.undercontroll.dto.UpdateAnnouncementRequest;
-import com.undercontroll.service.AnnouncementService;
+import com.undercontroll.domain.port.in.CreateAnnouncementPort;
+import com.undercontroll.domain.port.in.DeleteAnnouncementPort;
+import com.undercontroll.domain.port.in.GetAnnouncementsPort;
+import com.undercontroll.domain.port.in.GetLastAnnouncementPort;
+import com.undercontroll.domain.port.in.UpdateAnnouncementPort;
+import com.undercontroll.infrastructure.web.api.AnnouncementApi;
+import com.undercontroll.infrastructure.web.dto.AnnouncementDto;
+import com.undercontroll.infrastructure.web.dto.CreateAnnouncementRequest;
+import com.undercontroll.infrastructure.web.dto.CreateAnnouncementResponse;
+import com.undercontroll.infrastructure.web.dto.UpdateAnnouncementRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -19,41 +23,79 @@ import java.util.List;
 @RestController
 public class AnnouncementController implements AnnouncementApi {
 
-    private final AnnouncementService service;
+    private final CreateAnnouncementPort createAnnouncement;
+    private final GetAnnouncementsPort getAnnouncements;
+    private final UpdateAnnouncementPort updateAnnouncement;
+    private final DeleteAnnouncementPort deleteAnnouncement;
+    private final GetLastAnnouncementPort getLastAnnouncement;
 
     @Override
-    public ResponseEntity<CreateAnnouncementResponse> createAnnouncement(@Valid @RequestBody CreateAnnouncementRequest request) {
-        var response = service.createAnnouncement(request);
-        return ResponseEntity.status(201).body(response);
+    public ResponseEntity<CreateAnnouncementResponse> createAnnouncement(
+            @Valid @RequestBody CreateAnnouncementRequest request,
+            @RequestHeader("Authorization") String auth
+    ) {
+        String token = auth.split("Bearer ")[1];
+
+        CreateAnnouncementPort.Output output = createAnnouncement.execute(
+                new CreateAnnouncementPort.Input(request.title(), request.description(), token, request.type())
+        );
+        return ResponseEntity.status(201).body(
+                new CreateAnnouncementResponse(
+                        output.id(),
+                        output.title(),
+                        output.content(),
+                        output.type(),
+                        output.publishedAt(),
+                        output.updatedAt()
+                )
+        );
     }
 
     @Override
     @GetMapping
-    public ResponseEntity<List<AnnouncementDto>> getAllAnnouncements(@RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "10") Integer size) {
-        var response = service.getAllAnnouncementsPaginated(page, size);
-        return response.isEmpty() ? ResponseEntity.noContent().build() : ResponseEntity.ok(response);
+    public ResponseEntity<List<AnnouncementDto>> getAllAnnouncements(
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "10") Integer size
+    ) {
+        List<AnnouncementDto> announcements = getAnnouncements
+                .execute(new GetAnnouncementsPort.Input(page, size))
+                .announcements();
+        return announcements.isEmpty() ? ResponseEntity.noContent().build() : ResponseEntity.ok(announcements);
     }
 
     @Override
     @PutMapping(value = "/{announcementId}", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<AnnouncementDto> updateAnnouncement(@Valid @RequestBody UpdateAnnouncementRequest request, @PathVariable Integer announcementId) {
-        AnnouncementDto response = service.updateAnnouncement(request, announcementId);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<AnnouncementDto> updateAnnouncement(
+            @Valid @RequestBody UpdateAnnouncementRequest request,
+            @PathVariable Integer announcementId
+    ) {
+        UpdateAnnouncementPort.Output output = updateAnnouncement.execute(
+                new UpdateAnnouncementPort.Input(announcementId, request.title(), request.content(), request.type())
+        );
+        return ResponseEntity.ok(
+                new AnnouncementDto(
+                        output.id(),
+                        output.title(),
+                        output.content(),
+                        output.type(),
+                        output.publishedAt(),
+                        output.updatedAt()
+                )
+        );
     }
 
     @Override
     @DeleteMapping("/{announcementId}")
     public ResponseEntity<Void> deleteAnnouncement(@PathVariable Integer announcementId) {
-        service.deleteAnnouncement(announcementId);
+        deleteAnnouncement.execute(new DeleteAnnouncementPort.Input(announcementId));
         return ResponseEntity.ok().build();
     }
 
     @Override
     @GetMapping("/last")
     public ResponseEntity<AnnouncementDto> getLastAnnouncement() {
-        AnnouncementDto announcement = service.getLastAnnouncement();
-
-        return announcement == null ? ResponseEntity.noContent().build() : ResponseEntity.ok(announcement);
+        return getLastAnnouncement.execute()
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.noContent().build());
     }
 }
-

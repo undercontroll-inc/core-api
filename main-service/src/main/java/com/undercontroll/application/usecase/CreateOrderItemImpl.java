@@ -1,9 +1,9 @@
 package com.undercontroll.application.usecase;
 
 import com.undercontroll.domain.port.in.CreateOrderItemPort;
-import com.undercontroll.domain.entity.OrderItem;
+import com.undercontroll.domain.model.OrderItem;
 import com.undercontroll.domain.exception.InvalidOrderItemException;
-import com.undercontroll.infrastructure.persistence.repository.OrderItemJpaRepository;
+import com.undercontroll.domain.port.out.OrderItemRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class CreateOrderItemImpl implements CreateOrderItemPort {
 
-    private final OrderItemJpaRepository repository;
+    private final OrderItemRepositoryPort orderItemRepositoryPort;
 
     @Override
     public Output execute(Input input) {
@@ -28,7 +28,7 @@ public class CreateOrderItemImpl implements CreateOrderItemPort {
                 .laborValue(input.laborValue())
                 .build();
 
-        OrderItem savedItem = repository.save(orderItem);
+        OrderItem savedItem = orderItemRepositoryPort.save(orderItem);
 
         return new Output(
                 savedItem.getId(),

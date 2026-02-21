@@ -1,6 +1,6 @@
 package com.undercontroll.domain.port.in;
 
-import com.undercontroll.domain.entity.enums.OrderStatus;
+import com.undercontroll.domain.model.enums.OrderStatus;
 import com.undercontroll.infrastructure.web.dto.PartDto;
 import com.undercontroll.infrastructure.web.dto.UpdateOrderItemDto;
 

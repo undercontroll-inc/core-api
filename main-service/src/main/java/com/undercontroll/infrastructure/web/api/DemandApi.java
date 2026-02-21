@@ -1,9 +1,9 @@
 package com.undercontroll.infrastructure.web.api;
 
-import com.undercontroll.infrastructure.config.swagger.ApiResponseDocumentation.*;
+import com.undercontroll.infrastructure.config.ApiResponseDocumentation.*;
 import com.undercontroll.infrastructure.web.dto.CreateDemandRequest;
 import com.undercontroll.infrastructure.web.dto.DemandDto;
-import com.undercontroll.domain.entity.Demand;
+import com.undercontroll.domain.model.Demand;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;

@@ -1,6 +1,6 @@
 package com.undercontroll.infrastructure.web.dto;
 
-import com.undercontroll.domain.entity.enums.UserType;
+import com.undercontroll.domain.model.enums.UserType;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "Requisição para criação de novo usuário")

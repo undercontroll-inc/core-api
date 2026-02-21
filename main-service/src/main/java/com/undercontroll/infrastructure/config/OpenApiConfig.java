@@ -14,13 +14,7 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.List;
 
-/**
- * Configuração do Swagger/OpenAPI 3.0
- *
- * Documentação interativa da API disponível em:
- * - Swagger UI: /swagger-ui.html
- * - OpenAPI JSON: /v3/api-docs
- */
+
 @Configuration
 public class OpenApiConfig {
 
@@ -33,10 +27,7 @@ public class OpenApiConfig {
     @Value("${api.description:API RESTful para gerenciamento de componentes, pedidos e usuários}")
     private String apiDescription;
 
-    /**
-     * Configura a especificação OpenAPI com informações da API,
-     * esquemas de segurança e servidores disponíveis.
-     */
+
     @Bean
     public OpenAPI customOpenAPI() {
         final String securitySchemeName = "Bearer Authentication";
@@ -51,9 +42,7 @@ public class OpenApiConfig {
                 );
     }
 
-    /**
-     * Constrói as informações gerais da API
-     */
+
     private Info buildInfo() {
         return new Info()
                 .title(applicationName)
@@ -63,9 +52,6 @@ public class OpenApiConfig {
                 .license(buildLicense());
     }
 
-    /**
-     * Informações de contato do time de desenvolvimento
-     */
     private Contact buildContact() {
         return new Contact()
                 .name("Undercontroll Team")
@@ -73,18 +59,13 @@ public class OpenApiConfig {
                 .url("https://github.com/undercontroll/api");
     }
 
-    /**
-     * Informações de licença da API
-     */
+
     private License buildLicense() {
         return new License()
                 .name("MIT License")
                 .url("https://opensource.org/licenses/MIT");
     }
 
-    /**
-     * Define os servidores disponíveis para a API
-     */
     private List<Server> buildServers() {
         Server localServer = new Server()
                 .url("http://localhost:8080")
@@ -101,9 +82,6 @@ public class OpenApiConfig {
         return List.of(localServer);
     }
 
-    /**
-     * Configura o esquema de segurança JWT Bearer
-     */
     private SecurityScheme buildSecurityScheme() {
         return new SecurityScheme()
                 .name("Bearer Authentication")

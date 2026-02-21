@@ -11,7 +11,7 @@ services:
       ports:
         - "3306:3306"
   rabbitmq:
-    image: rabbitmq-management-alpine
+    image: rabbitmq:management-alpine
     container_name: undercontroll-rabbitmq
     ports:
       - "5672:5672"

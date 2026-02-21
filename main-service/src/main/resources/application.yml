@@ -1,8 +1,6 @@
 spring:
   application:
     name: main-service
-
-  # JPA Configuration
   jpa:
     hibernate:
       ddl-auto: update
@@ -17,19 +15,11 @@ spring:
         order_updates: true
     open-in-view: false
 
-  # Cache Configuration
   cache:
     type: caffeine
     caffeine:
       spec: maximumSize=1000,expireAfterWrite=1h
 
-  # H2 Console (development only)
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
-
-  # Mail Configuration (externalize to environment variables)
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
@@ -45,7 +35,6 @@ spring:
           timeout: 5000
           writetimeout: 5000
 
-# Actuator Configuration
 management:
   endpoints:
     web:
@@ -55,14 +44,14 @@ management:
     health:
       show-details: when-authorized
   metrics:
-    export:
-      prometheus:
-        enabled: true
     distribution:
       percentiles-histogram:
         http.server.requests: true
+  prometheus:
+    metrics:
+      export:
+        enabled: true
 
-# Logging Configuration
 logging:
   level:
     root: INFO
@@ -75,7 +64,6 @@ logging:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
-# OpenAPI/Swagger Configuration
 springdoc:
   api-docs:
     path: /v3/api-docs
@@ -83,3 +71,6 @@ springdoc:
     path: /swagger-ui.html
     operations-sorter: method
     tags-sorter: alpha
+
+jwt:
+  secret: ${JWT_SECRET:undercontroll-dev-secret}

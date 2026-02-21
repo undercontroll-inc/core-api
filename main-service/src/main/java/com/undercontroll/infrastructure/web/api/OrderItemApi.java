@@ -1,6 +1,6 @@
 package com.undercontroll.infrastructure.web.api;
 
-import com.undercontroll.infrastructure.config.swagger.ApiResponseDocumentation.*;
+import com.undercontroll.infrastructure.config.ApiResponseDocumentation.*;
 import com.undercontroll.infrastructure.web.dto.CreateOrderItemRequest;
 import com.undercontroll.infrastructure.web.dto.OrderItemDto;
 import com.undercontroll.infrastructure.web.dto.UpdateOrderItemRequest;

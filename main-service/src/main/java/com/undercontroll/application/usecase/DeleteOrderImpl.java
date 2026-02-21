@@ -1,10 +1,10 @@
 package com.undercontroll.application.usecase;
 
 import com.undercontroll.domain.port.in.DeleteOrderPort;
-import com.undercontroll.domain.entity.Order;
+import com.undercontroll.domain.model.Order;
 import com.undercontroll.domain.exception.OrderNotFoundException;
 import com.undercontroll.domain.exception.InvalidDeleteOrderException;
-import com.undercontroll.infrastructure.persistence.repository.OrderJpaRepository;
+import com.undercontroll.domain.port.out.OrderRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class DeleteOrderImpl implements DeleteOrderPort {
 
-    private final OrderJpaRepository repository;
+    private final OrderRepositoryPort orderRepositoryPort;
 
     @Override
     @CacheEvict(value = {"orders", "ordersByUser", "order", "orderParts", "dashboardMetrics"}, allEntries = true)
@@ -23,10 +23,10 @@ public class DeleteOrderImpl implements DeleteOrderPort {
         log.info("Deleting order with id {}", input.orderId());
         validateDeleteOrder(input.orderId());
 
-        Order order = repository.findById(input.orderId())
+        Order order = orderRepositoryPort.findById(input.orderId())
                 .orElseThrow(() -> new OrderNotFoundException("Could not found the order"));
 
-        repository.delete(order);
+        orderRepositoryPort.deleteById(order.getId());
         log.info("Order {} deleted successfully", input.orderId());
 
         return new Output(true, "Order deleted successfully");

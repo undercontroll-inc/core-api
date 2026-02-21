@@ -1,10 +1,11 @@
 package com.undercontroll.application.usecase;
 
 import com.undercontroll.domain.port.in.GetDemandsPort;
-import com.undercontroll.domain.entity.Order;
+import com.undercontroll.domain.model.Demand;
+import com.undercontroll.domain.model.Order;
 import com.undercontroll.domain.exception.InvalidDemandException;
-import com.undercontroll.infrastructure.persistence.repository.DemandRepository;
-import com.undercontroll.infrastructure.persistence.repository.OrderJpaRepository;
+import com.undercontroll.domain.port.out.DemandRepositoryPort;
+import com.undercontroll.domain.port.out.OrderRepositoryPort;
 import com.undercontroll.infrastructure.web.dto.DemandDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,27 +16,27 @@ import java.util.List;
 @RequiredArgsConstructor
 public class GetDemandsImpl implements GetDemandsPort {
 
-    private final DemandRepository demandRepository;
-    private final OrderJpaRepository orderRepository;
+    private final DemandRepositoryPort demandRepositoryPort;
+    private final OrderRepositoryPort orderRepositoryPort;
 
     @Override
     public Output execute(Input input) {
-        Order order = orderRepository.findById(input.orderId())
+        Order order = orderRepositoryPort.findById(input.orderId())
                 .orElseThrow(() -> new InvalidDemandException("Order not found with id: " + input.orderId()));
 
-        List<DemandDto> demands = demandRepository.findByOrder(order).stream()
+        List<DemandDto> demands = demandRepositoryPort.findByOrder(order).stream()
                 .map(this::mapToDto)
                 .toList();
 
         return new Output(demands);
     }
 
-    private DemandDto mapToDto(Object demand) {
+    private DemandDto mapToDto(Demand demand) {
         return new DemandDto(
-                (Integer) ((Object[]) demand)[0],
-                (Integer) ((Object[]) demand)[1],
-                (Integer) ((Object[]) demand)[2],
-                ((Number) ((Object[]) demand)[3]).longValue()
+                demand.getId(),
+                demand.getComponent().getId(),
+                demand.getOrder().getId(),
+                demand.getQuantity()
         );
     }
 }

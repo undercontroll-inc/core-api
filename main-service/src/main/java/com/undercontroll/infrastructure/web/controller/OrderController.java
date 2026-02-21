@@ -2,8 +2,7 @@ package com.undercontroll.infrastructure.web.controller;
 
 import com.undercontroll.infrastructure.web.api.OrderApi;
 import com.undercontroll.infrastructure.web.dto.*;
-import com.undercontroll.domain.entity.Order;
-import com.undercontroll.application.service.OrderService;
+import com.undercontroll.domain.model.Order;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;

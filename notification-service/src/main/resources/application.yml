@@ -1,7 +1,3 @@
 spring:
-  rabbitmq:
-    host: localhost
-    port: 5672
-    username: rabbitmq
-    password: rabbitmq
-    dynamic: true
+  application:
+    name: notification-service

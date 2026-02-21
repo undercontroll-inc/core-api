@@ -1,7 +1,6 @@
 package com.undercontroll.domain.port.in;
 
-import com.undercontroll.domain.entity.enums.UserType;
-import com.undercontroll.infrastructure.web.dto.CreateUserResponse;
+import com.undercontroll.domain.model.enums.UserType;
 
 public interface CreateUserPort {
     record Input(

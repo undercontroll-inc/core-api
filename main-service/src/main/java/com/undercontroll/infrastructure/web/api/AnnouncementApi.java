@@ -1,12 +1,13 @@
 package com.undercontroll.infrastructure.web.api;
 
-import com.undercontroll.infrastructure.config.swagger.ApiResponseDocumentation.*;
+import com.undercontroll.infrastructure.config.ApiResponseDocumentation.*;
 import com.undercontroll.infrastructure.web.dto.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestHeader;
 
 import java.util.List;
 
@@ -16,7 +17,10 @@ public interface AnnouncementApi {
 
     @Operation(summary = "Criar novo anúncio")
     @PostApiResponses
-    ResponseEntity<CreateAnnouncementResponse> createAnnouncement(CreateAnnouncementRequest request);
+    ResponseEntity<CreateAnnouncementResponse> createAnnouncement(
+            CreateAnnouncementRequest request,
+            @RequestHeader("Authorization") String authHeader
+    );
 
     @Operation(summary = "Listar anúncios paginados")
     @GetApiResponses

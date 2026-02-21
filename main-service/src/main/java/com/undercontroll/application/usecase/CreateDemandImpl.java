@@ -1,10 +1,10 @@
 package com.undercontroll.application.usecase;
 
 import com.undercontroll.domain.port.in.CreateDemandPort;
-import com.undercontroll.domain.entity.Demand;
+import com.undercontroll.domain.model.Demand;
 import com.undercontroll.domain.exception.InvalidDemandException;
-import com.undercontroll.infrastructure.persistence.repository.DemandRepository;
-import com.undercontroll.application.service.MetricsService;
+import com.undercontroll.domain.port.out.DemandRepositoryPort;
+import com.undercontroll.domain.port.out.MetricsPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -14,8 +14,8 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class CreateDemandImpl implements CreateDemandPort {
 
-    private final DemandRepository repository;
-    private final MetricsService metricsService;
+    private final DemandRepositoryPort demandRepositoryPort;
+    private final MetricsPort metricsPort;
 
     @Override
     public Output execute(Input input) {
@@ -34,9 +34,9 @@ public class CreateDemandImpl implements CreateDemandPort {
                 input.order().getId(),
                 input.quantity());
 
-        Demand savedDemand = repository.save(demand);
+        Demand savedDemand = demandRepositoryPort.save(demand);
 
-        metricsService.incrementDemandCreated();
+        metricsPort.incrementDemandCreated();
 
         return new Output(
                 savedDemand.getId(),

@@ -1,9 +1,8 @@
 package com.undercontroll.infrastructure.web.controller;
 
 import com.undercontroll.infrastructure.web.dto.*;
-import com.undercontroll.domain.entity.enums.PeriodFilter;
-import com.undercontroll.domain.entity.enums.StatusFilter;
-import com.undercontroll.application.service.DashboardService;
+import com.undercontroll.domain.model.enums.PeriodFilter;
+import com.undercontroll.domain.model.enums.StatusFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;

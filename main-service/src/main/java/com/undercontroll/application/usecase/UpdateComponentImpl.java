@@ -1,11 +1,11 @@
 package com.undercontroll.application.usecase;
 
 import com.undercontroll.domain.port.in.UpdateComponentPort;
-import com.undercontroll.domain.entity.ComponentPart;
+import com.undercontroll.domain.model.ComponentPart;
 import com.undercontroll.domain.exception.ComponentNotFoundException;
 import com.undercontroll.domain.exception.InvalidUpdateComponentException;
-import com.undercontroll.infrastructure.persistence.repository.ComponentJpaRepository;
-import com.undercontroll.application.service.MetricsService;
+import com.undercontroll.domain.port.out.ComponentRepositoryPort;
+import com.undercontroll.domain.port.out.MetricsPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
@@ -14,15 +14,15 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class UpdateComponentImpl implements UpdateComponentPort {
 
-    private final ComponentJpaRepository repository;
-    private final MetricsService metricsService;
+    private final ComponentRepositoryPort componentRepositoryPort;
+    private final MetricsPort metricsPort;
 
     @Override
     @CacheEvict(value = {"components", "componentsByCategory", "componentsByName", "component"}, allEntries = true)
     public Output execute(Input input) {
         validateUpdate(input.componentId());
 
-        ComponentPart component = repository.findById(input.componentId())
+        ComponentPart component = componentRepositoryPort.findById(input.componentId())
                 .orElseThrow(() -> new ComponentNotFoundException("Component not found with id " + input.componentId()));
 
         if (input.item() != null && !input.item().isEmpty()) {
@@ -49,8 +49,8 @@ public class UpdateComponentImpl implements UpdateComponentPort {
             component.setSupplier(input.supplier());
         }
 
-        ComponentPart savedComponent = repository.save(component);
-        metricsService.incrementComponentUpdated();
+        ComponentPart savedComponent = componentRepositoryPort.save(component);
+        metricsPort.incrementComponentUpdated();
 
         return new Output(
                 savedComponent.getId(),

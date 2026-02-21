@@ -5,7 +5,6 @@ import com.undercontroll.infrastructure.web.dto.ComponentDto;
 import com.undercontroll.infrastructure.web.dto.RegisterComponentRequest;
 import com.undercontroll.infrastructure.web.dto.RegisterComponentResponse;
 import com.undercontroll.infrastructure.web.dto.UpdateComponentRequest;
-import com.undercontroll.application.service.ComponentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;

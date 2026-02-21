@@ -1,6 +1,6 @@
 package com.undercontroll.infrastructure.web.dto;
 
-import com.undercontroll.domain.entity.enums.UserType;
+import com.undercontroll.domain.model.enums.UserType;
 
 public record UpdateUserRequest(
         String name,

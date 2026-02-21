@@ -1,7 +1,8 @@
 package com.undercontroll.application.usecase;
 
+import com.undercontroll.domain.model.enums.PeriodFilter;
 import com.undercontroll.domain.port.in.GetAverageOrderPricePort;
-import com.undercontroll.infrastructure.persistence.repository.OrderJpaRepository;
+import com.undercontroll.domain.port.out.OrderRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -12,7 +13,7 @@ import java.time.LocalDate;
 @RequiredArgsConstructor
 public class GetAverageOrderPriceImpl implements GetAverageOrderPricePort {
 
-    private final OrderJpaRepository orderRepository;
+    private final OrderRepositoryPort orderRepositoryPort;
 
     @Override
     @Cacheable(value = "dashboardMetrics", key = "#input.period().toString() + '-' + #input.status().toString() + '-averageOrderPrice'")
@@ -20,13 +21,26 @@ public class GetAverageOrderPriceImpl implements GetAverageOrderPricePort {
         LocalDate startDate = calculateStartDate(input.period());
         var statuses = input.status().getStatuses();
 
-        Double averagePrice = orderRepository.calculateAverageOrderPriceFiltered(startDate, statuses);
+
+        var statusStrings = statuses.stream()
+                .map(Enum::name)
+                .toList();
+
+        Double averagePrice = orderRepositoryPort.calculateAverageOrderPriceFiltered(startDate, statusStrings);
 
         return new Output(averagePrice);
     }
 
-    private LocalDate calculateStartDate(Object period) {
-        // This is a simplified version - implement based on your PeriodFilter enum
-        return null;
+    private LocalDate calculateStartDate(PeriodFilter period) {
+        if (period == null) return null;
+        
+        String periodStr = period.toString();
+        return switch (periodStr) {
+            case "LAST_7_DAYS" -> LocalDate.now().minusDays(7);
+            case "LAST_30_DAYS" -> LocalDate.now().minusDays(30);
+            case "LAST_90_DAYS" -> LocalDate.now().minusDays(90);
+            case "ALL_TIME" -> null;
+            default -> null;
+        };
     }
 }

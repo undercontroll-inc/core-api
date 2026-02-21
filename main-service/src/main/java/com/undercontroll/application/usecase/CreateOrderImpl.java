@@ -1,19 +1,17 @@
 package com.undercontroll.application.usecase;
 
 import com.undercontroll.domain.port.in.CreateOrderPort;
-import com.undercontroll.domain.entity.Order;
-import com.undercontroll.domain.entity.ComponentPart;
-import com.undercontroll.domain.entity.User;
-import com.undercontroll.domain.entity.OrderItem;
-import com.undercontroll.domain.entity.enums.OrderStatus;
-import com.undercontroll.infrastructure.persistence.repository.OrderJpaRepository;
-import com.undercontroll.application.service.OrderItemService;
-import com.undercontroll.application.service.DemandService;
-import com.undercontroll.application.service.UserService;
-import com.undercontroll.application.service.InventoryManagementService;
-import com.undercontroll.application.service.MetricsService;
+import com.undercontroll.domain.port.in.CreateOrderItemPort;
+import com.undercontroll.domain.port.in.CreateDemandPort;
+import com.undercontroll.domain.model.Order;
+import com.undercontroll.domain.model.ComponentPart;
+import com.undercontroll.domain.model.User;
+import com.undercontroll.domain.model.enums.OrderStatus;
+import com.undercontroll.domain.port.out.OrderRepositoryPort;
+import com.undercontroll.domain.port.out.UserRepositoryPort;
+import com.undercontroll.domain.port.out.StockManagementPort;
+import com.undercontroll.domain.port.out.MetricsPort;
 import com.undercontroll.infrastructure.web.dto.PartDto;
-import com.undercontroll.infrastructure.web.dto.CreateDemandRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -32,12 +30,12 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class CreateOrderImpl implements CreateOrderPort {
 
-    private final OrderJpaRepository repository;
-    private final OrderItemService orderItemService;
-    private final DemandService demandService;
-    private final UserService userService;
-    private final InventoryManagementService inventoryManagementService;
-    private final MetricsService metricsService;
+    private final OrderRepositoryPort orderRepositoryPort;
+    private final UserRepositoryPort userRepositoryPort;
+    private final StockManagementPort stockManagementPort;
+    private final CreateOrderItemPort createOrderItemPort;
+    private final CreateDemandPort createDemandPort;
+    private final MetricsPort metricsPort;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -53,37 +51,38 @@ public class CreateOrderImpl implements CreateOrderPort {
         double partsTotal = 0.0;
 
         for (PartDto part : input.parts()) {
-            ComponentPart component = inventoryManagementService.getComponentById(part.id());
-            inventoryManagementService.validateStockAvailability(component, part.quantity());
+            ComponentPart component = stockManagementPort.findComponentById(part.id())
+                    .orElseThrow(() -> new RuntimeException("Component not found"));
+            stockManagementPort.validateStockAvailability(component, part.quantity());
 
             validatedComponents.put(part.id(), component);
             partsTotal += part.quantity() * component.getPrice();
         }
 
-        List<OrderItem> orderItems = new ArrayList<>();
+        List<CreateOrderItemPort.Output> orderItems = new ArrayList<>();
         Double laborTotal = 0.0;
 
         for (var appliance : input.appliances()) {
             Double labor = appliance.laborValue() == null ? 0.0 : appliance.laborValue();
 
-            var orderItemCreated = orderItemService.createOrderItem(
-                    new com.undercontroll.infrastructure.web.dto.CreateOrderItemRequest(
-                            appliance.brand(),
-                            appliance.model(),
-                            appliance.type(),
-                            "",
-                            appliance.customerNote(),
-                            appliance.voltage(),
-                            appliance.serial(),
-                            labor
-                    )
-            );
+            var orderItemCreated = createOrderItemPort.execute(new CreateOrderItemPort.Input(
+                    appliance.brand(),
+                    appliance.model(),
+                    appliance.type(),
+                    "",
+                    appliance.customerNote(),
+                    appliance.voltage(),
+                    appliance.serial(),
+                    labor
+            ));
 
             orderItems.add(orderItemCreated);
-            laborTotal += orderItemCreated.getLaborValue();
+            laborTotal += orderItemCreated.laborValue();
         }
 
-        User user = userService.getUserById(input.userId());
+        User user = userRepositoryPort.findById(input.userId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
         Double total = partsTotal + laborTotal - input.discount();
 
         Order order = Order.builder()
@@ -102,26 +101,24 @@ public class CreateOrderImpl implements CreateOrderPort {
                 .total(total)
                 .build();
 
-        Order savedOrder = repository.save(order);
+        Order savedOrder = orderRepositoryPort.save(order);
 
         log.info("Order {} created successfully", savedOrder.getId());
 
         for (PartDto part : input.parts()) {
             ComponentPart component = validatedComponents.get(part.id());
 
-            demandService.createDemand(
-                    new CreateDemandRequest(
-                            component,
-                            Long.valueOf(part.quantity()),
-                            savedOrder
-                    )
-            );
+            createDemandPort.execute(new CreateDemandPort.Input(
+                    component,
+                    Long.valueOf(part.quantity()),
+                    savedOrder
+            ));
 
-            inventoryManagementService.decreaseStock(component.getId(), part.quantity());
+            stockManagementPort.decreaseStock(component.getId(), part.quantity());
         }
 
-        metricsService.incrementOrderCreated();
-        metricsService.recordOrderProcessingTime(startTime);
+        metricsPort.incrementOrderCreated();
+        metricsPort.recordOrderProcessingTime(startTime);
 
         log.info("Order {} created with {} demands", savedOrder.getId(), input.parts().size());
 

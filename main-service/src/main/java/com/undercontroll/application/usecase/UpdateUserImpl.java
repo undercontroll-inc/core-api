@@ -1,9 +1,9 @@
 package com.undercontroll.application.usecase;
 
 import com.undercontroll.domain.port.in.UpdateUserPort;
-import com.undercontroll.domain.entity.User;
+import com.undercontroll.domain.model.User;
 import com.undercontroll.domain.exception.InvalidUserException;
-import com.undercontroll.infrastructure.persistence.repository.UserJpaRepository;
+import com.undercontroll.domain.port.out.UserRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
@@ -14,12 +14,12 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class UpdateUserImpl implements UpdateUserPort {
 
-    private final UserJpaRepository repository;
+    private final UserRepositoryPort userRepositoryPort;
 
     @Override
     @CacheEvict(value = {"users", "customers", "user"}, allEntries = true)
     public Output execute(Input input) {
-        Optional<User> user = repository.findById(input.userId());
+        Optional<User> user = userRepositoryPort.findById(input.userId());
 
         if (user.isEmpty()) {
             throw new InvalidUserException("Could not found the user for update with id: %d".formatted(input.userId()));
@@ -64,7 +64,7 @@ public class UpdateUserImpl implements UpdateUserPort {
             userFound.setAvatarUrl(input.avatarUrl());
         }
 
-        repository.save(userFound);
+        userRepositoryPort.save(userFound);
 
         return new Output(true, "User updated successfully");
     }

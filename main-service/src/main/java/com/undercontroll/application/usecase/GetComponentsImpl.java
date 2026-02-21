@@ -1,7 +1,7 @@
 package com.undercontroll.application.usecase;
 
 import com.undercontroll.domain.port.in.GetComponentsPort;
-import com.undercontroll.infrastructure.persistence.repository.ComponentJpaRepository;
+import com.undercontroll.domain.port.out.ComponentRepositoryPort;
 import com.undercontroll.infrastructure.web.dto.ComponentDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
@@ -13,12 +13,12 @@ import java.util.List;
 @RequiredArgsConstructor
 public class GetComponentsImpl implements GetComponentsPort {
 
-    private final ComponentJpaRepository repository;
+    private final ComponentRepositoryPort componentRepositoryPort;
 
     @Override
     @Cacheable(value = "components")
     public Output execute(Input input) {
-        List<ComponentDto> components = repository
+        List<ComponentDto> components = componentRepositoryPort
                 .findAll()
                 .stream()
                 .map(c -> new ComponentDto(

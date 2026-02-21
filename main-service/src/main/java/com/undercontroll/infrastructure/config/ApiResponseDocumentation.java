@@ -12,14 +12,9 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/**
- * Anotações reutilizáveis para documentação de respostas comuns da API
- */
 public class ApiResponseDocumentation {
 
-    /**
-     * Resposta padrão para requisições bem-sucedidas (200 OK)
-     */
+
     @Target({ElementType.METHOD, ElementType.TYPE})
     @Retention(RetentionPolicy.RUNTIME)
     @ApiResponse(
@@ -29,9 +24,7 @@ public class ApiResponseDocumentation {
     public @interface SuccessResponse {
     }
 
-    /**
-     * Resposta para criação de recursos (201 Created)
-     */
+
     @Target({ElementType.METHOD, ElementType.TYPE})
     @Retention(RetentionPolicy.RUNTIME)
     @ApiResponse(
@@ -41,9 +34,7 @@ public class ApiResponseDocumentation {
     public @interface CreatedResponse {
     }
 
-    /**
-     * Resposta quando não há conteúdo (204 No Content)
-     */
+
     @Target({ElementType.METHOD, ElementType.TYPE})
     @Retention(RetentionPolicy.RUNTIME)
     @ApiResponse(
@@ -53,9 +44,7 @@ public class ApiResponseDocumentation {
     public @interface NoContentResponse {
     }
 
-    /**
-     * Resposta para requisição inválida (400 Bad Request)
-     */
+
     @Target({ElementType.METHOD, ElementType.TYPE})
     @Retention(RetentionPolicy.RUNTIME)
     @ApiResponse(
@@ -81,9 +70,7 @@ public class ApiResponseDocumentation {
     public @interface BadRequestResponse {
     }
 
-    /**
-     * Resposta para autenticação necessária (401 Unauthorized)
-     */
+
     @Target({ElementType.METHOD, ElementType.TYPE})
     @Retention(RetentionPolicy.RUNTIME)
     @ApiResponse(
@@ -109,9 +96,6 @@ public class ApiResponseDocumentation {
     public @interface UnauthorizedResponse {
     }
 
-    /**
-     * Resposta para acesso negado (403 Forbidden)
-     */
     @Target({ElementType.METHOD, ElementType.TYPE})
     @Retention(RetentionPolicy.RUNTIME)
     @ApiResponse(
@@ -137,9 +121,7 @@ public class ApiResponseDocumentation {
     public @interface ForbiddenResponse {
     }
 
-    /**
-     * Resposta para recurso não encontrado (404 Not Found)
-     */
+
     @Target({ElementType.METHOD, ElementType.TYPE})
     @Retention(RetentionPolicy.RUNTIME)
     @ApiResponse(
@@ -165,9 +147,7 @@ public class ApiResponseDocumentation {
     public @interface NotFoundResponse {
     }
 
-    /**
-     * Resposta para conflito (409 Conflict)
-     */
+
     @Target({ElementType.METHOD, ElementType.TYPE})
     @Retention(RetentionPolicy.RUNTIME)
     @ApiResponse(
@@ -193,9 +173,7 @@ public class ApiResponseDocumentation {
     public @interface ConflictResponse {
     }
 
-    /**
-     * Resposta para erro interno do servidor (500 Internal Server Error)
-     */
+
     @Target({ElementType.METHOD, ElementType.TYPE})
     @Retention(RetentionPolicy.RUNTIME)
     @ApiResponse(
@@ -221,9 +199,6 @@ public class ApiResponseDocumentation {
     public @interface InternalServerErrorResponse {
     }
 
-    /**
-     * Combinação de respostas padrão para endpoints protegidos
-     */
     @Target({ElementType.METHOD, ElementType.TYPE})
     @Retention(RetentionPolicy.RUNTIME)
     @ApiResponses({
@@ -264,9 +239,6 @@ public class ApiResponseDocumentation {
     public @interface StandardApiResponses {
     }
 
-    /**
-     * Combinação de respostas para operações de leitura (GET)
-     */
     @Target({ElementType.METHOD, ElementType.TYPE})
     @Retention(RetentionPolicy.RUNTIME)
     @ApiResponses({
@@ -300,9 +272,7 @@ public class ApiResponseDocumentation {
     public @interface GetApiResponses {
     }
 
-    /**
-     * Combinação de respostas para operações de criação (POST)
-     */
+
     @Target({ElementType.METHOD, ElementType.TYPE})
     @Retention(RetentionPolicy.RUNTIME)
     @ApiResponses({
@@ -343,9 +313,7 @@ public class ApiResponseDocumentation {
     public @interface PostApiResponses {
     }
 
-    /**
-     * Combinação de respostas para operações de atualização (PUT/PATCH)
-     */
+
     @Target({ElementType.METHOD, ElementType.TYPE})
     @Retention(RetentionPolicy.RUNTIME)
     @ApiResponses({
@@ -386,9 +354,7 @@ public class ApiResponseDocumentation {
     public @interface PutApiResponses {
     }
 
-    /**
-     * Combinação de respostas para operações de exclusão (DELETE)
-     */
+
     @Target({ElementType.METHOD, ElementType.TYPE})
     @Retention(RetentionPolicy.RUNTIME)
     @ApiResponses({
@@ -422,9 +388,7 @@ public class ApiResponseDocumentation {
     public @interface DeleteApiResponses {
     }
 
-    /**
-     * Schema para representar respostas de erro
-     */
+
     @Schema(description = "Estrutura padrão de resposta de erro")
     public static class ErrorResponse {
         @Schema(description = "Timestamp do erro", example = "2025-11-23T14:30:00")

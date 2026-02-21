@@ -1,10 +1,10 @@
 package com.undercontroll.application.usecase;
 
 import com.undercontroll.domain.port.in.RegisterComponentPort;
-import com.undercontroll.domain.entity.ComponentPart;
+import com.undercontroll.domain.model.ComponentPart;
 import com.undercontroll.domain.exception.InvalidComponentCreationException;
-import com.undercontroll.infrastructure.persistence.repository.ComponentJpaRepository;
-import com.undercontroll.application.service.MetricsService;
+import com.undercontroll.domain.port.out.ComponentRepositoryPort;
+import com.undercontroll.domain.port.out.MetricsPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
@@ -13,8 +13,8 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class RegisterComponentImpl implements RegisterComponentPort {
 
-    private final ComponentJpaRepository repository;
-    private final MetricsService metricsService;
+    private final ComponentRepositoryPort componentRepositoryPort;
+    private final MetricsPort metricsPort;
 
     @Override
     @CacheEvict(value = {"components", "componentsByCategory", "componentsByName", "component"}, allEntries = true)
@@ -28,11 +28,11 @@ public class RegisterComponentImpl implements RegisterComponentPort {
                 .price(input.price())
                 .supplier(input.supplier())
                 .category(input.category())
-                .quantity(input.quantity() != null ? input.quantity() : 0)
+                .quantity(input.quantity() != null ? input.quantity() : 0L)
                 .build();
 
-        repository.save(component);
-        metricsService.incrementComponentCreated();
+        componentRepositoryPort.save(component);
+        metricsPort.incrementComponentCreated();
 
         return new Output(
                 input.item(),

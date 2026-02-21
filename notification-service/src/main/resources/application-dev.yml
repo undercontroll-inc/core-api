@@ -1,0 +1,9 @@
+spring:
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: rabbitmq
+    password: rabbitmq
+    dynamic: true
+main-service:
+  url: http://localhost:8080

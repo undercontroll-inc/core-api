@@ -1,6 +1,6 @@
 package com.undercontroll.infrastructure.web.dto;
 
-import com.undercontroll.domain.entity.enums.AnnouncementType;
+import com.undercontroll.domain.model.enums.AnnouncementType;
 
 public record UpdateAnnouncementRequest(
         String title,

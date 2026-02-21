@@ -1,11 +1,11 @@
 package com.undercontroll.application.usecase;
 
+import com.undercontroll.domain.model.Announcement;
 import com.undercontroll.domain.port.in.GetAnnouncementsPort;
-import com.undercontroll.infrastructure.persistence.repository.AnnouncementRepository;
+import com.undercontroll.domain.port.out.AnnouncementRepositoryPort;
 import com.undercontroll.infrastructure.web.dto.AnnouncementDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -14,13 +14,13 @@ import java.util.List;
 @RequiredArgsConstructor
 public class GetAnnouncementsImpl implements GetAnnouncementsPort {
 
-    private final AnnouncementRepository announcementRepository;
+    private final AnnouncementRepositoryPort announcementRepositoryPort;
 
     @Override
     @Cacheable(value = "announcements", key = "#input.page() + '-' + #input.size()")
     public Output execute(Input input) {
-        List<AnnouncementDto> announcements = announcementRepository
-                .findAllPaginated(PageRequest.of(input.page(), input.size()))
+        List<AnnouncementDto> announcements = announcementRepositoryPort
+                .findAllPaginated(input.page(), input.size())
                 .stream()
                 .map(this::mapToDto)
                 .toList();
@@ -28,14 +28,14 @@ public class GetAnnouncementsImpl implements GetAnnouncementsPort {
         return new Output(announcements);
     }
 
-    private AnnouncementDto mapToDto(Object announcement) {
+    private AnnouncementDto mapToDto(Announcement announcement) {
         return new AnnouncementDto(
-                (Integer) ((Object[]) announcement)[0],
-                (String) ((Object[]) announcement)[1],
-                (String) ((Object[]) announcement)[2],
-                null,
-                null,
-                null
+                announcement.getId(),
+                announcement.getTitle(),
+                announcement.getContent(),
+                announcement.getType(),
+                announcement.getPublishedAt(),
+                announcement.getUpdatedAt()
         );
     }
 }

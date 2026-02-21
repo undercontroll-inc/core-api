@@ -1,7 +1,7 @@
 package com.undercontroll.infrastructure.persistence.repository;
 
-import com.undercontroll.domain.entity.Order;
-import com.undercontroll.domain.entity.enums.OrderStatus;
+import com.undercontroll.domain.model.enums.OrderStatus;
+import com.undercontroll.infrastructure.persistence.entity.OrderJpaEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,13 +12,13 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface OrderJpaRepository extends JpaRepository<Order, Integer> {
+public interface OrderJpaRepository extends JpaRepository<OrderJpaEntity, Integer> {
 
-    List<Order> findByUser_id(Integer userId);
+    List<OrderJpaEntity> findByUser_id(Integer userId);
 
 
-    @Query("SELECT o FROM Order o JOIN o.orderItems oi WHERE oi.id = :orderItemId")
-    Optional<Order> findOrderByOrderItemId(@Param("orderItemId") Integer orderItemId);
+    @Query("SELECT o FROM OrderJpaEntity o JOIN o.orderItems oi WHERE oi.id = :orderItemId")
+    Optional<OrderJpaEntity> findOrderByOrderItemId(@Param("orderItemId") Integer orderItemId);
 
     // Query responsavel por retornar o total de todos os componentes de todos os items relacionados a um pedido
     @Query(value = """
@@ -50,7 +50,7 @@ public interface OrderJpaRepository extends JpaRepository<Order, Integer> {
 
 
     // Calculate total revenue with filters
-    @Query("SELECT COALESCE(SUM(o.total), 0.0) FROM Order o " +
+    @Query("SELECT COALESCE(SUM(o.total), 0.0) FROM OrderJpaEntity o " +
            "WHERE (:startDate IS NULL OR o.received_at >= :startDate) " +
            "AND o.status IN :statuses")
     Double calculateTotalRevenueFiltered(
@@ -71,7 +71,7 @@ public interface OrderJpaRepository extends JpaRepository<Order, Integer> {
             @Param("statuses") List<String> statuses);
 
     // Calculate average order price with filters
-    @Query("SELECT COALESCE(AVG(o.total), 0.0) FROM Order o " +
+    @Query("SELECT COALESCE(AVG(o.total), 0.0) FROM OrderJpaEntity o " +
            "WHERE (:startDate IS NULL OR o.received_at >= :startDate) " +
            "AND o.status IN :statuses")
     Double calculateAverageOrderPriceFiltered(
@@ -79,7 +79,7 @@ public interface OrderJpaRepository extends JpaRepository<Order, Integer> {
             @Param("statuses") List<OrderStatus> statuses);
 
     // Count ongoing orders with filters
-    @Query("SELECT COUNT(o) FROM Order o " +
+    @Query("SELECT COUNT(o) FROM OrderJpaEntity o " +
            "WHERE (:startDate IS NULL OR o.received_at >= :startDate) " +
            "AND o.status IN :statuses")
     Long countOngoingOrdersFiltered(

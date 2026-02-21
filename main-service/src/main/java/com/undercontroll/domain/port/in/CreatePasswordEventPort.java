@@ -1,7 +1,6 @@
 package com.undercontroll.domain.port.in;
 
-import com.undercontroll.domain.entity.enums.PasswordEventType;
-import com.undercontroll.infrastructure.web.dto.CreatePasswordEventRequest;
+import com.undercontroll.domain.model.enums.PasswordEventType;
 
 public interface CreatePasswordEventPort {
     record Input(

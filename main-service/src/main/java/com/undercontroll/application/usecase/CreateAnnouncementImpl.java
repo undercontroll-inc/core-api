@@ -1,22 +1,22 @@
 package com.undercontroll.application.usecase;
 
+import com.undercontroll.domain.port.out.NotificationPort;
 import com.undercontroll.domain.port.in.CreateAnnouncementPort;
-import com.undercontroll.domain.entity.Announcement;
-import com.undercontroll.infrastructure.persistence.repository.AnnouncementRepository;
-import com.undercontroll.application.service.MetricsService;
-import com.undercontroll.infrastructure.messaging.event.AnnouncementCreatedEvent;
+import com.undercontroll.domain.model.Announcement;
+import com.undercontroll.domain.events.AnnouncementCreatedEvent;
+import com.undercontroll.domain.port.out.AnnouncementRepositoryPort;
+import com.undercontroll.domain.port.out.MetricsPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
 public class CreateAnnouncementImpl implements CreateAnnouncementPort {
 
-    private final AnnouncementRepository announcementRepository;
-    private final ApplicationEventPublisher publisher;
-    private final MetricsService metricsService;
+    private final AnnouncementRepositoryPort announcementRepositoryPort;
+    private final NotificationPort notificationPort;
+    private final MetricsPort metricsPort;
 
     @Override
     @CacheEvict(value = {"announcements", "lastAnnouncement"}, allEntries = true)
@@ -27,11 +27,11 @@ public class CreateAnnouncementImpl implements CreateAnnouncementPort {
                 .type(input.type())
                 .build();
 
-        Announcement announcementCreated = announcementRepository.save(announcement);
+        Announcement announcementCreated = announcementRepositoryPort.save(announcement);
 
-        publisher.publishEvent(new AnnouncementCreatedEvent(this, announcementCreated));
+        notificationPort.handleAnnouncementCreated(new AnnouncementCreatedEvent(announcementCreated, input.token()));
 
-        metricsService.incrementAnnouncementCreated();
+        metricsPort.incrementAnnouncementCreated();
 
         return new Output(
                 announcementCreated.getId(),

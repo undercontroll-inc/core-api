@@ -1,6 +1,6 @@
 package com.undercontroll.domain.port.in;
 
-import com.undercontroll.domain.entity.User;
+import com.undercontroll.domain.model.User;
 
 public interface GetUserPort {
     record Input(

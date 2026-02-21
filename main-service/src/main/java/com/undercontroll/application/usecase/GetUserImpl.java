@@ -1,9 +1,9 @@
 package com.undercontroll.application.usecase;
 
 import com.undercontroll.domain.port.in.GetUserPort;
-import com.undercontroll.domain.entity.User;
+import com.undercontroll.domain.model.User;
 import com.undercontroll.domain.exception.InvalidUserException;
-import com.undercontroll.infrastructure.persistence.repository.UserJpaRepository;
+import com.undercontroll.domain.port.out.UserRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -14,7 +14,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class GetUserImpl implements GetUserPort {
 
-    private final UserJpaRepository repository;
+    private final UserRepositoryPort userRepositoryPort;
 
     @Override
     @Cacheable(value = "user", key = "#input.userId()")
@@ -23,7 +23,7 @@ public class GetUserImpl implements GetUserPort {
             throw new InvalidUserException("User ID cannot be null");
         }
 
-        Optional<User> user = repository.findById(input.userId());
+        Optional<User> user = userRepositoryPort.findById(input.userId());
 
         if (user.isEmpty()) {
             throw new InvalidUserException("Could not found the user with id: %d".formatted(input.userId()));

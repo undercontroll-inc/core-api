@@ -1,10 +1,10 @@
 package com.undercontroll.application.usecase;
 
 import com.undercontroll.domain.port.in.DeleteComponentPort;
-import com.undercontroll.domain.entity.ComponentPart;
+import com.undercontroll.domain.model.ComponentPart;
 import com.undercontroll.domain.exception.ComponentNotFoundException;
 import com.undercontroll.domain.exception.InvalidDeleteComponentException;
-import com.undercontroll.infrastructure.persistence.repository.ComponentJpaRepository;
+import com.undercontroll.domain.port.out.ComponentRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -16,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class DeleteComponentImpl implements DeleteComponentPort {
 
-    private final ComponentJpaRepository repository;
+    private final ComponentRepositoryPort componentRepositoryPort;
 
     @Override
     @Transactional
@@ -24,7 +24,7 @@ public class DeleteComponentImpl implements DeleteComponentPort {
     public Output execute(Input input) {
         validateDelete(input.componentId());
 
-        ComponentPart component = repository.findById(input.componentId())
+        ComponentPart component = componentRepositoryPort.findById(input.componentId())
                 .orElseThrow(() -> new ComponentNotFoundException("Component not found with id " + input.componentId()));
 
         log.info("Attempting to delete component with id: {}, name: {}", input.componentId(), component.getName());
@@ -39,7 +39,7 @@ public class DeleteComponentImpl implements DeleteComponentPort {
             );
         }
 
-        repository.delete(component);
+        componentRepositoryPort.deleteById(component.getId());
         log.info("Component {} successfully deleted", input.componentId());
 
         return new Output(true, "Component deleted successfully");

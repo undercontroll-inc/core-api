@@ -1,6 +1,6 @@
 package com.undercontroll.infrastructure.handler;
 
-import com.undercontroll.infrastructure.web.api.impl.UserController;
+import com.undercontroll.infrastructure.web.controller.UserController;
 import com.undercontroll.domain.exception.*;
 import com.undercontroll.infrastructure.web.dto.ExceptionHandlerResponse;
 import jakarta.servlet.http.HttpServletRequest;

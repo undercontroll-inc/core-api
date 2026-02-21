@@ -1,6 +1,5 @@
 package com.undercontroll.domain.port.in;
 
-import com.undercontroll.domain.entity.Order;
 import com.undercontroll.infrastructure.web.dto.PartDto;
 import com.undercontroll.infrastructure.web.dto.OrderItemCreateOrderRequest;
 

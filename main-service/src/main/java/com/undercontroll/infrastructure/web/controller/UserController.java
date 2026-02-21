@@ -2,8 +2,7 @@ package com.undercontroll.infrastructure.web.controller;
 
 import com.undercontroll.infrastructure.web.api.UserApi;
 import com.undercontroll.infrastructure.web.dto.*;
-import com.undercontroll.domain.entity.User;
-import com.undercontroll.application.service.UserService;
+import com.undercontroll.domain.model.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -65,6 +64,13 @@ public class UserController implements UserApi {
     public ResponseEntity<UserDto> getCostumerById(@PathVariable Integer customerId) {
         var user = service.getCustomersById(customerId);
         return ResponseEntity.ok(user);
+    }
+
+    @Override
+    @GetMapping("/customers/emails")
+    public ResponseEntity<List<UserDto>> getCustomersThatHaveEmail() {
+        var users = service.findAllCustomersThatHaveEmail();
+        return users.isEmpty() ? ResponseEntity.noContent().build() : ResponseEntity.ok(users);
     }
 
     @Override

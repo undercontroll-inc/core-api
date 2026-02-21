@@ -19,9 +19,9 @@ public class ComponentExceptionHandler extends GenericExceptionHandler {
         return this.buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request.getRequestURI());
     }
 
-    @ExceptionHandler(InvalidGetComponentsByCategoryExcepiton.class)
+    @ExceptionHandler(InvalidGetComponentsByCategoryException.class)
     public ResponseEntity<ExceptionHandlerResponse> handleInvalidGetComponentsByCategoryException(
-            InvalidGetComponentsByCategoryExcepiton ex, HttpServletRequest request
+            InvalidGetComponentsByCategoryException ex, HttpServletRequest request
     ) {
 
         return this.buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request.getRequestURI());
