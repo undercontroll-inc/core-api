@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+
+    <style>
+
+        /* ===== CONFIG A4 ===== */
+        @page {
+            size: A4;
+            margin: 12mm;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #FFFFFF;
+            color: #041A2D;
+            font-size: 12px;
+            margin: 0;
+            padding: 0;
+        }
+
+        .os-container {
+            padding: 10px;
+        }
+
+        /* ===== TÍTULO ===== */
+        .header-title {
+            text-align: center;
+            padding-bottom: 6px;
+            margin-bottom: 8px;
+        }
+
+        .header-title h1 {
+            font-size: 20px;
+            font-weight: 800;
+            margin: 0;
+        }
+
+        .header-title p {
+            font-size: 11px;
+            color: #6B7280;
+            margin-top: 3px;
+        }
+
+        /* ===== CABEÇALHO EMPRESA ===== */
+        .company-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            background: #F2F4F7;
+            padding: 10px 12px;
+            border-radius: 8px;
+            margin-bottom: 14px;
+        }
+
+        .logo-box {
+            width: 90px;
+            height: 45px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #041A2D;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .company-info {
+            text-align: right;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .company-info .os-number {
+            font-size: 14px;
+            font-weight: 800;
+            margin-top: 4px;
+        }
+
+        /* ===== SEÇÕES ===== */
+        .section-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin-top: 12px;
+            margin-bottom: 4px;
+        }
+
+        /* ===== CAMPOS ===== */
+        .field {
+            margin-bottom: 8px;
+        }
+
+        .field label {
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .field .value {
+            border: 1px solid #CBD5E1;
+            background: #FFFFFF;
+            border-radius: 6px;
+            padding: 6px;
+            margin-top: 3px;
+            font-size: 11px;
+        }
+
+        /* ===== CHECKBOXES ===== */
+        .check-group {
+            display: flex;
+            gap: 12px;
+            margin: 6px 0;
+        }
+
+        .check-item {
+            display: flex;
+            align-items: center;
+            font-size: 11px;
+        }
+
+        .check-item .box {
+            width: 14px;
+            height: 14px;
+            border: 2px solid #041A2D;
+            border-radius: 4px;
+            margin-right: 6px;
+            position: relative;
+        }
+
+        .check-item .box.checked::after {
+            content: '✓';
+            position: absolute;
+            top: -3px;
+            left: 1px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #041A2D;
+        }
+
+        /* ===== TABELAS ===== */
+        .table, .parts-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 4px;
+            font-size: 11px;
+        }
+
+        .table th, .parts-table th {
+            background: #E5E7EB;
+            padding: 5px;
+            border: 1px solid #CBD5E1;
+            font-weight: 700;
+        }
+
+        .table td, .parts-table td {
+            padding: 5px;
+            border: 1px solid #CBD5E1;
+        }
+
+        /* ===== AVISO ===== */
+        .notice {
+            margin-top: 10px;
+            padding: 8px;
+            background: #F8FAFC;
+            border-left: 4px solid #041A2D;
+            font-size: 10px;
+            border-radius: 6px;
+        }
+
+        /* ===== ASSINATURAS ===== */
+        .signatures {
+            margin-top: 18px;
+        }
+
+        .sig-block {
+            margin-bottom: 18px;
+        }
+
+        .sig-line {
+            margin-top: 18px;
+            border-top: 2px solid #041A2D;
+            width: 45%;
+            padding-top: 2px;
+            font-size: 11px;
+        }
+
+    </style>
+</head>
+
+<body>
+
+<div class="os-container">
+
+    <!-- ===== TÍTULO ===== -->
+    <div class="header-title">
+        <h1>Ordem de Serviço</h1>
+        <p>Documento de Atendimento Técnico</p>
+    </div>
+
+    <!-- ===== HEADER EMPRESA ===== -->
+    <div class="company-header">
+        <div class="logo-box">
+            <img src="../images/Logo_Pelluci_Branca.png" alt="Logo dos irmãos pelluci"/>
+        </div>
+
+        <div class="company-info">
+            <b>COMERCIAL IRMÃOS PELLUCI LTDA.-ME</b><br>
+            Av. Zelina, 505 – Vila Zelina<br>
+            CEP 03134-001 – São Paulo – SP<br>
+            Fone/Fax: (11) 2341-7100<br>
+            97734-8776
+            <div class="os-number">OS Nº ${numero_os}</div>
+        </div>
+    </div>
+
+    <!-- ===== TIPO DE SERVIÇO ===== -->
+    <div class="section-title">Tipo de Atendimento</div>
+
+    <div class="check-group">
+        <div class="check-item"><div class="box ${garantia_fabrica}"></div> Garantia/Fábrica</div>
+        <div class="check-item"><div class="box ${orcamento}"></div> Orçamento</div>
+        <div class="check-item"><div class="box ${retorno_garantia}"></div> Retorno/Garantia</div>
+    </div>
+
+    <!-- ===== INFORMAÇÕES DA OS ===== -->
+    <div class="section-title">Informações da OS</div>
+
+    <div class="field"><label>O.S.:</label><div class="value">${os}</div></div>
+    <div class="field"><label>N.F.:</label><div class="value">${nf}</div></div>
+    <div class="field"><label>Data:</label><div class="value">${data}</div></div>
+    <div class="field"><label>Loja:</label><div class="value">${loja}</div></div>
+
+    <!-- ===== PRODUTOS MÚLTIPLOS ===== -->
+    <div class="section-title">Produtos</div>
+
+    <table class="table">
+        <tr>
+            <th>Produto</th>
+            <th>Volt.</th>
+            <th>Série</th>
+        </tr>
+
+        <!-- Múltiplos produtos -->
+        ${lista_produtos}
+
+    </table>
+
+    <!-- ===== CLIENTE ===== -->
+    <div class="section-title">Cliente</div>
+
+    <div class="field"><label>Nome:</label><div class="value">${nome}</div></div>
+    <div class="field"><label>Endereço:</label><div class="value">${endereco}</div></div>
+    <div class="field"><label>Telefone:</label><div class="value">${telefone}</div></div>
+    <div class="field"><label>Recepção:</label><div class="value">${recepcao}</div></div>
+
+    <!-- ===== AVISO ===== -->
+    <div class="notice">
+        O prazo para retirada dos produtos é de <b>30 dias</b>. Após esse período será cobrado R$ 1,00 por dia.
+        Produtos não retirados em até 60 dias poderão ser desmontados para recuperação das peças aplicadas.
+        Garantia: 4 meses para eletroportáteis e 6 meses para microondas.
+    </div>
+
+    <!-- ===== PEÇAS APLICADAS ===== -->
+    <div class="section-title">Peças Aplicadas</div>
+
+    <table class="parts-table">
+        <tr>
+            <th style="width: 60px;">Qt.</th>
+            <th>Peça</th>
+            <th style="width: 120px;">Valor</th>
+        </tr>
+
+        ${tabela_pecas}
+
+        <tr>
+            <td colspan="2" style="text-align:right;"><b>Total</b></td>
+            <td><b>${total}</b></td>
+        </tr>
+    </table>
+
+    <!-- ===== ASSINATURAS ===== -->
+    <div class="signatures">
+
+        <div class="sig-block">
+            <div class="sig-line">${data_conserto}</div>
+            Consertado em
+        </div>
+
+        <div class="sig-block">
+            <div class="sig-line">${tecnico}</div>
+            Técnico Responsável
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+</html>

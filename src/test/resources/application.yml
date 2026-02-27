@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: main-service-test
+  mail:
+    host: localhost
+    port: 25
+    username: test
+    password: test
+  cache:
+    type: simple
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+  rabbitmq:
+    ex:
+      notification: "notification.events"
+    routing-key:
+      announcement: "announcement.created"
+
+jwt:
+  secret: test-secret-key-for-unit-tests
+
+logging:
+  level:
+    root: ERROR
+
