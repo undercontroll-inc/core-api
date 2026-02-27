@@ -41,5 +41,3 @@ jobs:
           name: coverage-report
           path: target/site/jacoco/
           retention-days: 30
-
-
