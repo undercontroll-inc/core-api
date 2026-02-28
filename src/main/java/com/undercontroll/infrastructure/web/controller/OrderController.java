@@ -89,7 +89,12 @@ public class OrderController implements OrderApi {
         boolean isAdmin = auth.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMINISTRATOR"));
 
-        Integer authenticatedUserId = Integer.parseInt(auth.getName());
+        Integer authenticatedUserId;
+        try {
+            authenticatedUserId = Integer.parseInt(auth.getName());
+        } catch (NumberFormatException ex) {
+            return ResponseEntity.status(401).build();
+        }
 
         if (!isAdmin && !authenticatedUserId.equals(userId)) {
             return ResponseEntity.status(403).build();
