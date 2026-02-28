@@ -1,0 +1,22 @@
+# Build output — never needed in the Docker build context
+target/
+
+# Version control
+.git/
+.gitignore
+
+# IDE and OS artifacts
+.idea/
+*.iml
+.DS_Store
+
+# Documentation
+*.md
+
+# Local environment overrides (may contain secrets)
+.env
+.env.*
+
+# Log files
+*.log
+logs/
