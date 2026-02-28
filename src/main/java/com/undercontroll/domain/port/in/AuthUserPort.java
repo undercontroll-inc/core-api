@@ -10,6 +10,7 @@ public interface AuthUserPort {
 
     record Output(
             String token,
+            String refreshToken,
             UserDto user
     ) {}
 

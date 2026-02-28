@@ -7,6 +7,7 @@ import com.undercontroll.domain.model.enums.UserType;
 import com.undercontroll.domain.port.in.*;
 import com.undercontroll.domain.port.out.TokenPort;
 import com.undercontroll.infrastructure.config.SecurityConfig;
+import com.undercontroll.infrastructure.config.RateLimitProperties;
 import com.undercontroll.infrastructure.web.dto.CreateOrderRequest;
 import com.undercontroll.infrastructure.web.dto.GetAllOrdersResponse;
 import com.undercontroll.infrastructure.web.dto.UpdateOrderRequest;
@@ -28,7 +29,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, RateLimitProperties.class})
 @AutoConfigureMockMvc(addFilters = true)
 @WebMvcTest(OrderController.class)
 class OrderControllerTest {
@@ -224,7 +225,7 @@ class OrderControllerTest {
                 .thenReturn(new GetOrdersByUserIdPort.Output(response));
 
         mockMvc.perform(get("/v1/api/orders/filter")
-                        .with(user("customer@example.com").roles("SCOPE_CUSTOMER"))
+                        .with(user("1").roles("SCOPE_CUSTOMER"))
                         .param("userId", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].id").value(1))
@@ -252,7 +253,7 @@ class OrderControllerTest {
                 .thenReturn(new GetOrdersByUserIdPort.Output(response));
 
         mockMvc.perform(get("/v1/api/orders/filter")
-                        .with(user("admin@example.com").roles("ADMINISTRATOR", "SCOPE_ADMINISTRATOR"))
+                        .with(user("1").roles("ADMINISTRATOR", "SCOPE_ADMINISTRATOR"))
                         .param("userId", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].id").value(1));
