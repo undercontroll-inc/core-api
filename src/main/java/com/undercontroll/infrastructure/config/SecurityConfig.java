@@ -46,7 +46,7 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
                         // H2 console: localhost only (dev profile)
-                        .requestMatchers("/h2-console/**").access((authentication, context) -> {
+                                .requestMatchers("/h2-console/**").access((authentication, context) -> {
                             String remoteAddr = context.getRequest().getRemoteAddr();
                             boolean isLocalhost = LOCALHOST_IPV4.matches(remoteAddr)
                                     || LOCALHOST_IPV6.matches(remoteAddr);

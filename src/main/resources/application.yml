@@ -75,7 +75,7 @@ springdoc:
     tags-sorter: alpha
 
 jwt:
-  secret: ${JWT_SECRET}
+  secret: ${JWT_SECRET:undercontroll-dev-secret}
   # Access token expiration in minutes (default: 15 minutes)
   access-token-expiration-minutes: ${JWT_ACCESS_TOKEN_EXPIRATION_MINUTES:15}
   # Refresh token expiration in days (default: 7 days)

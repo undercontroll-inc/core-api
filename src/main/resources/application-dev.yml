@@ -5,10 +5,6 @@ spring:
     username: ${RABBITMQ_USERNAME:rabbitmq}
     password: ${RABBITMQ_PASSWORD:rabbitmq}
     dynamic: true
-    exchange:
-      notification: notification-exchange
-    routing-key:
-      announcement: announcement-routing-key
 
   datasource:
     url: ${DB_URL:jdbc:h2:mem:testdb}
