@@ -1,6 +1,7 @@
 package com.undercontroll.infrastructure.config;
 
 import com.undercontroll.infrastructure.filter.AuthContextFilter;
+import com.undercontroll.infrastructure.filter.RateLimitFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,9 +15,9 @@ import org.springframework.security.config.annotation.web.configurers.HeadersCon
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.IpAddressMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -29,7 +30,11 @@ import java.util.List;
 @EnableWebSecurity
 public class SecurityConfig {
 
+    private static final IpAddressMatcher LOCALHOST_IPV4 = new IpAddressMatcher("127.0.0.1");
+    private static final IpAddressMatcher LOCALHOST_IPV6 = new IpAddressMatcher("::1");
+
     private final AuthContextFilter authFilter;
+    private final RateLimitFilter rateLimitFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -40,14 +45,19 @@ public class SecurityConfig {
                 .csrf(CsrfConfigurer<HttpSecurity>::disable)
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
-                        // Public endpoints
-                        .requestMatchers("/h2-console/**").permitAll()
+                        // H2 console: localhost only (dev profile)
+                        .requestMatchers("/h2-console/**").access((authentication, context) -> {
+                            String remoteAddr = context.getRequest().getRemoteAddr();
+                            boolean isLocalhost = LOCALHOST_IPV4.matches(remoteAddr)
+                                    || LOCALHOST_IPV6.matches(remoteAddr);
+                            return new org.springframework.security.authorization.AuthorizationDecision(isLocalhost);
+                        })
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/actuator/**", "/actuator/health/**", "/actuator/prometheus").permitAll()
                         
                         // Public auth endpoints
-                        .requestMatchers(HttpMethod.POST, "/v1/api/users/auth", "/v1/api/users/auth/google", "/v1/api/users").permitAll()
-                        
+                        .requestMatchers(HttpMethod.POST, "/v1/api/users/auth", "/v1/api/users/auth/google", "/v1/api/users/auth/refresh", "/v1/api/users").permitAll()
+
                         // Public announcement endpoints
                         .requestMatchers(HttpMethod.GET, "/v1/api/announcements", "/v1/api/announcements/last").permitAll()
                         
@@ -74,6 +84,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
+                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(authFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }

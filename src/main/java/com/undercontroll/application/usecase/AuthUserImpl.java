@@ -5,6 +5,7 @@ import com.undercontroll.domain.port.in.AuthUserPort;
 import com.undercontroll.domain.model.User;
 import com.undercontroll.domain.port.out.UserRepositoryPort;
 import com.undercontroll.domain.port.out.TokenPort;
+import com.undercontroll.domain.port.out.RefreshTokenPort;
 import com.undercontroll.domain.port.out.MetricsPort;
 import com.undercontroll.application.dto.UserDto;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ public class AuthUserImpl implements AuthUserPort {
     private final UserRepositoryPort userRepositoryPort;
     private final PasswordEncoder passwordEncoder;
     private final TokenPort tokenPort;
+    private final RefreshTokenPort refreshTokenPort;
     private final MetricsPort metricsPort;
 
     @Override
@@ -32,22 +34,23 @@ public class AuthUserImpl implements AuthUserPort {
                 throw new InvalidAuthException("Email or password is invalid");
             }
 
-            boolean passwordMatch = passwordEncoder.matches(input.password(), userFound.get().getPassword());
+            User user = userFound.get();
 
-            if (!passwordMatch) {
-                metricsPort.incrementLoginFailed();
-                throw new InvalidAuthException("Email or password is invalid");
+            // Google auth passes null password — skip password check
+            if (input.password() != null) {
+                boolean passwordMatch = passwordEncoder.matches(input.password(), user.getPassword());
+                if (!passwordMatch) {
+                    metricsPort.incrementLoginFailed();
+                    throw new InvalidAuthException("Email or password is invalid");
+                }
             }
 
-            User user = userFound.get();
-            String token = tokenPort.generateToken(user.getEmail(), user.getUserType());
+            String accessToken = tokenPort.generateToken(String.valueOf(user.getId()), user.getUserType());
+            String refreshToken = refreshTokenPort.createRefreshToken(user.getId(), user.getEmail(), user.getUserType());
 
             metricsPort.incrementLoginSuccess();
 
-            return new Output(
-                    token,
-                    mapToDto(user)
-            );
+            return new Output(accessToken, refreshToken, mapToDto(user));
         } catch (InvalidAuthException e) {
             throw e;
         }

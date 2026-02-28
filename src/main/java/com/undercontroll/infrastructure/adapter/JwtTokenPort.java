@@ -19,10 +19,11 @@ import java.time.Instant;
 @Component
 public class JwtTokenPort implements TokenPort {
 
-    private static final Long TOKEN_EXPIRATION_SECONDS = 15L * 60L; // 15 minutos
-
     @Value("${jwt.secret}")
     private String secret;
+
+    @Value("${jwt.access-token-expiration-minutes:15}")
+    private long accessTokenExpirationMinutes;
 
     @Override
     public String generateToken(String username, UserType userType) {
@@ -33,7 +34,7 @@ public class JwtTokenPort implements TokenPort {
                     .withIssuer("undercontroll")
                     .withClaim("roles", userType.name())
                     .withSubject(username)
-                    .withExpiresAt(Instant.now().plusSeconds(TOKEN_EXPIRATION_SECONDS))
+                    .withExpiresAt(Instant.now().plusSeconds(accessTokenExpirationMinutes * 60))
                     .sign(algorithm);
         } catch (JWTCreationException exception) {
             throw new TokenGenerationException("Error while generating token " + exception.getMessage());

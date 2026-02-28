@@ -9,6 +9,7 @@ import com.undercontroll.domain.model.enums.UserType;
 import com.undercontroll.domain.port.in.*;
 import com.undercontroll.domain.port.out.TokenPort;
 import com.undercontroll.infrastructure.config.SecurityConfig;
+import com.undercontroll.infrastructure.config.RateLimitProperties;
 import com.undercontroll.infrastructure.web.dto.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,7 +29,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(UserController.class)
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, RateLimitProperties.class})
 class UserControllerTest {
 
     @Autowired
@@ -70,6 +71,9 @@ class UserControllerTest {
     // Required because AuthContextFilter depends on TokenPort
     @MockitoBean
     private TokenPort tokenPort;
+
+    @MockitoBean
+    private com.undercontroll.domain.port.in.RefreshTokenPort refreshTokenPort;
 
     private void mockTokenPortWithRole(String role) {
         Claim claim = mock(Claim.class);
@@ -117,13 +121,14 @@ class UserControllerTest {
                 null, false, false, true, UserType.CUSTOMER);
 
         when(authUserPort.execute(any(AuthUserPort.Input.class)))
-                .thenReturn(new AuthUserPort.Output("jwt-token-here", userDto));
+                .thenReturn(new AuthUserPort.Output("jwt-token-here", "refresh-token-here", userDto));
 
         mockMvc.perform(post("/v1/api/users/auth")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").value("jwt-token-here"))
+                .andExpect(jsonPath("$.refreshToken").value("refresh-token-here"))
                 .andExpect(jsonPath("$.user.email").value("john@example.com"));
 
         verify(authUserPort, times(1)).execute(any(AuthUserPort.Input.class));
@@ -139,13 +144,14 @@ class UserControllerTest {
                 null, false, false, true, UserType.CUSTOMER);
 
         when(authUserPort.execute(any(AuthUserPort.Input.class)))
-                .thenReturn(new AuthUserPort.Output("jwt-token-here", userDto));
+                .thenReturn(new AuthUserPort.Output("jwt-token-here", "refresh-token-here", userDto));
 
         mockMvc.perform(post("/v1/api/users/auth/google")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").value("jwt-token-here"))
+                .andExpect(jsonPath("$.refreshToken").value("refresh-token-here"))
                 .andExpect(jsonPath("$.user.email").value("john@example.com"));
 
         verify(authUserPort, times(1)).execute(any(AuthUserPort.Input.class));

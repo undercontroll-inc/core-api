@@ -1,9 +1,9 @@
 spring:
   rabbitmq:
-    host: localhost
-    port: 5672
-    username: rabbitmq
-    password: rabbitmq
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:rabbitmq}
+    password: ${RABBITMQ_PASSWORD:rabbitmq}
     dynamic: true
     exchange:
       notification: notification-exchange
@@ -11,10 +11,10 @@ spring:
       announcement: announcement-routing-key
 
   datasource:
-    url: jdbc:h2:mem:testdb
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
+    url: ${DB_URL:jdbc:h2:mem:testdb}
+    driver-class-name: ${DB_DRIVER:org.h2.Driver}
+    username: ${DB_USERNAME:sa}
+    password: ${DB_PASSWORD:}
 
   jpa:
     hibernate:
@@ -24,3 +24,6 @@ spring:
   h2:
     console:
       enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: false

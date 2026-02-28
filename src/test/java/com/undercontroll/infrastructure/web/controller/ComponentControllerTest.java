@@ -5,6 +5,7 @@ import com.undercontroll.application.dto.ComponentDto;
 import com.undercontroll.domain.port.in.*;
 import com.undercontroll.domain.port.out.TokenPort;
 import com.undercontroll.infrastructure.config.SecurityConfig;
+import com.undercontroll.infrastructure.config.RateLimitProperties;
 import com.undercontroll.infrastructure.web.dto.RegisterComponentRequest;
 import com.undercontroll.infrastructure.web.dto.RegisterComponentResponse;
 import com.undercontroll.infrastructure.web.dto.UpdateComponentRequest;
@@ -27,7 +28,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, RateLimitProperties.class})
 @AutoConfigureMockMvc
 @WebMvcTest(ComponentController.class)
 class ComponentControllerTest {

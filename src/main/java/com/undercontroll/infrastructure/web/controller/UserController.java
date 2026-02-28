@@ -27,6 +27,7 @@ public class UserController implements UserApi {
     private final GetUserPort getUserPort;
     private final DeleteUserPort deleteUserPort;
     private final ResetPasswordPort resetPasswordPort;
+    private final com.undercontroll.domain.port.in.RefreshTokenPort refreshTokenPort;
 
     @Override
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -63,14 +64,20 @@ public class UserController implements UserApi {
     @PostMapping(value = "/auth", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<AuthUserResponse> auth(@RequestBody AuthUserRequest request) {
         var output = authUserPort.execute(new AuthUserPort.Input(request.email(), request.password()));
-        return ResponseEntity.ok(new AuthUserResponse(output.token(), output.user()));
+        return ResponseEntity.ok(new AuthUserResponse(output.token(), output.refreshToken(), output.user()));
     }
 
     @Override
     @PostMapping(value = "/auth/google", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<AuthUserResponse> authGoogle(@RequestBody AuthGoogleRequest request) {
         var output = authUserPort.execute(new AuthUserPort.Input(request.email(), null));
-        return ResponseEntity.ok(new AuthUserResponse(output.token(), output.user()));
+        return ResponseEntity.ok(new AuthUserResponse(output.token(), output.refreshToken(), output.user()));
+    }
+
+    @PostMapping(value = "/auth/refresh", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<RefreshTokenResponse> refresh(@RequestBody RefreshTokenRequest request) {
+        var output = refreshTokenPort.execute(new com.undercontroll.domain.port.in.RefreshTokenPort.Input(request.refreshToken()));
+        return ResponseEntity.ok(new RefreshTokenResponse(output.accessToken(), output.refreshToken()));
     }
 
     @Override

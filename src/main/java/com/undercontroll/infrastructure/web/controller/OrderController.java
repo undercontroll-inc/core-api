@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -82,6 +84,22 @@ public class OrderController implements OrderApi {
     @Override
     @GetMapping("/filter")
     public ResponseEntity<GetOrdersByUserIdResponse> getOrdersByUserId(@RequestParam("userId") Integer userId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        boolean isAdmin = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMINISTRATOR"));
+
+        Integer authenticatedUserId;
+        try {
+            authenticatedUserId = Integer.parseInt(auth.getName());
+        } catch (NumberFormatException ex) {
+            return ResponseEntity.status(401).build();
+        }
+
+        if (!isAdmin && !authenticatedUserId.equals(userId)) {
+            return ResponseEntity.status(403).build();
+        }
+
         var output = getOrdersByUserIdPort.execute(new GetOrdersByUserIdPort.Input(userId));
         return ResponseEntity.ok(output.orders());
     }
