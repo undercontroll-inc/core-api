@@ -120,7 +120,7 @@
         <!-- Rate Limiting -->
         <dependency>
             <groupId>com.bucket4j</groupId>
-            <artifactId>bucket4j-core</artifactId>
+            <artifactId>bucket4j-caffeine</artifactId>
             <version>8.10.1</version>
         </dependency>
     </dependencies>

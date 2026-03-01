@@ -2,7 +2,10 @@ package com.undercontroll.infrastructure.filter;
 
 import com.undercontroll.infrastructure.config.RateLimitProperties;
 import io.github.bucket4j.Bandwidth;
-import io.github.bucket4j.Bucket;
+import io.github.bucket4j.BucketConfiguration;
+import io.github.bucket4j.caffeine.CaffeineProxyManager;
+import io.github.bucket4j.distributed.BucketProxy;
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,8 +19,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+
+import com.github.benmanes.caffeine.cache.Caffeine;
 
 @Slf4j
 @Component
@@ -28,13 +31,39 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private static final String AUTH_GOOGLE_PATH  = "/v1/api/users/auth/google";
     private static final String AUTH_REFRESH_PATH = "/v1/api/users/auth/refresh";
 
-    /** Separate bucket maps so auth endpoints have their own strict quota. */
-    private final Map<String, Bucket> authBuckets    = new ConcurrentHashMap<>();
-    private final Map<String, Bucket> generalBuckets = new ConcurrentHashMap<>();
-
     private final RateLimitProperties props;
 
-    // ── Filter logic ─────────────────────────────────────────────────────────
+    private CaffeineProxyManager<String> authManager;
+    private CaffeineProxyManager<String> generalManager;
+    private BucketConfiguration          authConfig;
+    private BucketConfiguration          generalConfig;
+
+    @PostConstruct
+    void init() {
+        authManager = new CaffeineProxyManager<>(
+                Caffeine.newBuilder()
+                        .maximumSize(10_000),
+                Duration.ofSeconds(10)
+        );
+        generalManager = new CaffeineProxyManager<>(
+                Caffeine.newBuilder()
+                        .maximumSize(100_000),
+                Duration.ofSeconds(10)
+        );
+        authConfig = BucketConfiguration.builder()
+                .addLimit(Bandwidth.builder()
+                        .capacity(props.getAuthRequestsPerMinute())
+                        .refillGreedy(props.getAuthRequestsPerMinute(), Duration.ofMinutes(1))
+                        .build())
+                .build();
+        generalConfig = BucketConfiguration.builder()
+                .addLimit(Bandwidth.builder()
+                        .capacity(props.getGeneralRequestsPerMinute())
+                        .refillGreedy(props.getGeneralRequestsPerMinute(), Duration.ofMinutes(1))
+                        .build())
+                .build();
+    }
+
 
     @Override
     protected void doFilterInternal(
@@ -47,12 +76,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
         String path    = request.getServletPath();
         boolean isAuth = isAuthEndpoint(request.getMethod(), path);
 
-        Bucket bucket = isAuth
-                ? authBuckets.computeIfAbsent(ip, k -> buildAuthBucket())
-                : generalBuckets.computeIfAbsent(ip, k -> buildGeneralBucket());
+        BucketProxy bucket = isAuth
+                ? authManager.builder().build(ip, authConfig)
+                : generalManager.builder().build(ip, generalConfig);
 
         if (bucket.tryConsume(1)) {
-            // Expose remaining tokens to callers
             long remaining = bucket.getAvailableTokens();
             response.setHeader("X-RateLimit-Remaining", String.valueOf(remaining));
             chain.doFilter(request, response);
@@ -62,38 +90,15 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private boolean isAuthEndpoint(String method, String path) {
         return "POST".equalsIgnoreCase(method)
                 && (path.equals(AUTH_PATH) || path.equals(AUTH_GOOGLE_PATH) || path.equals(AUTH_REFRESH_PATH));
     }
 
-    private Bucket buildAuthBucket() {
-        Bandwidth limit = Bandwidth.builder()
-                .capacity(props.getAuthRequestsPerMinute())
-                .refillGreedy(props.getAuthRequestsPerMinute(), Duration.ofMinutes(1))
-                .build();
-        return Bucket.builder().addLimit(limit).build();
-    }
-
-    private Bucket buildGeneralBucket() {
-        Bandwidth limit = Bandwidth.builder()
-                .capacity(props.getGeneralRequestsPerMinute())
-                .refillGreedy(props.getGeneralRequestsPerMinute(), Duration.ofMinutes(1))
-                .build();
-        return Bucket.builder().addLimit(limit).build();
-    }
-
-    /**
-     * Attempts to extract the real client IP, honouring common reverse-proxy
-     * headers (X-Forwarded-For, X-Real-IP) before falling back to
-     * {@link HttpServletRequest#getRemoteAddr()}.
-     */
     private String resolveClientIp(HttpServletRequest request) {
         String xForwardedFor = request.getHeader("X-Forwarded-For");
         if (xForwardedFor != null && !xForwardedFor.isBlank()) {
-            // header may contain a comma-separated list; first entry is the originating IP
             return xForwardedFor.split(",")[0].trim();
         }
         String xRealIp = request.getHeader("X-Real-IP");
@@ -112,4 +117,3 @@ public class RateLimitFilter extends OncePerRequestFilter {
         response.getWriter().write("{\"error\":\"" + message + "\",\"status\":429}");
     }
 }
-
