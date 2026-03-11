@@ -1,7 +1,7 @@
 package com.undercontroll.infrastructure.persistence.entity;
 
 import com.undercontroll.domain.model.User;
-import com.undercontroll.domain.model.enums.UserType;
+import com.undercontroll.domain.enums.UserType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;

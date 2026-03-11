@@ -1,7 +1,7 @@
 package com.undercontroll.infrastructure.config;
 
-import com.undercontroll.infrastructure.filter.AuthContextFilter;
-import com.undercontroll.infrastructure.filter.RateLimitFilter;
+import com.undercontroll.infrastructure.security.AuthContextFilter;
+import com.undercontroll.infrastructure.security.RateLimitFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

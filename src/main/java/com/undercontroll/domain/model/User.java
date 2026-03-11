@@ -1,6 +1,6 @@
 package com.undercontroll.domain.model;
 
-import com.undercontroll.domain.model.enums.UserType;
+import com.undercontroll.domain.enums.UserType;
 import lombok.*;
 
 import java.time.LocalDateTime;

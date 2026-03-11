@@ -1,19 +1,22 @@
-name: CI - Main Branch
+name: CI/CD - Main Branch
 
 on:
   push:
     branches:
       - main
-      - develop
-
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build-and-test:
     name: Build and Test
     runs-on: ubuntu-latest
     timeout-minutes: 20
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

@@ -2,13 +2,13 @@ package com.undercontroll.infrastructure.web.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.undercontroll.application.dto.ComponentDto;
-import com.undercontroll.domain.port.in.*;
-import com.undercontroll.domain.port.out.TokenPort;
+import com.undercontroll.application.usecase.component.*;
+import com.undercontroll.application.port.TokenPort;
 import com.undercontroll.infrastructure.config.SecurityConfig;
 import com.undercontroll.infrastructure.config.RateLimitProperties;
-import com.undercontroll.infrastructure.web.dto.RegisterComponentRequest;
-import com.undercontroll.infrastructure.web.dto.RegisterComponentResponse;
-import com.undercontroll.infrastructure.web.dto.UpdateComponentRequest;
+import com.undercontroll.presentation.dto.RegisterComponentRequest;
+import com.undercontroll.presentation.dto.UpdateComponentRequest;
+import com.undercontroll.presentation.controller.impl.ComponentController;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

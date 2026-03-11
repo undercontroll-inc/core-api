@@ -4,13 +4,17 @@ import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.undercontroll.application.dto.UserDto;
+import com.undercontroll.application.usecase.auth.AuthUserPort;
+import com.undercontroll.application.usecase.auth.RefreshTokenPort;
+import com.undercontroll.application.usecase.auth.ResetPasswordPort;
+import com.undercontroll.application.usecase.user.*;
 import com.undercontroll.domain.model.User;
-import com.undercontroll.domain.model.enums.UserType;
-import com.undercontroll.domain.port.in.*;
-import com.undercontroll.domain.port.out.TokenPort;
+import com.undercontroll.domain.enums.UserType;
+import com.undercontroll.application.port.TokenPort;
 import com.undercontroll.infrastructure.config.SecurityConfig;
 import com.undercontroll.infrastructure.config.RateLimitProperties;
-import com.undercontroll.infrastructure.web.dto.*;
+import com.undercontroll.presentation.dto.*;
+import com.undercontroll.presentation.controller.impl.UserController;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -73,7 +77,7 @@ class UserControllerTest {
     private TokenPort tokenPort;
 
     @MockitoBean
-    private com.undercontroll.domain.port.in.RefreshTokenPort refreshTokenPort;
+    private RefreshTokenPort refreshTokenPort;
 
     private void mockTokenPortWithRole(String role) {
         Claim claim = mock(Claim.class);

@@ -5,14 +5,14 @@ spring:
 
   datasource:
     url: ${DB_URL}
-    driver-class-name: ${DB_DRIVER:com.mysql.cj.jdbc.Driver}
+    driver-class-name: ${DB_DRIVER:org.postgresql.Driver}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
 
   rabbitmq:
     host: ${RABBITMQ_HOST}
     port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_USERNAME}
+    username: ${RABBITMQ_USER}
     password: ${RABBITMQ_PASSWORD}
 
   jpa:

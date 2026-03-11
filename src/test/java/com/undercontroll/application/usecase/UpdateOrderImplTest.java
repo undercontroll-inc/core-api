@@ -1,14 +1,13 @@
 package com.undercontroll.application.usecase;
 
-import com.undercontroll.application.dto.UpdateOrderItemDto;
-import com.undercontroll.application.dto.PartDto;
+import com.undercontroll.application.usecase.order.impl.UpdateOrderImpl;
 import com.undercontroll.domain.exception.InvalidUpdateOrderException;
 import com.undercontroll.domain.exception.OrderNotFoundException;
 import com.undercontroll.domain.model.Order;
-import com.undercontroll.domain.model.enums.OrderStatus;
-import com.undercontroll.domain.port.in.UpdateOrderPort;
-import com.undercontroll.domain.port.out.MetricsPort;
-import com.undercontroll.domain.port.out.OrderRepositoryPort;
+import com.undercontroll.domain.enums.OrderStatus;
+import com.undercontroll.application.usecase.order.UpdateOrderPort;
+import com.undercontroll.application.port.MetricsPort;
+import com.undercontroll.domain.repository.OrderRepositoryPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

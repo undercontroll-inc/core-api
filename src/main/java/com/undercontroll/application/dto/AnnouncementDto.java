@@ -1,6 +1,6 @@
 package com.undercontroll.application.dto;
 
-import com.undercontroll.domain.model.enums.AnnouncementType;
+import com.undercontroll.domain.enums.AnnouncementType;
 
 import java.time.LocalDateTime;
 

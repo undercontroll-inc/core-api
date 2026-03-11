@@ -1,7 +1,7 @@
 package com.undercontroll.domain.model;
 
-import com.undercontroll.domain.model.enums.PasswordEventStatus;
-import com.undercontroll.domain.model.enums.PasswordEventType;
+import com.undercontroll.domain.enums.PasswordEventStatus;
+import com.undercontroll.domain.enums.PasswordEventType;
 import lombok.*;
 
 import java.time.LocalDateTime;

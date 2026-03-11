@@ -1,6 +1,6 @@
 package com.undercontroll.application.dto;
 
-import com.undercontroll.domain.model.enums.OrderStatus;
+import com.undercontroll.domain.enums.OrderStatus;
 
 import java.util.List;
 

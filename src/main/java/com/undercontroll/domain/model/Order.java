@@ -1,6 +1,6 @@
 package com.undercontroll.domain.model;
 
-import com.undercontroll.domain.model.enums.OrderStatus;
+import com.undercontroll.domain.enums.OrderStatus;
 import lombok.*;
 
 import java.time.LocalDate;

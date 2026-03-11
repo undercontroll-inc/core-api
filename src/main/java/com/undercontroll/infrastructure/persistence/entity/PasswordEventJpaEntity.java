@@ -1,8 +1,8 @@
 package com.undercontroll.infrastructure.persistence.entity;
 
 import com.undercontroll.domain.model.PasswordEvent;
-import com.undercontroll.domain.model.enums.PasswordEventStatus;
-import com.undercontroll.domain.model.enums.PasswordEventType;
+import com.undercontroll.domain.enums.PasswordEventStatus;
+import com.undercontroll.domain.enums.PasswordEventType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;

@@ -1,10 +1,11 @@
 package com.undercontroll.application.usecase;
 
 import com.undercontroll.application.dto.OrderEnrichedDto;
+import com.undercontroll.application.usecase.order.impl.GetOrdersImpl;
 import com.undercontroll.domain.model.Order;
-import com.undercontroll.domain.model.enums.OrderStatus;
-import com.undercontroll.domain.port.in.GetOrdersPort;
-import com.undercontroll.domain.port.out.OrderRepositoryPort;
+import com.undercontroll.domain.enums.OrderStatus;
+import com.undercontroll.application.usecase.order.GetOrdersPort;
+import com.undercontroll.domain.repository.OrderRepositoryPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
