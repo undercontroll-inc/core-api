@@ -1,6 +1,6 @@
 package com.undercontroll.infrastructure.messaging.producers;
 
-import com.undercontroll.domain.port.out.NotificationPort;
+import com.undercontroll.application.port.NotificationPort;
 import com.undercontroll.domain.events.AnnouncementCreatedEvent;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;

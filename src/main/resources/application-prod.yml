@@ -12,7 +12,7 @@ spring:
   rabbitmq:
     host: ${RABBITMQ_HOST}
     port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_USERNAME}
+    username: ${RABBITMQ_USER}
     password: ${RABBITMQ_PASSWORD}
 
   jpa:

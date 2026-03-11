@@ -1,7 +1,7 @@
 package com.undercontroll.infrastructure.persistence.entity;
 
 import com.undercontroll.domain.model.Announcement;
-import com.undercontroll.domain.model.enums.AnnouncementType;
+import com.undercontroll.domain.enums.AnnouncementType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

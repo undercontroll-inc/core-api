@@ -1,7 +1,7 @@
 package com.undercontroll.infrastructure.persistence.entity;
 
 import com.undercontroll.domain.model.Order;
-import com.undercontroll.domain.model.enums.OrderStatus;
+import com.undercontroll.domain.enums.OrderStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;

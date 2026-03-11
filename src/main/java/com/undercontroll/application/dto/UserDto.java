@@ -1,6 +1,6 @@
 package com.undercontroll.application.dto;
 
-import com.undercontroll.domain.model.enums.UserType;
+import com.undercontroll.domain.enums.UserType;
 
 public record UserDto(
         Integer id,

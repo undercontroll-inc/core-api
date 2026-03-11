@@ -1,6 +1,6 @@
 package com.undercontroll.domain.model;
 
-import com.undercontroll.domain.model.enums.AnnouncementType;
+import com.undercontroll.domain.enums.AnnouncementType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
