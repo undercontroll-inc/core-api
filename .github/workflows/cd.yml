@@ -19,18 +19,15 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+      - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v6
         with:
           context: .
           push: true
@@ -43,69 +40,42 @@ jobs:
     needs: publish
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout infra repo
-        uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4a
         with:
-          repository: undercontroll-inc/infra
-          token: ${{ secrets.GH_PAT }}
-          path: infra
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: us-east-1
 
-      - name: Setup SSH key
+      - name: Deploy via SSM
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.DEPLOY_PRIVATE_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.BASTION_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
-
-      - name: Copy docker-compose to backend EC2 via bastion
-        run: |
-          sudo scp -o StrictHostKeyChecking=no \
-            -o ProxyCommand="ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key -W %h:%p deploy@${{ secrets.BASTION_HOST }}" \
-            -i ~/.ssh/deploy_key \
-            infra/docker-compose.prod.yml \
-            deploy@${{ secrets.BACKEND_EC2_HOST }}:/opt/app/docker-compose.yml
-
-      - name: Deploy via SSH tunnel through bastion
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.BACKEND_EC2_HOST }}
-          username: deploy
-          key: ${{ secrets.DEPLOY_PRIVATE_KEY }}
-          proxy_host: ${{ secrets.BASTION_HOST }}
-          proxy_username: deploy
-          proxy_key: ${{ secrets.DEPLOY_PRIVATE_KEY }}
-          envs: DB_HOST,DB_USERNAME,DB_PASSWORD,RABBITMQ_HOST,RABBITMQ_USERNAME,RABBITMQ_PASSWORD,JWT_SECRET,MAIL_HOST,MAIL_PORT,MAIL_USERNAME,MAIL_PASSWORD,GH_PAT,GITHUB_ACTOR
-          script: |
-            cat > /opt/app/.env <<EOF
-            DB_HOST=${DB_HOST}
-            DB_USERNAME=${DB_USERNAME}
-            DB_PASSWORD=${DB_PASSWORD}
-            RABBITMQ_HOST=${RABBITMQ_HOST}
-            RABBITMQ_USERNAME=${RABBITMQ_USERNAME}
-            RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
-            JWT_SECRET=${JWT_SECRET}
-            MAIL_HOST=${MAIL_HOST}
-            MAIL_PORT=${MAIL_PORT}
-            MAIL_USERNAME=${MAIL_USERNAME}
-            MAIL_PASSWORD=${MAIL_PASSWORD}
-            EOF
-            chmod 600 /opt/app/.env
-            echo ${GH_PAT} | docker login ghcr.io -u ${GITHUB_ACTOR} --password-stdin
-            cd /opt/app
-            sudo docker compose pull main-service
-            sudo docker compose up -d main-service
-            sudo docker image prune -f
-        env:
-          DB_HOST: ${{ secrets.DB_HOST }}
-          DB_USERNAME: ${{ secrets.DB_USERNAME }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          RABBITMQ_HOST: ${{ secrets.RABBITMQ_HOST }}
-          RABBITMQ_USERNAME: ${{ secrets.RABBITMQ_USERNAME }}
-          RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          MAIL_HOST: ${{ secrets.MAIL_HOST }}
-          MAIL_PORT: ${{ secrets.MAIL_PORT }}
-          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
-          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
-          GH_PAT: ${{ secrets.GH_PAT }}
-          GITHUB_ACTOR: ${{ github.actor }}
+          aws ssm send-command \
+            --instance-ids "${{ secrets.BACKEND_INSTANCE_ID }}" \
+            --document-name "AWS-RunShellScript" \
+            --region us-east-1 \
+            --comment "Deploy core-api ${{ github.sha }}" \
+            --timeout-seconds 300 \
+            --parameters 'commands=[
+              "set -e",
+              "echo ${{ secrets.GH_PAT }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin",
+              "mkdir -p /opt/app",
+              "cat > /opt/app/.env << '\''EOF'\''",
+              "DB_HOST=${{ secrets.DB_HOST }}",
+              "DB_USERNAME=${{ secrets.DB_USERNAME }}",
+              "DB_PASSWORD=${{ secrets.DB_PASSWORD }}",
+              "RABBITMQ_HOST=${{ secrets.RABBITMQ_HOST }}",
+              "RABBITMQ_USER=${{ secrets.RABBITMQ_USER }}",
+              "RABBITMQ_PASSWORD=${{ secrets.RABBITMQ_PASSWORD }}",
+              "JWT_SECRET=${{ secrets.JWT_SECRET }}",
+              "MAIL_HOST=${{ secrets.MAIL_HOST }}",
+              "MAIL_PORT=${{ secrets.MAIL_PORT }}",
+              "MAIL_USERNAME=${{ secrets.MAIL_USERNAME }}",
+              "MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}",
+              "EOF",
+              "chmod 600 /opt/app/.env",
+              "curl -fsSL -H '\''Authorization: token ${{ secrets.GH_PAT }}'\'' -H '\''Accept: application/vnd.github.v3.raw'\'' https://api.github.com/repos/undercontroll-inc/infra/contents/docker-compose.prod.yml -o /opt/app/docker-compose.yml",
+              "docker compose -f /opt/app/docker-compose.yml pull main-service",
+              "docker compose -f /opt/app/docker-compose.yml up -d main-service",
+              "docker image prune -f"
+            ]' \
+            --wait

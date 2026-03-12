@@ -58,64 +58,64 @@ public class DataInitializer {
 
         userRepository.save(UserJpaEntity.fromDomain(user1));
 
-        User user2 = User.builder()
-                .name("João")
-                .lastName("Silva")
-                .email("joao.silva@email.com")
-                .password(defaultPassword)
-                .address("Av. Paulista, 1000")
-                .cpf("22222222222")
-                .CEP("01310200")
-                .phone("11987654322")
-                .alreadyRecurrent(true)
-                .inFirstLogin(false)
-                .avatarUrl("https://i.pravatar.cc/150?img=12")
-                .hasWhatsApp(true)
-                .userType(UserType.CUSTOMER)
-                .build();
-
-        userRepository.save(UserJpaEntity.fromDomain(user2));
-
-        User user3 = User.builder()
-                .name("Maria")
-                .lastName("Santos")
-                .email("maria.santos@email.com")
-                .password(defaultPassword)
-                .address("Rua das Flores, 250")
-                .cpf("33333333333")
-                .CEP("01310300")
-                .phone("11987654323")
-                .alreadyRecurrent(true)
-                .inFirstLogin(false)
-                .avatarUrl("https://i.pravatar.cc/150?img=5")
-                .hasWhatsApp(true)
-                .userType(UserType.CUSTOMER)
-                .build();
-
-        userRepository.save(UserJpaEntity.fromDomain(user3));
-
-        User user4 = User.builder()
-                .name("Pedro")
-                .lastName("Almeida")
-                .email("pedro.almeida@email.com")
-                .password(defaultPassword)
-                .address("Av. Brasil, 500")
-                .cpf("44444444444")
-                .CEP("01310400")
-                .phone("11987654324")
-                .alreadyRecurrent(false)
-                .inFirstLogin(true)
-                .avatarUrl("https://i.pravatar.cc/150?img=8")
-                .hasWhatsApp(false)
-                .userType(UserType.CUSTOMER)
-                .build();
-
-        userRepository.save(UserJpaEntity.fromDomain(user4));
+//        User user2 = User.builder()
+//                .name("João")
+//                .lastName("Silva")
+//                .email("joao.silva@email.com")
+//                .password(defaultPassword)
+//                .address("Av. Paulista, 1000")
+//                .cpf("22222222222")
+//                .CEP("01310200")
+//                .phone("11987654322")
+//                .alreadyRecurrent(true)
+//                .inFirstLogin(false)
+//                .avatarUrl("https://i.pravatar.cc/150?img=12")
+//                .hasWhatsApp(true)
+//                .userType(UserType.CUSTOMER)
+//                .build();
+//
+//        userRepository.save(UserJpaEntity.fromDomain(user2));
+//
+//        User user3 = User.builder()
+//                .name("Maria")
+//                .lastName("Santos")
+//                .email("maria.santos@email.com")
+//                .password(defaultPassword)
+//                .address("Rua das Flores, 250")
+//                .cpf("33333333333")
+//                .CEP("01310300")
+//                .phone("11987654323")
+//                .alreadyRecurrent(true)
+//                .inFirstLogin(false)
+//                .avatarUrl("https://i.pravatar.cc/150?img=5")
+//                .hasWhatsApp(true)
+//                .userType(UserType.CUSTOMER)
+//                .build();
+//
+//        userRepository.save(UserJpaEntity.fromDomain(user3));
+//
+//        User user4 = User.builder()
+//                .name("Pedro")
+//                .lastName("Almeida")
+//                .email("pedro.almeida@email.com")
+//                .password(defaultPassword)
+//                .address("Av. Brasil, 500")
+//                .cpf("44444444444")
+//                .CEP("01310400")
+//                .phone("11987654324")
+//                .alreadyRecurrent(false)
+//                .inFirstLogin(true)
+//                .avatarUrl("https://i.pravatar.cc/150?img=8")
+//                .hasWhatsApp(false)
+//                .userType(UserType.CUSTOMER)
+//                .build();
+//
+//        userRepository.save(UserJpaEntity.fromDomain(user4));
 
         User user5 = User.builder()
-                .name("Ana")
-                .lastName("Oliveira")
-                .email("ana.oliveira@email.com")
+                .name("Lucas")
+                .lastName("Furquim")
+                .email("furquimmsw@gmail.com")
                 .password(defaultPassword)
                 .address("Rua dos Bobos, 0")
                 .cpf("55555555555")
