@@ -19,7 +19,7 @@ public class GetComponentsImpl implements GetComponentsPort {
     private final ComponentPartDtoMapper componentPartDtoMapper;
 
     @Override
-    @Cacheable(value = "components", key = "#category + '-' + #name")
+    @Cacheable(value = "components", key = "#category + '-like-' + #name")
     public List<ComponentDto> execute(String category, String name) {
         List<ComponentPart> components;
 
@@ -32,7 +32,7 @@ public class GetComponentsImpl implements GetComponentsPort {
                         .toList();
             }
         } else if (name != null && !name.isBlank()) {
-            components = componentGateway.findByName(name);
+            components = componentGateway.searchByName(name, 50);
         } else {
             components = componentGateway.findAll();
         }
