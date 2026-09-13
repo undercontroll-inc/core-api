@@ -23,12 +23,16 @@ public class GetChatSuggestionsImpl implements GetChatSuggestionsPort {
     @Override
     public ChatSuggestionsResponse execute(boolean refresh) {
         Integer userId = currentUserIdPort.require();
-        var cached = anaSuggestionStore.findByUserId(userId);
-        if (!refresh && cached.isPresent()) {
-            return new ChatSuggestionsResponse(cached.get());
+        List<String> previous = anaSuggestionStore.findByUserId(userId).orElse(List.of());
+        if (!refresh && !previous.isEmpty()) {
+            return new ChatSuggestionsResponse(previous);
         }
         int count = Math.max(1, anaProperties.getSuggestionCount());
-        List<String> suggestions = ShopSuggestionComposer.groundedQuestions(shopSnapshotLoader.load(), count);
+        List<String> suggestions = ShopSuggestionComposer.groundedQuestions(
+                shopSnapshotLoader.load(),
+                refresh ? previous : List.of(),
+                count
+        );
         anaSuggestionStore.save(userId, suggestions);
         return new ChatSuggestionsResponse(suggestions);
     }

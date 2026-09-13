@@ -24,10 +24,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.never;
@@ -108,15 +110,25 @@ class GetChatSuggestionsImplTest {
     }
 
     @Test
-    @DisplayName("refresh regenerates from the current shop snapshot")
+    @DisplayName("refresh regenerates a different lot from unused shop facts")
     void refresh() {
-        stubShop();
-        when(anaSuggestionStore.findByUserId(3)).thenReturn(Optional.of(List.of("Antiga")));
+        stubRichShop();
+        List<String> previous = ShopSuggestionComposer.groundedQuestions(richSnapshot(), 4);
+        when(anaSuggestionStore.findByUserId(3)).thenReturn(Optional.of(previous));
 
         ChatSuggestionsResponse response = useCase.execute(true);
 
-        assertTrue(response.suggestions().getFirst().contains("Maria")
-                || String.join(" ", response.suggestions()).contains("Maria"));
+        assertEquals(4, response.suggestions().size());
+        assertFalse(response.suggestions().equals(previous));
+        String joined = String.join(" ", response.suggestions());
+        assertTrue(joined.contains("Ana")
+                || joined.contains("Compressor")
+                || joined.contains("Motor")
+                || joined.contains("Pedro"));
+        for (String shown : previous) {
+            assertFalse(response.suggestions().contains(shown), () -> "repeated " + shown);
+        }
+        verify(orderGateway, never()).findAll();
         verify(anaSuggestionStore).save(3, response.suggestions());
     }
 
@@ -166,5 +178,94 @@ class GetChatSuggestionsImplTest {
         when(announcementGateway.findLastAnnouncement()).thenReturn(Optional.of(
                 Announcement.builder().title("Feriado").build()
         ));
+    }
+
+    private void stubRichShop() {
+        when(orderGateway.findOpenRepairs(ShopSuggestionComposer.OPEN_LIMIT)).thenReturn(richOpenRepairs());
+        when(orderGateway.findReadyForPickup(ShopSuggestionComposer.PICKUP_LIMIT)).thenReturn(richPickups());
+        when(componentGateway.findLowStock(
+                ShopSuggestionComposer.LOW_STOCK_MAX,
+                ShopSuggestionComposer.STOCK_LIMIT
+        )).thenReturn(richStock());
+        when(demandGateway.findRecent(ShopSuggestionComposer.DEMAND_LIMIT)).thenReturn(richDemands());
+        when(announcementGateway.findLastAnnouncement()).thenReturn(Optional.of(
+                Announcement.builder().title("Feriado").build()
+        ));
+    }
+
+    private static ShopSnapshot richSnapshot() {
+        List<Order> orders = new ArrayList<>();
+        orders.addAll(richOpenRepairs());
+        orders.addAll(richPickups());
+        return ShopSuggestionComposer.from(
+                orders,
+                richStock(),
+                richDemands(),
+                Announcement.builder().title("Feriado").build()
+        );
+    }
+
+    private static List<Order> richOpenRepairs() {
+        return List.of(
+                Order.builder()
+                        .id(12)
+                        .status(OrderStatus.PENDING)
+                        .user(User.builder().name("Maria").lastName("Souza").build())
+                        .orderItems(List.of(
+                                OrderItem.builder().type("liquidificador").brand("Mondial").build()
+                        ))
+                        .build(),
+                Order.builder()
+                        .id(15)
+                        .status(OrderStatus.IN_ANALYSIS)
+                        .user(User.builder().name("Ana").lastName("Costa").build())
+                        .orderItems(List.of(
+                                OrderItem.builder().type("geladeira").brand("Brastemp").build()
+                        ))
+                        .build()
+        );
+    }
+
+    private static List<Order> richPickups() {
+        return List.of(
+                Order.builder()
+                        .id(20)
+                        .status(OrderStatus.COMPLETED)
+                        .user(User.builder().name("João").lastName("Lima").build())
+                        .orderItems(List.of(
+                                OrderItem.builder().type("airfryer").brand("Philco").build()
+                        ))
+                        .build(),
+                Order.builder()
+                        .id(21)
+                        .status(OrderStatus.COMPLETED)
+                        .user(User.builder().name("Pedro").lastName("Nunes").build())
+                        .orderItems(List.of(
+                                OrderItem.builder().type("microondas").brand("Electrolux").build()
+                        ))
+                        .build()
+        );
+    }
+
+    private static List<ComponentPart> richStock() {
+        return List.of(
+                ComponentPart.builder().name("Resistência").quantity(2L).build(),
+                ComponentPart.builder().name("Compressor").quantity(1L).build()
+        );
+    }
+
+    private static List<Demand> richDemands() {
+        return List.of(
+                Demand.builder()
+                        .quantity(1L)
+                        .component(ComponentPart.builder().name("Capacitor").build())
+                        .order(Order.builder().id(8).build())
+                        .build(),
+                Demand.builder()
+                        .quantity(2L)
+                        .component(ComponentPart.builder().name("Motor").build())
+                        .order(Order.builder().id(9).build())
+                        .build()
+        );
     }
 }

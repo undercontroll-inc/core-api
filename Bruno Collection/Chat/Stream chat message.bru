@@ -1,0 +1,22 @@
+meta {
+  name: Stream chat message
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/v1/api/chats/messages/stream
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+  Accept: text/event-stream, application/json
+}
+
+body:json {
+{
+  "content": "{{chatContent}}"
+}
+}
