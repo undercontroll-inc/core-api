@@ -14,12 +14,14 @@ import com.undercontroll.domain.model.chat.ShopSnapshot.StockFact;
 import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -94,17 +96,40 @@ public final class ShopSuggestionComposer {
     }
 
     public static List<String> groundedQuestions(ShopSnapshot snapshot, int count) {
+        return groundedQuestions(snapshot, List.of(), count);
+    }
+
+    public static List<String> groundedQuestions(ShopSnapshot snapshot, List<String> avoid, int count) {
         int size = Math.max(1, count);
+        ShopSnapshot safe = snapshot == null ? ShopSnapshot.empty() : snapshot;
+        List<String> blocked = avoid == null ? List.of() : avoid;
+        List<String> pool = candidates(safe);
         List<String> selected = new ArrayList<>();
-        for (String candidate : candidates(snapshot)) {
-            if (addIfUnique(selected, candidate, size)) {
+        if (blocked.isEmpty()) {
+            if (addUnblocked(pool, selected, List.of(), size)) {
+                return List.copyOf(selected);
+            }
+        } else {
+            List<String> remaining = new ArrayList<>();
+            for (String candidate : pool) {
+                if (candidate != null
+                        && !candidate.isBlank()
+                        && !similarToAny(candidate, blocked)
+                        && !similarToAny(candidate, remaining)) {
+                    remaining.add(candidate);
+                }
+            }
+            Collections.shuffle(remaining);
+            if (addUnblocked(remaining, selected, blocked, size)) {
                 return List.copyOf(selected);
             }
         }
-        for (String generic : GENERIC) {
-            if (addIfUnique(selected, generic, size)) {
-                break;
-            }
+        if (addUnblocked(GENERIC, selected, blocked, size)) {
+            return List.copyOf(selected);
+        }
+        if (addUnblocked(pool, selected, List.of(), size)
+                || addUnblocked(GENERIC, selected, List.of(), size)) {
+            return List.copyOf(selected);
         }
         return List.copyOf(selected);
     }
@@ -271,28 +296,40 @@ public final class ShopSuggestionComposer {
 
     private static List<String> candidates(ShopSnapshot snapshot) {
         List<String> questions = new ArrayList<>();
-        if (!snapshot.openRepairs().isEmpty()) {
-            questions.add(repairQuestion(snapshot.openRepairs().getFirst()));
-        }
-        if (!snapshot.lowStockParts().isEmpty()) {
-            questions.add(stockQuestion(snapshot.lowStockParts().getFirst()));
-        }
-        if (!snapshot.pendingParts().isEmpty()) {
-            questions.add(demandQuestion(snapshot.pendingParts().getFirst()));
-        }
-        if (!snapshot.readyForPickup().isEmpty()) {
-            questions.add(pickupQuestion(snapshot.readyForPickup().getFirst()));
-        }
+        List<RepairFact> open = snapshot.openRepairs();
+        List<StockFact> stock = snapshot.lowStockParts();
+        List<DemandFact> pending = snapshot.pendingParts();
+        List<RepairFact> pickup = snapshot.readyForPickup();
+        addFirst(questions, open, ShopSuggestionComposer::repairQuestion);
+        addFirst(questions, stock, ShopSuggestionComposer::stockQuestion);
+        addFirst(questions, pending, ShopSuggestionComposer::demandQuestion);
+        addFirst(questions, pickup, ShopSuggestionComposer::pickupQuestion);
         if (snapshot.lastAnnouncementTitle() != null) {
             questions.add("O que diz o aviso " + clip(snapshot.lastAnnouncementTitle(), 32) + "?");
         }
-        if (snapshot.openRepairs().size() > 1) {
-            questions.add(repairQuestion(snapshot.openRepairs().get(1)));
-        }
-        if (snapshot.lowStockParts().size() > 1) {
-            questions.add(stockQuestion(snapshot.lowStockParts().get(1)));
-        }
+        addRest(questions, open, ShopSuggestionComposer::repairQuestion);
+        addRest(questions, stock, ShopSuggestionComposer::stockQuestion);
+        addRest(questions, pending, ShopSuggestionComposer::demandQuestion);
+        addRest(questions, pickup, ShopSuggestionComposer::pickupQuestion);
         return questions;
+    }
+
+    private static <T> void addFirst(List<String> questions, List<T> facts, Function<T, String> toQuestion) {
+        if (!facts.isEmpty()) {
+            String question = toQuestion.apply(facts.getFirst());
+            if (question != null) {
+                questions.add(question);
+            }
+        }
+    }
+
+    private static <T> void addRest(List<String> questions, List<T> facts, Function<T, String> toQuestion) {
+        for (int i = 1; i < facts.size(); i++) {
+            String question = toQuestion.apply(facts.get(i));
+            if (question != null) {
+                questions.add(question);
+            }
+        }
     }
 
     private static String repairQuestion(RepairFact repair) {

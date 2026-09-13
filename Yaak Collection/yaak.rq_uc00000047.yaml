@@ -1,20 +1,32 @@
 type: http_request
 model: http_request
 id: rq_uc00000047
-createdAt: 2026-09-06T22:00:00.000000
-updatedAt: 2026-09-06T22:00:00.000000
+createdAt: 2026-09-13T13:30:00.000000
+updatedAt: 2026-09-13T13:30:00.000000
 workspaceId: wk_ucCoreApi1
-folderId: fl_ucInsight1
+folderId: fl_ucChat0001
 authentication: {}
 authenticationType: null
-body: {}
-bodyType: null
+body:
+  text: |-
+    {
+      "content": "${[ chat_content ]}"
+    }
+bodyType: application/json
 description: ""
-headers: []
-method: GET
-name: Get market insights
-sortPriority: 1000.0
-url: ${[ base_url ]}/v1/api/insights
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: ct00000047
+- enabled: true
+  name: Accept
+  value: text/event-stream, application/json
+  id: ac00000047
+method: POST
+name: Stream chat message
+sortPriority: 1500.0
+url: ${[ base_url ]}/v1/api/chats/messages/stream
 urlParameters: []
 settingSendCookies:
   enabled: false

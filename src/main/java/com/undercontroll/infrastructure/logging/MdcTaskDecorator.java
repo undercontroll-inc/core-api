@@ -2,9 +2,11 @@ package com.undercontroll.infrastructure.logging;
 
 import org.slf4j.MDC;
 import org.springframework.core.task.TaskDecorator;
+import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
+@Component
 public class MdcTaskDecorator implements TaskDecorator {
 
     @Override

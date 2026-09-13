@@ -13,13 +13,13 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 class AiChatOptionsTest {
 
     @Test
-    @DisplayName("Ana uses low thinking on Gemini 3")
-    void anaUsesLowThinkingOnGemini3() {
+    @DisplayName("Ana omits thinking level on Gemini 3")
+    void anaOmitsThinkingOnGemini3() {
         GoogleGenAiChatOptions ana = assertInstanceOf(
                 GoogleGenAiChatOptions.class,
                 AiChatOptions.ana("google-genai", "gemini-3.6-flash")
         );
-        assertEquals(GoogleGenAiThinkingLevel.LOW, ana.getThinkingLevel());
+        assertNull(ana.getThinkingLevel());
         assertNull(ana.getThinkingBudget());
     }
 
