@@ -40,3 +40,5 @@ firebase-service-account.json
 
 notification-api
 main-api
+### macOS ###
+.DS_Store
