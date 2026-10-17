@@ -3,10 +3,8 @@ package com.undercontroll.domain.usecase.order.impl;
 import com.undercontroll.application.dto.order.CreateOrderRequest;
 import com.undercontroll.application.dto.demand.CreateDemandRequest;
 import com.undercontroll.application.dto.order.OrderEnrichedDto;
-import com.undercontroll.application.dto.orderitem.CreateOrderItemRequest;
 import com.undercontroll.application.mapper.OrderDtoMapper;
 import com.undercontroll.domain.usecase.order.CreateOrderPort;
-import com.undercontroll.domain.usecase.order_item.CreateOrderItemPort;
 import com.undercontroll.domain.usecase.demand.CreateDemandPort;
 import com.undercontroll.domain.model.Order;
 import com.undercontroll.domain.model.OrderItem;
@@ -40,7 +38,6 @@ public class CreateOrderImpl implements CreateOrderPort {
     private final OrderGateway orderGateway;
     private final UserGateway userGateway;
     private final StockManagementGateway stockManagementGateway;
-    private final CreateOrderItemPort createOrderItemPort;
     private final CreateDemandPort createDemandPort;
     private final MetricsService metricsService;
     private final OrderDtoMapper orderDtoMapper;
@@ -73,25 +70,15 @@ public class CreateOrderImpl implements CreateOrderPort {
 
         for (var appliance : request.appliances()) {
             Double labor = appliance.laborValue() == null ? 0.0 : appliance.laborValue();
-
-            var orderItemCreated = createOrderItemPort.execute(new CreateOrderItemRequest(
-                    appliance.brand(),
-                    appliance.model(),
-                    appliance.type(),
-                    null,
-                    appliance.voltage(),
-                    appliance.serial(),
-                    labor
-            ));
-
             orderItems.add(OrderItem.builder()
-                    .id(orderItemCreated.id())
-                    .brand(orderItemCreated.brand())
-                    .model(orderItemCreated.model())
-                    .type(orderItemCreated.type())
-                    .laborValue(orderItemCreated.laborValue())
+                    .brand(appliance.brand())
+                    .model(appliance.model())
+                    .type(appliance.type())
+                    .volt(appliance.voltage())
+                    .series(appliance.serial())
+                    .laborValue(labor)
                     .build());
-            laborTotal += orderItemCreated.laborValue();
+            laborTotal += labor;
         }
 
         User user = userGateway.findById(request.userId())

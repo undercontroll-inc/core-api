@@ -4,10 +4,8 @@ import com.undercontroll.application.dto.demand.CreateDemandRequest;
 import com.undercontroll.application.dto.demand.DemandDto;
 import com.undercontroll.application.dto.order.CreateOrderRequest;
 import com.undercontroll.application.dto.order.OrderEnrichedDto;
-import com.undercontroll.application.dto.orderitem.CreateOrderItemRequest;
 import com.undercontroll.application.dto.orderitem.OrderItemCreateOrderRequest;
 import com.undercontroll.application.dto.order.PartDto;
-import com.undercontroll.application.dto.orderitem.OrderItemDto;
 import com.undercontroll.application.mapper.OrderDtoMapper;
 import com.undercontroll.domain.usecase.order.impl.CreateOrderImpl;
 import com.undercontroll.domain.exception.InsuficientComponentException;
@@ -17,7 +15,6 @@ import com.undercontroll.domain.model.Order;
 import com.undercontroll.domain.model.User;
 import com.undercontroll.domain.enums.OrderStatus;
 import com.undercontroll.domain.usecase.demand.CreateDemandPort;
-import com.undercontroll.domain.usecase.order_item.CreateOrderItemPort;
 import com.undercontroll.infrastructure.service.MetricsService;
 import com.undercontroll.domain.gateway.OrderGateway;
 import com.undercontroll.domain.gateway.StockManagementGateway;
@@ -52,9 +49,6 @@ class CreateOrderImplTest {
 
     @Mock
     private StockManagementGateway stockManagementGateway;
-
-    @Mock
-    private CreateOrderItemPort createOrderItemPort;
 
     @Mock
     private CreateDemandPort createDemandPort;
@@ -106,10 +100,6 @@ class CreateOrderImplTest {
         return new OrderItemCreateOrderRequest("TV", "Brand", "Model", "220V", "SN123", 50.0);
     }
 
-    private static OrderItemDto itemDto() {
-        return new OrderItemDto(1, null, "Model", "TV", "Brand", null, null, 50.0, null);
-    }
-
     private static CreateOrderRequest createRequest(
             List<OrderItemCreateOrderRequest> appliances,
             List<PartDto> parts,
@@ -131,7 +121,6 @@ class CreateOrderImplTest {
 
         when(stockManagementGateway.findComponentById(1)).thenReturn(Optional.of(component));
         doNothing().when(stockManagementGateway).validateStockAvailability(any(ComponentPart.class), anyInt());
-        when(createOrderItemPort.execute(any(CreateOrderItemRequest.class))).thenReturn(itemDto());
         when(userGateway.findById(1)).thenReturn(Optional.of(user));
         when(orderGateway.save(any(Order.class))).thenReturn(savedOrder);
         when(createDemandPort.execute(anyInt(), any(CreateDemandRequest.class)))
@@ -151,7 +140,6 @@ class CreateOrderImplTest {
 
         verify(stockManagementGateway, times(1)).findComponentById(1);
         verify(stockManagementGateway, times(1)).validateStockAvailability(any(ComponentPart.class), eq(10));
-        verify(createOrderItemPort, times(1)).execute(any(CreateOrderItemRequest.class));
         verify(userGateway, times(1)).findById(1);
         verify(orderGateway, times(1)).save(any(Order.class));
         verify(createDemandPort, times(1)).execute(anyInt(), any(CreateDemandRequest.class));
@@ -183,7 +171,6 @@ class CreateOrderImplTest {
 
         when(stockManagementGateway.findComponentById(1)).thenReturn(Optional.of(component));
         doNothing().when(stockManagementGateway).validateStockAvailability(any(ComponentPart.class), anyInt());
-        when(createOrderItemPort.execute(any(CreateOrderItemRequest.class))).thenReturn(itemDto());
         when(userGateway.findById(1)).thenReturn(Optional.of(user));
         when(orderGateway.save(any(Order.class))).thenReturn(savedOrder);
         when(createDemandPort.execute(anyInt(), any(CreateDemandRequest.class)))

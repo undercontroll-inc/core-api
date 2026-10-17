@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_uc00000050
 createdAt: 2026-09-07T17:00:00
-updatedAt: 2026-09-07T22:41:17.571799
+updatedAt: 2026-09-13T15:22:41.073682
 workspaceId: wk_ucCoreApi1
 folderId: fl_ucTransc1
 authentication: {}
@@ -10,9 +10,9 @@ authenticationType: null
 body:
   form:
   - enabled: true
-    name: audio
     file: ''
     id: sz2KFGUrft
+    name: audio
 bodyType: multipart/form-data
 description: multipart field audio (webm/mp3/m4a/wav/ogg, max 8MB). ADMINISTRATOR only.
 headers:
@@ -40,3 +40,6 @@ settingFollowRedirects:
 settingRequestTimeout:
   enabled: false
   value: 0
+settingHttpVersion:
+  enabled: false
+  value: auto

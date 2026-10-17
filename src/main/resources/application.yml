@@ -56,7 +56,7 @@ spring:
         api-key: ${GEMINI_API_KEY:${GOOGLE_API_KEY:}}
         chat:
           options:
-            model: ${GEMINI_CHAT_MODEL:gemini-3.8-flash}
+            model: ${GEMINI_CHAT_MODEL:gemini-3.6-flash}
   autoconfigure:
     exclude:
       - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration
