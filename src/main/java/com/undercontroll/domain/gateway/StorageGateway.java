@@ -1,9 +1,9 @@
-package com.undercontroll.infrastructure.service;
+package com.undercontroll.domain.gateway;
 
 import com.undercontroll.application.dto.announcement.GenerateUploadUrlResponse;
 import java.util.Optional;
 
-public interface StorageService {
+public interface StorageGateway {
 
     void putObject(String bucket, String key, byte[] data, Optional<String> contentType);
 

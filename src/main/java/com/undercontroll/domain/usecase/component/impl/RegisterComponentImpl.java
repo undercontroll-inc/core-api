@@ -7,7 +7,7 @@ import com.undercontroll.domain.usecase.component.RegisterComponentPort;
 import com.undercontroll.domain.model.ComponentPart;
 import com.undercontroll.domain.exception.InvalidComponentCreationException;
 import com.undercontroll.domain.gateway.ComponentGateway;
-import com.undercontroll.infrastructure.service.MetricsService;
+import com.undercontroll.domain.gateway.MetricsGateway;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -19,7 +19,7 @@ import org.springframework.stereotype.Service;
 public class RegisterComponentImpl implements RegisterComponentPort {
 
     private final ComponentGateway componentGateway;
-    private final MetricsService metricsService;
+    private final MetricsGateway metricsGateway;
     private final ComponentPartDtoMapper componentPartDtoMapper;
 
     @Override
@@ -38,7 +38,7 @@ public class RegisterComponentImpl implements RegisterComponentPort {
                 .build();
 
         ComponentPart savedComponent = componentGateway.save(component);
-        metricsService.incrementComponentCreated();
+        metricsGateway.incrementComponentCreated();
         log.info("Component created id={} name={}", savedComponent.getId(), savedComponent.getName());
         return componentPartDtoMapper.toDto(savedComponent);
     }

@@ -1,10 +1,10 @@
-package com.undercontroll.infrastructure.service;
+package com.undercontroll.domain.gateway;
 
 import com.undercontroll.domain.enums.UserType;
 
 import java.time.Instant;
 
-public interface RefreshTokenService {
+public interface RefreshTokenGateway {
 
     record RefreshTokenData(
             String token,

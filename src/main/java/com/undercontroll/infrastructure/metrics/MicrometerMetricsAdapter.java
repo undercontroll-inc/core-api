@@ -1,6 +1,6 @@
 package com.undercontroll.infrastructure.metrics;
 
-import com.undercontroll.infrastructure.service.MetricsService;
+import com.undercontroll.domain.gateway.MetricsGateway;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -11,7 +11,7 @@ import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
-public class MicrometerMetricsAdapter implements MetricsService {
+public class MicrometerMetricsAdapter implements MetricsGateway {
 
     private final Counter loginFailedCounter;
     private final Counter loginSuccessCounter;
@@ -142,7 +142,7 @@ public class MicrometerMetricsAdapter implements MetricsService {
                 .tag("type", "all")
                 .register(meterRegistry);
 
-        log.info("MicrometerMetricsService initialized with all business metrics counters");
+        log.info("MicrometerMetricsAdapter initialized with all business metrics counters");
     }
 
     @Override

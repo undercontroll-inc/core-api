@@ -16,7 +16,7 @@ import com.undercontroll.domain.gateway.OrderGateway;
 import com.undercontroll.domain.usecase.demand.CreateDemandPort;
 import com.undercontroll.domain.usecase.order.UpdateOrderPort;
 import com.undercontroll.domain.usecase.order_item.UpdateOrderItemPort;
-import com.undercontroll.infrastructure.service.MetricsService;
+import com.undercontroll.domain.gateway.MetricsGateway;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -32,7 +32,7 @@ import java.util.Optional;
 public class UpdateOrderImpl implements UpdateOrderPort {
 
     private final OrderGateway orderGateway;
-    private final MetricsService metricsService;
+    private final MetricsGateway metricsGateway;
     private final UpdateOrderItemPort updateOrderItemPort;
     private final DemandGateway demandGateway;
     private final CreateDemandPort createDemandPort;
@@ -62,7 +62,7 @@ public class UpdateOrderImpl implements UpdateOrderPort {
             orderGateway.save(order);
             log.info("Order {} updated successfully", orderId);
         } catch (Exception e) {
-            metricsService.incrementOrderUpdateFailed();
+            metricsGateway.incrementOrderUpdateFailed();
             throw e;
         }
     }
@@ -74,7 +74,7 @@ public class UpdateOrderImpl implements UpdateOrderPort {
         order.setStatus(status);
         log.info("Order {} status updated to {}", orderId, status);
         if (status == OrderStatus.COMPLETED) {
-            metricsService.incrementOrderCompleted();
+            metricsGateway.incrementOrderCompleted();
         }
     }
 

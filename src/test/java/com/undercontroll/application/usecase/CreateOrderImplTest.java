@@ -15,7 +15,7 @@ import com.undercontroll.domain.model.Order;
 import com.undercontroll.domain.model.User;
 import com.undercontroll.domain.enums.OrderStatus;
 import com.undercontroll.domain.usecase.demand.CreateDemandPort;
-import com.undercontroll.infrastructure.service.MetricsService;
+import com.undercontroll.domain.gateway.MetricsGateway;
 import com.undercontroll.domain.gateway.OrderGateway;
 import com.undercontroll.domain.gateway.StockManagementGateway;
 import com.undercontroll.domain.gateway.UserGateway;
@@ -54,7 +54,7 @@ class CreateOrderImplTest {
     private CreateDemandPort createDemandPort;
 
     @Mock
-    private MetricsService metricsService;
+    private MetricsGateway metricsGateway;
 
     @Mock
     private OrderDtoMapper orderDtoMapper;
@@ -126,8 +126,8 @@ class CreateOrderImplTest {
         when(createDemandPort.execute(anyInt(), any(CreateDemandRequest.class)))
                 .thenReturn(new DemandDto(1, 1, 1, 10L));
         doNothing().when(stockManagementGateway).decreaseStock(anyInt(), anyInt());
-        doNothing().when(metricsService).incrementOrderCreated();
-        doNothing().when(metricsService).recordOrderProcessingTime(anyLong());
+        doNothing().when(metricsGateway).incrementOrderCreated();
+        doNothing().when(metricsGateway).recordOrderProcessingTime(anyLong());
         mockFinalOrderFetchAndMapping();
 
         OrderEnrichedDto output = createOrderImpl.execute(
@@ -144,7 +144,7 @@ class CreateOrderImplTest {
         verify(orderGateway, times(1)).save(any(Order.class));
         verify(createDemandPort, times(1)).execute(anyInt(), any(CreateDemandRequest.class));
         verify(stockManagementGateway, times(1)).decreaseStock(1, 10);
-        verify(metricsService, times(1)).incrementOrderCreated();
+        verify(metricsGateway, times(1)).incrementOrderCreated();
     }
 
     @Test
@@ -176,8 +176,8 @@ class CreateOrderImplTest {
         when(createDemandPort.execute(anyInt(), any(CreateDemandRequest.class)))
                 .thenReturn(new DemandDto(1, 1, 1, 4L));
         doNothing().when(stockManagementGateway).decreaseStock(anyInt(), anyInt());
-        doNothing().when(metricsService).incrementOrderCreated();
-        doNothing().when(metricsService).recordOrderProcessingTime(anyLong());
+        doNothing().when(metricsGateway).incrementOrderCreated();
+        doNothing().when(metricsGateway).recordOrderProcessingTime(anyLong());
         mockFinalOrderFetchAndMapping();
 
         createOrderImpl.execute(createRequest(List.of(appliance()), List.of(part), 10.0, "Não gela", null));
@@ -192,8 +192,8 @@ class CreateOrderImplTest {
     void testCreateOrder_ShouldCreateSuccessfully_WithNoParts() {
         when(userGateway.findById(1)).thenReturn(Optional.of(user));
         when(orderGateway.save(any(Order.class))).thenReturn(savedOrder);
-        doNothing().when(metricsService).incrementOrderCreated();
-        doNothing().when(metricsService).recordOrderProcessingTime(anyLong());
+        doNothing().when(metricsGateway).incrementOrderCreated();
+        doNothing().when(metricsGateway).recordOrderProcessingTime(anyLong());
         mockFinalOrderFetchAndMapping();
 
         OrderEnrichedDto output = createOrderImpl.execute(
@@ -212,8 +212,8 @@ class CreateOrderImplTest {
         when(currentUserAdminPort.isAdministrator()).thenReturn(true);
         when(userGateway.findById(1)).thenReturn(Optional.of(user));
         when(orderGateway.save(any(Order.class))).thenReturn(savedOrder);
-        doNothing().when(metricsService).incrementOrderCreated();
-        doNothing().when(metricsService).recordOrderProcessingTime(anyLong());
+        doNothing().when(metricsGateway).incrementOrderCreated();
+        doNothing().when(metricsGateway).recordOrderProcessingTime(anyLong());
         mockFinalOrderFetchAndMapping();
 
         createOrderImpl.execute(createRequest(List.of(), List.of(), 0.0, "Não gela", "Compressor queimado"));
@@ -231,8 +231,8 @@ class CreateOrderImplTest {
         when(currentUserAdminPort.isAdministrator()).thenReturn(false);
         when(userGateway.findById(1)).thenReturn(Optional.of(user));
         when(orderGateway.save(any(Order.class))).thenReturn(savedOrder);
-        doNothing().when(metricsService).incrementOrderCreated();
-        doNothing().when(metricsService).recordOrderProcessingTime(anyLong());
+        doNothing().when(metricsGateway).incrementOrderCreated();
+        doNothing().when(metricsGateway).recordOrderProcessingTime(anyLong());
         mockFinalOrderFetchAndMapping();
 
         createOrderImpl.execute(createRequest(List.of(), List.of(), 0.0, "Não gela", "Não deveria gravar"));

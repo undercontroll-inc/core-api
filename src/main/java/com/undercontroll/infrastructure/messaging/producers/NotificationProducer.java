@@ -2,7 +2,7 @@ package com.undercontroll.infrastructure.messaging.producers;
 
 import com.undercontroll.infrastructure.events.AnnouncementCreatedEvent;
 import com.undercontroll.infrastructure.events.UserCreatedEvent;
-import com.undercontroll.infrastructure.service.NotificationService;
+import com.undercontroll.domain.gateway.NotificationGateway;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -16,7 +16,7 @@ import java.util.Map;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class NotificationProducer implements NotificationService {
+public class NotificationProducer implements NotificationGateway {
 
     private final RabbitTemplate rabbitTemplate;
 

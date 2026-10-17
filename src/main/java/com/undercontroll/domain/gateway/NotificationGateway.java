@@ -1,9 +1,9 @@
-package com.undercontroll.infrastructure.service;
+package com.undercontroll.domain.gateway;
 
 import com.undercontroll.infrastructure.events.AnnouncementCreatedEvent;
 import com.undercontroll.infrastructure.events.UserCreatedEvent;
 
-public interface NotificationService {
+public interface NotificationGateway {
 
     void handleAnnouncementCreated(AnnouncementCreatedEvent event);
 

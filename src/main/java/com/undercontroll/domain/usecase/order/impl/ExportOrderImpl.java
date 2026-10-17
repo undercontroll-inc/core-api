@@ -1,11 +1,11 @@
 package com.undercontroll.domain.usecase.order.impl;
 
-import com.undercontroll.infrastructure.service.StorageService;
+import com.undercontroll.domain.gateway.StorageGateway;
 import com.undercontroll.domain.usecase.order.ExportOrderPort;
 import com.undercontroll.domain.model.Order;
 import com.undercontroll.domain.exception.OrderNotFoundException;
 import com.undercontroll.domain.gateway.OrderGateway;
-import com.undercontroll.infrastructure.service.PdfExportService;
+import com.undercontroll.domain.gateway.PdfExportGateway;
 import com.undercontroll.application.dto.order.ExportOrderRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,8 +22,8 @@ import java.util.Optional;
 public class ExportOrderImpl implements ExportOrderPort {
 
     private final OrderGateway orderGateway;
-    private final PdfExportService pdfExportService;
-    private final StorageService storageService;
+    private final PdfExportGateway pdfExportGateway;
+    private final StorageGateway storageGateway;
 
     @Value("${aws.s3.export-bucket}")
     private String pdfBucket;
@@ -77,11 +77,11 @@ public class ExportOrderImpl implements ExportOrderPort {
                 order.isReturnGuarantee()
         );
 
-        byte[] pdfData = pdfExportService.exportOS(exportRequest);
+        byte[] pdfData = pdfExportGateway.exportOS(exportRequest);
 
         final var key = String.format(order.getId().toString(), order.getNf(), ".pdf");
 
-        storageService.putObject(pdfBucket, key, pdfData, Optional.of("application/pdf"));
+        storageGateway.putObject(pdfBucket, key, pdfData, Optional.of("application/pdf"));
 
         return pdfData;
     }

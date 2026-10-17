@@ -7,7 +7,7 @@ import com.undercontroll.domain.usecase.insights.GetMarketInsightsPort;
 import com.undercontroll.domain.usecase.insights.InsightGenerationResult;
 import com.undercontroll.infrastructure.config.RateLimitProperties;
 import com.undercontroll.infrastructure.config.SecurityConfig;
-import com.undercontroll.infrastructure.service.TokenServce;
+import com.undercontroll.domain.gateway.TokenGateway;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,7 +45,7 @@ class MarketInsightsControllerTest {
     private GenerateMonthlyInsightsPort generateMonthlyInsightsPort;
 
     @MockitoBean
-    private TokenServce tokenServce;
+    private TokenGateway tokenGateway;
 
     @Test
     @WithMockUser(roles = "ADMINISTRATOR")

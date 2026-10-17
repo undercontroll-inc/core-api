@@ -15,7 +15,7 @@ import com.undercontroll.domain.usecase.auth.RefreshTokenPort;
 import com.undercontroll.infrastructure.config.RateLimitProperties;
 import com.undercontroll.infrastructure.config.SecurityConfig;
 import com.undercontroll.infrastructure.handler.GlobalExceptionHandler;
-import com.undercontroll.infrastructure.service.TokenServce;
+import com.undercontroll.domain.gateway.TokenGateway;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,7 +51,7 @@ class AuthControllerTest {
     private RefreshTokenPort refreshTokenPort;
 
     @MockitoBean
-    private TokenServce tokenServce;
+    private TokenGateway tokenGateway;
 
     @Test
     @DisplayName("POST /v1/api/auth - Should authenticate with password and return 200 with token")
@@ -124,7 +124,7 @@ class AuthControllerTest {
     void shouldRefreshEvenWhenExpiredAccessTokenIsSent() throws Exception {
         RefreshTokenRequest request = new RefreshTokenRequest("old-refresh-token");
 
-        when(tokenServce.validateToken(any()))
+        when(tokenGateway.validateToken(any()))
                 .thenThrow(new InvalidTokenException("Access token has expired", InvalidTokenException.TOKEN_EXPIRED));
         when(refreshTokenPort.execute(any(RefreshTokenRequest.class)))
                 .thenReturn(new RefreshTokenResponse("new-access-token", "new-refresh-token"));

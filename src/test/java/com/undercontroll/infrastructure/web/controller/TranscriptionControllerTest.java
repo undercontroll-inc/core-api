@@ -9,7 +9,7 @@ import com.undercontroll.domain.usecase.transcription.TranscribeAudioPort;
 import com.undercontroll.infrastructure.config.RateLimitProperties;
 import com.undercontroll.infrastructure.config.SecurityConfig;
 import com.undercontroll.infrastructure.handler.TranscriptionExceptionHandler;
-import com.undercontroll.infrastructure.service.TokenServce;
+import com.undercontroll.domain.gateway.TokenGateway;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,7 +47,7 @@ class TranscriptionControllerTest {
     private TranscribeAudioPort transcribeAudioPort;
 
     @MockitoBean
-    private TokenServce tokenServce;
+    private TokenGateway tokenGateway;
 
     private static MockMultipartFile audio() {
         return new MockMultipartFile("audio", "note.webm", "audio/webm", "voice".getBytes());

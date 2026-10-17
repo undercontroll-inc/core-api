@@ -9,7 +9,7 @@ import com.undercontroll.application.dto.order.UpdateOrderRequest;
 import com.undercontroll.application.dto.user.UserDto;
 import com.undercontroll.domain.enums.OrderStatus;
 import com.undercontroll.domain.enums.UserType;
-import com.undercontroll.infrastructure.service.TokenServce;
+import com.undercontroll.domain.gateway.TokenGateway;
 import com.undercontroll.domain.usecase.order.*;
 import com.undercontroll.infrastructure.config.SecurityConfig;
 import com.undercontroll.infrastructure.config.RateLimitProperties;
@@ -65,7 +65,7 @@ class OrderControllerTest {
 
     // Required because AuthContextFilter depends on TokenPort
     @MockitoBean
-    private TokenServce tokenServce;
+    private TokenGateway tokenGateway;
 
     @Test
     @DisplayName("POST /v1/api/orders - ADMINISTRATOR should create order and return 201")

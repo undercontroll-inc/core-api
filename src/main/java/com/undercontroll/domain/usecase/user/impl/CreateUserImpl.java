@@ -7,13 +7,13 @@ import com.undercontroll.application.mapper.UserDtoMapper;
 import com.undercontroll.domain.usecase.user.CreateUserPort;
 import com.undercontroll.domain.enums.PasswordEventType;
 import com.undercontroll.domain.usecase.auth.CreatePasswordEventPort;
-import com.undercontroll.infrastructure.service.NotificationService;
+import com.undercontroll.domain.gateway.NotificationGateway;
 import com.undercontroll.infrastructure.events.UserCreatedEvent;
 import com.undercontroll.domain.model.User;
 import com.undercontroll.domain.enums.UserType;
 import com.undercontroll.domain.exception.InvalidUserException;
 import com.undercontroll.domain.gateway.UserGateway;
-import com.undercontroll.infrastructure.service.MetricsService;
+import com.undercontroll.domain.gateway.MetricsGateway;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -29,8 +29,8 @@ public class CreateUserImpl implements CreateUserPort {
     private final UserGateway userGateway;
     private final CreatePasswordEventPort createPasswordEventPort;
     private final PasswordEncoder passwordEncoder;
-    private final MetricsService metricsService;
-    private final NotificationService notificationService;
+    private final MetricsGateway metricsGateway;
+    private final NotificationGateway notificationGateway;
     private final UserDtoMapper userDtoMapper;
 
     @Override
@@ -85,18 +85,18 @@ public class CreateUserImpl implements CreateUserPort {
             User createdUser = userGateway.save(user);
 
             if (UserType.CUSTOMER.equals(createdUser.getUserType())) {
-                notificationService.handleUserCreated(new UserCreatedEvent(
+                notificationGateway.handleUserCreated(new UserCreatedEvent(
                         createdUser.getName(),
                         createdUser.getEmail(),
                         createdUser.getCreatedAt()
                 ));
             }
 
-            metricsService.incrementAccountCreated();
+            metricsGateway.incrementAccountCreated();
             log.info("User created userId={} type={}", createdUser.getId(), createdUser.getUserType());
             return userDtoMapper.toCreateUserResponse(createdUser);
         } catch (InvalidUserException e) {
-            metricsService.incrementAccountCreationFailed();
+            metricsGateway.incrementAccountCreationFailed();
             throw e;
         }
     }

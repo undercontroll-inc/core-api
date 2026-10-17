@@ -2,7 +2,7 @@ package com.undercontroll.infrastructure.web.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.undercontroll.application.dto.component.ComponentDto;
-import com.undercontroll.infrastructure.service.TokenServce;
+import com.undercontroll.domain.gateway.TokenGateway;
 import com.undercontroll.domain.usecase.component.*;
 import com.undercontroll.infrastructure.config.SecurityConfig;
 import com.undercontroll.infrastructure.config.RateLimitProperties;
@@ -57,7 +57,7 @@ class ComponentControllerTest {
 
     // Required because AuthContextFilter depends on TokenPort
     @MockitoBean
-    private TokenServce tokenServce;
+    private TokenGateway tokenGateway;
 
     @Test
     @WithMockUser(roles = "ADMINISTRATOR")

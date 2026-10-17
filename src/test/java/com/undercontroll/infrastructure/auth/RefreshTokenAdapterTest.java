@@ -4,7 +4,7 @@ import com.undercontroll.domain.enums.UserType;
 import com.undercontroll.domain.exception.InvalidTokenException;
 import com.undercontroll.infrastructure.persistence.entity.RefreshTokenJpaEntity;
 import com.undercontroll.infrastructure.persistence.repository.RefreshTokenRepository;
-import com.undercontroll.infrastructure.service.RefreshTokenService.RefreshTokenData;
+import com.undercontroll.domain.gateway.RefreshTokenGateway.RefreshTokenData;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

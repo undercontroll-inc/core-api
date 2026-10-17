@@ -4,8 +4,8 @@ import com.undercontroll.application.dto.auth.CreatePasswordEventRequest;
 import com.undercontroll.application.dto.user.CreateUserRequest;
 import com.undercontroll.application.dto.user.CreateUserResponse;
 import com.undercontroll.application.mapper.UserDtoMapper;
-import com.undercontroll.infrastructure.service.MetricsService;
-import com.undercontroll.infrastructure.service.NotificationService;
+import com.undercontroll.domain.gateway.MetricsGateway;
+import com.undercontroll.domain.gateway.NotificationGateway;
 import com.undercontroll.domain.usecase.auth.CreatePasswordEventPort;
 import com.undercontroll.domain.usecase.user.impl.CreateUserImpl;
 import com.undercontroll.domain.enums.PasswordEventType;
@@ -42,10 +42,10 @@ class CreateUserImplTest {
     private PasswordEncoder passwordEncoder;
 
     @Mock
-    private MetricsService metricsService;
+    private MetricsGateway metricsGateway;
 
     @Mock
-    private NotificationService notificationService;
+    private NotificationGateway notificationGateway;
 
     @Mock
     private UserDtoMapper userDtoMapper;
@@ -97,7 +97,7 @@ class CreateUserImplTest {
         useCase.execute(request);
 
         ArgumentCaptor<UserCreatedEvent> eventCaptor = ArgumentCaptor.forClass(UserCreatedEvent.class);
-        verify(notificationService).handleUserCreated(eventCaptor.capture());
+        verify(notificationGateway).handleUserCreated(eventCaptor.capture());
         UserCreatedEvent event = eventCaptor.getValue();
 
         assertThat(event.name()).isEqualTo("Maria");
@@ -140,6 +140,6 @@ class CreateUserImplTest {
 
         useCase.execute(request);
 
-        verify(notificationService, never()).handleUserCreated(any(UserCreatedEvent.class));
+        verify(notificationGateway, never()).handleUserCreated(any(UserCreatedEvent.class));
     }
 }

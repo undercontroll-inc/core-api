@@ -7,7 +7,7 @@ import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.exceptions.TokenExpiredException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.undercontroll.domain.enums.UserType;
-import com.undercontroll.infrastructure.service.TokenServce;
+import com.undercontroll.domain.gateway.TokenGateway;
 import com.undercontroll.domain.exception.InvalidTokenException;
 import com.undercontroll.domain.exception.TokenGenerationException;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +20,7 @@ import java.time.Instant;
 @Slf4j
 @RequiredArgsConstructor
 @Component
-public class JwtTokenAdapter implements TokenServce {
+public class JwtTokenAdapter implements TokenGateway {
 
     @Value("${jwt.secret}")
     private String secret;

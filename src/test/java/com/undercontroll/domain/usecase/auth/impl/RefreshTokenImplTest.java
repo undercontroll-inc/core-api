@@ -3,9 +3,9 @@ package com.undercontroll.domain.usecase.auth.impl;
 import com.undercontroll.application.dto.auth.RefreshTokenRequest;
 import com.undercontroll.application.dto.auth.RefreshTokenResponse;
 import com.undercontroll.domain.enums.UserType;
-import com.undercontroll.infrastructure.service.RefreshTokenService;
-import com.undercontroll.infrastructure.service.RefreshTokenService.RefreshTokenData;
-import com.undercontroll.infrastructure.service.TokenServce;
+import com.undercontroll.domain.gateway.RefreshTokenGateway;
+import com.undercontroll.domain.gateway.RefreshTokenGateway.RefreshTokenData;
+import com.undercontroll.domain.gateway.TokenGateway;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,10 +24,10 @@ import static org.mockito.Mockito.when;
 class RefreshTokenImplTest {
 
     @Mock
-    private RefreshTokenService refreshTokenService;
+    private RefreshTokenGateway refreshTokenGateway;
 
     @Mock
-    private TokenServce tokenServce;
+    private TokenGateway tokenGateway;
 
     @InjectMocks
     private RefreshTokenImpl useCase;
@@ -43,18 +43,18 @@ class RefreshTokenImplTest {
                 Instant.now().plusSeconds(3600)
         );
 
-        when(refreshTokenService.consumeRefreshToken("old-refresh")).thenReturn(current);
-        when(refreshTokenService.createRefreshToken(42, "user@example.com", UserType.CUSTOMER))
+        when(refreshTokenGateway.consumeRefreshToken("old-refresh")).thenReturn(current);
+        when(refreshTokenGateway.createRefreshToken(42, "user@example.com", UserType.CUSTOMER))
                 .thenReturn("new-refresh");
-        when(tokenServce.generateToken("42", UserType.CUSTOMER)).thenReturn("new-access");
+        when(tokenGateway.generateToken("42", UserType.CUSTOMER)).thenReturn("new-access");
 
         RefreshTokenResponse response = useCase.execute(new RefreshTokenRequest("old-refresh"));
 
         assertThat(response.accessToken()).isEqualTo("new-access");
         assertThat(response.refreshToken()).isEqualTo("new-refresh");
-        verify(refreshTokenService).consumeRefreshToken("old-refresh");
-        verify(refreshTokenService).createRefreshToken(42, "user@example.com", UserType.CUSTOMER);
-        verify(tokenServce).generateToken("42", UserType.CUSTOMER);
-        verifyNoMoreInteractions(refreshTokenService);
+        verify(refreshTokenGateway).consumeRefreshToken("old-refresh");
+        verify(refreshTokenGateway).createRefreshToken(42, "user@example.com", UserType.CUSTOMER);
+        verify(tokenGateway).generateToken("42", UserType.CUSTOMER);
+        verifyNoMoreInteractions(refreshTokenGateway);
     }
 }

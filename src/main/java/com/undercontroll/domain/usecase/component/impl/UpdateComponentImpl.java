@@ -8,7 +8,7 @@ import com.undercontroll.domain.model.ComponentPart;
 import com.undercontroll.domain.exception.ComponentNotFoundException;
 import com.undercontroll.domain.exception.InvalidUpdateComponentException;
 import com.undercontroll.domain.gateway.ComponentGateway;
-import com.undercontroll.infrastructure.service.MetricsService;
+import com.undercontroll.domain.gateway.MetricsGateway;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -20,7 +20,7 @@ import org.springframework.stereotype.Service;
 public class UpdateComponentImpl implements UpdateComponentPort {
 
     private final ComponentGateway componentGateway;
-    private final MetricsService metricsService;
+    private final MetricsGateway metricsGateway;
     private final ComponentPartDtoMapper componentPartDtoMapper;
 
     @Override
@@ -56,7 +56,7 @@ public class UpdateComponentImpl implements UpdateComponentPort {
         }
 
         ComponentPart savedComponent = componentGateway.save(component);
-        metricsService.incrementComponentUpdated();
+        metricsGateway.incrementComponentUpdated();
         log.info("Component updated id={}", savedComponent.getId());
         return componentPartDtoMapper.toDto(savedComponent);
     }

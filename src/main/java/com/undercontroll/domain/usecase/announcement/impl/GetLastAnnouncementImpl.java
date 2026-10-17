@@ -4,7 +4,7 @@ import com.undercontroll.domain.usecase.announcement.GetLastAnnouncementPort;
 import com.undercontroll.domain.model.Announcement;
 import com.undercontroll.domain.gateway.AnnouncementGateway;
 import com.undercontroll.application.dto.announcement.AnnouncementDto;
-import com.undercontroll.infrastructure.service.StorageService;
+import com.undercontroll.domain.gateway.StorageGateway;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -16,7 +16,7 @@ import java.util.Optional;
 public class GetLastAnnouncementImpl implements GetLastAnnouncementPort {
 
     private final AnnouncementGateway announcementGateway;
-    private final StorageService storageService;
+    private final StorageGateway storageGateway;
 
     @Value("${aws.s3.upload-bucket}")
     private String bucket;
@@ -47,6 +47,6 @@ public class GetLastAnnouncementImpl implements GetLastAnnouncementPort {
             return null;
         }
 
-        return storageService.generateReadPresignedUrl(bucket, announcement.getImageKey(), readExpirationMinutes);
+        return storageGateway.generateReadPresignedUrl(bucket, announcement.getImageKey(), readExpirationMinutes);
     }
 }

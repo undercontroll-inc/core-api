@@ -1,12 +1,12 @@
 package com.undercontroll.domain.usecase.announcement.impl;
 
 import com.undercontroll.domain.usecase.announcement.CreateAnnouncementPort;
-import com.undercontroll.infrastructure.service.NotificationService;
+import com.undercontroll.domain.gateway.NotificationGateway;
 import com.undercontroll.domain.model.Announcement;
 import com.undercontroll.infrastructure.events.AnnouncementCreatedEvent;
 import com.undercontroll.domain.gateway.AnnouncementGateway;
-import com.undercontroll.infrastructure.service.MetricsService;
-import com.undercontroll.infrastructure.service.StorageService;
+import com.undercontroll.domain.gateway.MetricsGateway;
+import com.undercontroll.domain.gateway.StorageGateway;
 import com.undercontroll.application.dto.announcement.CreateAnnouncementRequest;
 import com.undercontroll.application.dto.announcement.CreateAnnouncementResponse;
 import lombok.RequiredArgsConstructor;
@@ -30,9 +30,9 @@ public class CreateAnnouncementImpl implements CreateAnnouncementPort {
     private Integer uploadExpirationMinutes;
 
     private final AnnouncementGateway announcementGateway;
-    private final NotificationService notificationService;
-    private final MetricsService metricsService;
-    private final StorageService storageService;
+    private final NotificationGateway notificationGateway;
+    private final MetricsGateway metricsGateway;
+    private final StorageGateway storageGateway;
 
     @Override
     @CacheEvict(value = {"announcements", "lastAnnouncement"}, allEntries = true)
@@ -48,7 +48,7 @@ public class CreateAnnouncementImpl implements CreateAnnouncementPort {
 
         final var presignedUpload = request.imageUpload() == null
                 ? null
-                : storageService.generatePresignedUploadUrl(
+                : storageGateway.generatePresignedUploadUrl(
                         bucket,
                         generateKey(announcementCreated.getId(), request.imageUpload().originalName(), request.imageUpload().contentType()),
                         uploadExpirationMinutes
@@ -59,10 +59,10 @@ public class CreateAnnouncementImpl implements CreateAnnouncementPort {
             announcementCreated = announcementGateway.save(announcementCreated);
         }
 
-        metricsService.incrementAnnouncementCreated();
+        metricsGateway.incrementAnnouncementCreated();
         log.info("Announcement created id={} type={}", announcementCreated.getId(), announcementCreated.getType());
 
-        notificationService.handleAnnouncementCreated(new AnnouncementCreatedEvent(announcementCreated, token));
+        notificationGateway.handleAnnouncementCreated(new AnnouncementCreatedEvent(announcementCreated, token));
 
         return new CreateAnnouncementResponse(
                 announcementCreated.getId(),

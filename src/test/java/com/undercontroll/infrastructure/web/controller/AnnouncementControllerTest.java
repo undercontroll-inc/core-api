@@ -11,7 +11,7 @@ import com.undercontroll.application.dto.announcement.GetPaginatedAnnouncementRe
 import com.undercontroll.application.dto.announcement.UpdateAnnouncementResponse;
 import com.undercontroll.domain.exception.InvalidAnnouncementException;
 import com.undercontroll.domain.enums.AnnouncementType;
-import com.undercontroll.infrastructure.service.TokenServce;
+import com.undercontroll.domain.gateway.TokenGateway;
 import com.undercontroll.domain.usecase.announcement.*;
 import com.undercontroll.infrastructure.config.SecurityConfig;
 import com.undercontroll.infrastructure.config.RateLimitProperties;
@@ -65,7 +65,7 @@ class AnnouncementControllerTest {
     private GetLastAnnouncementPort getLastAnnouncement;
 
     @MockitoBean
-    private TokenServce tokenServce;
+    private TokenGateway tokenGateway;
 
     private void mockTokenPortWithRole(String role) {
         Claim claim = mock(Claim.class);
@@ -73,7 +73,7 @@ class AnnouncementControllerTest {
         DecodedJWT decoded = mock(DecodedJWT.class);
         when(decoded.getSubject()).thenReturn("user@example.com");
         when(decoded.getClaim("roles")).thenReturn(claim);
-        when(tokenServce.validateToken(anyString())).thenReturn(decoded);
+        when(tokenGateway.validateToken(anyString())).thenReturn(decoded);
     }
 
     // ─────────────────────────────────────────────────────────────────────────

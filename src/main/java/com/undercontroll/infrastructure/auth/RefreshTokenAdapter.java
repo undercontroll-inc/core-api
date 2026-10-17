@@ -2,7 +2,7 @@ package com.undercontroll.infrastructure.auth;
 
 import com.undercontroll.domain.exception.InvalidTokenException;
 import com.undercontroll.domain.enums.UserType;
-import com.undercontroll.infrastructure.service.RefreshTokenService;
+import com.undercontroll.domain.gateway.RefreshTokenGateway;
 import com.undercontroll.infrastructure.persistence.entity.RefreshTokenJpaEntity;
 import com.undercontroll.infrastructure.persistence.repository.RefreshTokenRepository;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +18,7 @@ import java.util.Base64;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class RefreshTokenAdapter implements RefreshTokenService {
+public class RefreshTokenAdapter implements RefreshTokenGateway {
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 

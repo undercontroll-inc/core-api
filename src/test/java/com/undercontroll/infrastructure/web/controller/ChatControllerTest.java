@@ -14,7 +14,7 @@ import com.undercontroll.infrastructure.config.RateLimitProperties;
 import com.undercontroll.infrastructure.config.SecurityConfig;
 import com.undercontroll.infrastructure.handler.ChatExceptionHandler;
 import com.undercontroll.infrastructure.logging.MdcTaskDecorator;
-import com.undercontroll.infrastructure.service.TokenServce;
+import com.undercontroll.domain.gateway.TokenGateway;
 import com.undercontroll.infrastructure.web.AnaChatSseSupport;
 import com.undercontroll.infrastructure.web.SseChatStreamSink;
 import org.junit.jupiter.api.DisplayName;
@@ -75,7 +75,7 @@ class ChatControllerTest {
     private GetChatSuggestionsPort getChatSuggestionsPort;
 
     @MockitoBean
-    private TokenServce tokenServce;
+    private TokenGateway tokenGateway;
 
     @Test
     @WithMockUser(username = "12", roles = "ADMINISTRATOR")

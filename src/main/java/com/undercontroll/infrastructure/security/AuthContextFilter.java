@@ -3,7 +3,7 @@ package com.undercontroll.infrastructure.security;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.undercontroll.domain.exception.InvalidTokenException;
 import com.undercontroll.infrastructure.logging.MdcKeys;
-import com.undercontroll.infrastructure.service.TokenServce;
+import com.undercontroll.domain.gateway.TokenGateway;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,7 +25,7 @@ import java.util.List;
 @Component
 public class AuthContextFilter extends OncePerRequestFilter {
 
-    private final TokenServce tokenServce;
+    private final TokenGateway tokenGateway;
 
     @Override
     protected void doFilterInternal(
@@ -43,7 +43,7 @@ public class AuthContextFilter extends OncePerRequestFilter {
         String token = header.substring(7);
 
         try {
-            DecodedJWT decoded = tokenServce.validateToken(token);
+            DecodedJWT decoded = tokenGateway.validateToken(token);
             if (decoded == null) {
                 filterChain.doFilter(request, response);
                 return;

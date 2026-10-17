@@ -5,7 +5,7 @@ import com.undercontroll.domain.usecase.announcement.UpdateAnnouncementPort;
 import com.undercontroll.domain.model.Announcement;
 import com.undercontroll.domain.exception.AnnouncementNotFoundException;
 import com.undercontroll.domain.gateway.AnnouncementGateway;
-import com.undercontroll.infrastructure.service.StorageService;
+import com.undercontroll.domain.gateway.StorageGateway;
 import com.undercontroll.application.dto.announcement.UpdateAnnouncementRequest;
 import com.undercontroll.application.dto.announcement.UpdateAnnouncementResponse;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +21,7 @@ import java.util.UUID;
 public class UpdateAnnouncementImpl implements UpdateAnnouncementPort {
 
     private final AnnouncementGateway announcementGateway;
-    private final StorageService storageService;
+    private final StorageGateway storageGateway;
 
     @Value("${aws.s3.upload-bucket}")
     private String bucket;
@@ -63,7 +63,7 @@ public class UpdateAnnouncementImpl implements UpdateAnnouncementPort {
 
         var imageUpload = request.imageUpload() == null
                 ? null
-                : storageService.generatePresignedUploadUrl(
+                : storageGateway.generatePresignedUploadUrl(
                         bucket,
                         generateKey(announcement.getId(), request.imageUpload().originalName(), request.imageUpload().contentType()),
                         uploadExpirationMinutes
@@ -92,7 +92,7 @@ public class UpdateAnnouncementImpl implements UpdateAnnouncementPort {
             return null;
         }
 
-        return storageService.generateReadPresignedUrl(bucket, announcement.getImageKey(), readExpirationMinutes);
+        return storageGateway.generateReadPresignedUrl(bucket, announcement.getImageKey(), readExpirationMinutes);
     }
 
     private String generateKey(Integer announcementId, String originalName, String contentType) {

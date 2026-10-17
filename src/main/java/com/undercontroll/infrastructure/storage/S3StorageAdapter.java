@@ -2,7 +2,7 @@ package com.undercontroll.infrastructure.storage;
 
 import com.undercontroll.application.dto.announcement.GenerateUploadUrlResponse;
 import com.undercontroll.infrastructure.logging.LogTiming;
-import com.undercontroll.infrastructure.service.StorageService;
+import com.undercontroll.domain.gateway.StorageGateway;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -20,7 +20,7 @@ import java.util.Optional;
 @Slf4j
 @RequiredArgsConstructor
 @Component
-public class S3StorageAdapter implements StorageService {
+public class S3StorageAdapter implements StorageGateway {
 
     private final S3Client s3Client;
 

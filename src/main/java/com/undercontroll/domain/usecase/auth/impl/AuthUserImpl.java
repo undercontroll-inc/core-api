@@ -8,10 +8,10 @@ import com.undercontroll.domain.exception.InvalidAuthException;
 import com.undercontroll.domain.gateway.UserGateway;
 import com.undercontroll.domain.model.User;
 import com.undercontroll.domain.usecase.auth.AuthUserPort;
-import com.undercontroll.infrastructure.service.GoogleAuthService;
-import com.undercontroll.infrastructure.service.MetricsService;
-import com.undercontroll.infrastructure.service.RefreshTokenService;
-import com.undercontroll.infrastructure.service.TokenServce;
+import com.undercontroll.domain.gateway.GoogleAuthGateway;
+import com.undercontroll.domain.gateway.MetricsGateway;
+import com.undercontroll.domain.gateway.RefreshTokenGateway;
+import com.undercontroll.domain.gateway.TokenGateway;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,11 +26,11 @@ public class AuthUserImpl implements AuthUserPort {
 
     private final UserGateway userGateway;
     private final PasswordEncoder passwordEncoder;
-    private final TokenServce tokenServce;
-    private final RefreshTokenService refreshTokenService;
-    private final MetricsService metricsService;
+    private final TokenGateway tokenGateway;
+    private final RefreshTokenGateway refreshTokenGateway;
+    private final MetricsGateway metricsGateway;
     private final UserDtoMapper userDtoMapper;
-    private final GoogleAuthService googleAuthService;
+    private final GoogleAuthGateway googleAuthGateway;
 
     @Override
     public AuthUserResponse execute(AuthUserRequest request) {
@@ -44,9 +44,9 @@ public class AuthUserImpl implements AuthUserPort {
             return fail();
         }
 
-        String accessToken = tokenServce.generateToken(String.valueOf(user.getId()), user.getUserType());
-        String refreshToken = refreshTokenService.createRefreshToken(user.getId(), user.getEmail(), user.getUserType());
-        metricsService.incrementLoginSuccess();
+        String accessToken = tokenGateway.generateToken(String.valueOf(user.getId()), user.getUserType());
+        String refreshToken = refreshTokenGateway.createRefreshToken(user.getId(), user.getEmail(), user.getUserType());
+        metricsGateway.incrementLoginSuccess();
         log.info("Login succeeded userId={} provider={}", user.getId(), request.provider());
         return new AuthUserResponse(accessToken, refreshToken, userDtoMapper.toDto(user));
     }
@@ -58,12 +58,12 @@ public class AuthUserImpl implements AuthUserPort {
                     && passwordEncoder.matches(request.password(), user.getPassword());
             case GOOGLE -> request.token() != null
                     && !request.token().isBlank()
-                    && googleAuthService.verify(request.token(), request.email());
+                    && googleAuthGateway.verify(request.token(), request.email());
         };
     }
 
     private AuthUserResponse fail() {
-        metricsService.incrementLoginFailed();
+        metricsGateway.incrementLoginFailed();
         log.warn("Login failed");
         throw new InvalidAuthException("Email or password is invalid");
     }

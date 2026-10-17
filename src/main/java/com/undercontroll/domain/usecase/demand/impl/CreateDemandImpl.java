@@ -9,7 +9,7 @@ import com.undercontroll.domain.model.Order;
 import com.undercontroll.domain.exception.InvalidDemandException;
 import com.undercontroll.domain.gateway.ComponentGateway;
 import com.undercontroll.domain.gateway.DemandGateway;
-import com.undercontroll.infrastructure.service.MetricsService;
+import com.undercontroll.domain.gateway.MetricsGateway;
 import com.undercontroll.domain.gateway.OrderGateway;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +23,7 @@ public class CreateDemandImpl implements CreateDemandPort {
     private final DemandGateway demandGateway;
     private final ComponentGateway componentGateway;
     private final OrderGateway orderGateway;
-    private final MetricsService metricsService;
+    private final MetricsGateway metricsGateway;
 
     @Override
     public DemandDto execute(Integer orderId, CreateDemandRequest request) {
@@ -49,7 +49,7 @@ public class CreateDemandImpl implements CreateDemandPort {
 
         Demand savedDemand = demandGateway.save(demand);
 
-        metricsService.incrementDemandCreated();
+        metricsGateway.incrementDemandCreated();
 
         return new DemandDto(
                 savedDemand.getId(),

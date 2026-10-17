@@ -11,7 +11,7 @@ import com.undercontroll.application.dto.user.UserDto;
 import com.undercontroll.domain.usecase.auth.ResetPasswordPort;
 import com.undercontroll.domain.enums.UserType;
 import com.undercontroll.domain.exception.InvalidTokenException;
-import com.undercontroll.infrastructure.service.TokenServce;
+import com.undercontroll.domain.gateway.TokenGateway;
 import com.undercontroll.domain.usecase.user.*;
 import com.undercontroll.infrastructure.config.SecurityConfig;
 import com.undercontroll.infrastructure.config.RateLimitProperties;
@@ -64,7 +64,7 @@ class UserControllerTest {
 
     // Required because AuthContextFilter depends on TokenPort
     @MockitoBean
-    private TokenServce tokenServce;
+    private TokenGateway tokenGateway;
 
     private void mockTokenPortWithRole(String role) {
         Claim claim = mock(Claim.class);
@@ -72,7 +72,7 @@ class UserControllerTest {
         DecodedJWT decoded = mock(DecodedJWT.class);
         when(decoded.getSubject()).thenReturn("user@example.com");
         when(decoded.getClaim("roles")).thenReturn(claim);
-        when(tokenServce.validateToken(anyString())).thenReturn(decoded);
+        when(tokenGateway.validateToken(anyString())).thenReturn(decoded);
     }
 
     @Test
@@ -271,7 +271,7 @@ class UserControllerTest {
     @Test
     @DisplayName("GET /v1/api/users - Expired JWT should return 401 with TOKEN_EXPIRED")
     void expiredJwtShouldReturn401WithTokenExpiredCode() throws Exception {
-        when(tokenServce.validateToken(anyString()))
+        when(tokenGateway.validateToken(anyString()))
                 .thenThrow(new InvalidTokenException("Access token has expired", InvalidTokenException.TOKEN_EXPIRED));
 
         mockMvc.perform(get("/v1/api/users")

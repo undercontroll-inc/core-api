@@ -15,9 +15,9 @@ import com.undercontroll.domain.model.PaginatedResult;
 import com.undercontroll.domain.usecase.announcement.impl.CreateAnnouncementImpl;
 import com.undercontroll.domain.usecase.announcement.impl.GetAnnouncementsImpl;
 import com.undercontroll.domain.usecase.announcement.impl.UpdateAnnouncementImpl;
-import com.undercontroll.infrastructure.service.MetricsService;
-import com.undercontroll.infrastructure.service.NotificationService;
-import com.undercontroll.infrastructure.service.StorageService;
+import com.undercontroll.domain.gateway.MetricsGateway;
+import com.undercontroll.domain.gateway.NotificationGateway;
+import com.undercontroll.domain.gateway.StorageGateway;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -45,12 +45,12 @@ class AnnouncementImageUseCaseTest {
     @Test
     void shouldGenerateKeyAfterCreatingAnnouncementWithImage() {
         AnnouncementGateway announcementGateway = mock(AnnouncementGateway.class);
-        StorageService storageService = mock(StorageService.class);
+        StorageGateway storageGateway = mock(StorageGateway.class);
         CreateAnnouncementImpl useCase = new CreateAnnouncementImpl(
                 announcementGateway,
-                mock(NotificationService.class),
-                mock(MetricsService.class),
-                storageService
+                mock(NotificationGateway.class),
+                mock(MetricsGateway.class),
+                storageGateway
         );
 
         ReflectionTestUtils.setField(useCase, "bucket", "announcement-bucket");
@@ -65,7 +65,7 @@ class AnnouncementImageUseCaseTest {
             announcement.setUpdatedAt(LocalDateTime.now());
             return announcement;
         });
-        when(storageService.generatePresignedUploadUrl(eq("announcement-bucket"), any(String.class), eq(15)))
+        when(storageGateway.generatePresignedUploadUrl(eq("announcement-bucket"), any(String.class), eq(15)))
                 .thenAnswer(invocation -> new GenerateUploadUrlResponse(
                         "https://s3.example/upload",
                         invocation.getArgument(1),
@@ -91,12 +91,12 @@ class AnnouncementImageUseCaseTest {
     @Test
     void shouldNotGenerateUploadUrlWhenCreatingAnnouncementWithoutImage() {
         AnnouncementGateway announcementGateway = mock(AnnouncementGateway.class);
-        StorageService storageService = mock(StorageService.class);
+        StorageGateway storageGateway = mock(StorageGateway.class);
         CreateAnnouncementImpl useCase = new CreateAnnouncementImpl(
                 announcementGateway,
-                mock(NotificationService.class),
-                mock(MetricsService.class),
-                storageService
+                mock(NotificationGateway.class),
+                mock(MetricsGateway.class),
+                storageGateway
         );
 
         ReflectionTestUtils.setField(useCase, "bucket", "announcement-bucket");
@@ -118,14 +118,14 @@ class AnnouncementImageUseCaseTest {
         ), "token");
 
         assertThat(output.imageUpload()).isNull();
-        verify(storageService, never()).generatePresignedUploadUrl(any(), any(), any());
+        verify(storageGateway, never()).generatePresignedUploadUrl(any(), any(), any());
     }
 
     @Test
     void shouldGenerateReadUrlOnlyWhenAnnouncementHasKey() {
         AnnouncementGateway announcementGateway = mock(AnnouncementGateway.class);
-        StorageService storageService = mock(StorageService.class);
-        GetAnnouncementsImpl useCase = new GetAnnouncementsImpl(announcementGateway, storageService);
+        StorageGateway storageGateway = mock(StorageGateway.class);
+        GetAnnouncementsImpl useCase = new GetAnnouncementsImpl(announcementGateway, storageGateway);
 
         ReflectionTestUtils.setField(useCase, "bucket", "announcement-bucket");
         ReflectionTestUtils.setField(useCase, "readExpirationMinutes", 1440L);
@@ -150,7 +150,7 @@ class AnnouncementImageUseCaseTest {
 
         when(announcementGateway.findAllPaginated(0, 10, null))
                 .thenReturn(new PaginatedResult<>(List.of(withImage, withoutImage), 2L));
-        when(storageService.generateReadPresignedUrl("announcement-bucket", "announcements/1/cover.png", 1440L))
+        when(storageGateway.generateReadPresignedUrl("announcement-bucket", "announcements/1/cover.png", 1440L))
                 .thenReturn("https://s3.example/read");
 
         GetPaginatedAnnouncementResponse output = useCase.execute(0, 10, null);
@@ -158,14 +158,14 @@ class AnnouncementImageUseCaseTest {
         assertThat(output.announcements()).hasSize(2);
         assertThat(output.announcements().get(0).imageUrl()).isEqualTo("https://s3.example/read");
         assertThat(output.announcements().get(1).imageUrl()).isNull();
-        verify(storageService).generateReadPresignedUrl("announcement-bucket", "announcements/1/cover.png", 1440L);
+        verify(storageGateway).generateReadPresignedUrl("announcement-bucket", "announcements/1/cover.png", 1440L);
     }
 
     @Test
     void shouldClearKeyWhenRemovingAnnouncementImage() {
         AnnouncementGateway announcementGateway = mock(AnnouncementGateway.class);
-        StorageService storageService = mock(StorageService.class);
-        UpdateAnnouncementImpl useCase = new UpdateAnnouncementImpl(announcementGateway, storageService);
+        StorageGateway storageGateway = mock(StorageGateway.class);
+        UpdateAnnouncementImpl useCase = new UpdateAnnouncementImpl(announcementGateway, storageGateway);
 
         ReflectionTestUtils.setField(useCase, "bucket", "announcement-bucket");
         ReflectionTestUtils.setField(useCase, "uploadExpirationMinutes", 15);
@@ -195,13 +195,13 @@ class AnnouncementImageUseCaseTest {
         assertThat(output.imageUrl()).isNull();
         assertThat(output.imageUpload()).isNull();
         assertThat(announcement.getImageKey()).isNull();
-        verify(storageService, never()).generateReadPresignedUrl(any(), any(), anyLong());
-        verify(storageService, never()).generatePresignedUploadUrl(any(), any(), any());
+        verify(storageGateway, never()).generateReadPresignedUrl(any(), any(), anyLong());
+        verify(storageGateway, never()).generatePresignedUploadUrl(any(), any(), any());
     }
 
     @Test
     void shouldRejectUploadAndRemoveImageTogether() {
-        UpdateAnnouncementImpl useCase = new UpdateAnnouncementImpl(mock(AnnouncementGateway.class), mock(StorageService.class));
+        UpdateAnnouncementImpl useCase = new UpdateAnnouncementImpl(mock(AnnouncementGateway.class), mock(StorageGateway.class));
 
         UpdateAnnouncementRequest request = new UpdateAnnouncementRequest(
                 null,

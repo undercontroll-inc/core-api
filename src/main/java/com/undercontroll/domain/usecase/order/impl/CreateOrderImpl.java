@@ -15,7 +15,7 @@ import com.undercontroll.domain.gateway.OrderGateway;
 import com.undercontroll.domain.gateway.UserGateway;
 import com.undercontroll.domain.gateway.StockManagementGateway;
 import com.undercontroll.domain.gateway.CurrentUserAdminPort;
-import com.undercontroll.infrastructure.service.MetricsService;
+import com.undercontroll.domain.gateway.MetricsGateway;
 import com.undercontroll.application.dto.order.PartDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,7 +39,7 @@ public class CreateOrderImpl implements CreateOrderPort {
     private final UserGateway userGateway;
     private final StockManagementGateway stockManagementGateway;
     private final CreateDemandPort createDemandPort;
-    private final MetricsService metricsService;
+    private final MetricsGateway metricsGateway;
     private final OrderDtoMapper orderDtoMapper;
     private final CurrentUserAdminPort currentUserAdminPort;
 
@@ -118,8 +118,8 @@ public class CreateOrderImpl implements CreateOrderPort {
             stockManagementGateway.decreaseStock(component.getId(), part.quantity());
         }
 
-        metricsService.incrementOrderCreated();
-        metricsService.recordOrderProcessingTime(startTime);
+        metricsGateway.incrementOrderCreated();
+        metricsGateway.recordOrderProcessingTime(startTime);
 
         log.info("Order {} created with {} demands", savedOrder.getId(), request.parts().size());
 

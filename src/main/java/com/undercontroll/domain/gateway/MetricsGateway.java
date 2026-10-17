@@ -1,6 +1,6 @@
-package com.undercontroll.infrastructure.service;
+package com.undercontroll.domain.gateway;
 
-public interface MetricsService {
+public interface MetricsGateway {
 
     void incrementLoginFailed();
 

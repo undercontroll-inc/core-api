@@ -5,7 +5,7 @@ import com.undercontroll.application.dto.analytics.MarketAnalyticsResponse;
 import com.undercontroll.domain.usecase.analytics.GetMarketAnalyticsPort;
 import com.undercontroll.infrastructure.config.RateLimitProperties;
 import com.undercontroll.infrastructure.config.SecurityConfig;
-import com.undercontroll.infrastructure.service.TokenServce;
+import com.undercontroll.domain.gateway.TokenGateway;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,7 +35,7 @@ class MarketAnalyticsControllerTest {
     private GetMarketAnalyticsPort getMarketAnalyticsPort;
 
     @MockitoBean
-    private TokenServce tokenServce;
+    private TokenGateway tokenGateway;
 
     @Test
     @WithMockUser(roles = "ADMINISTRATOR")

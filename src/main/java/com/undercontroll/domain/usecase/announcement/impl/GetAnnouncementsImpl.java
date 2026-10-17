@@ -7,7 +7,7 @@ import com.undercontroll.domain.gateway.AnnouncementGateway;
 import com.undercontroll.application.dto.announcement.AnnouncementDto;
 import com.undercontroll.application.dto.announcement.GetPaginatedAnnouncementResponse;
 import com.undercontroll.domain.enums.AnnouncementType;
-import com.undercontroll.infrastructure.service.StorageService;
+import com.undercontroll.domain.gateway.StorageGateway;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -19,7 +19,7 @@ import java.util.List;
 public class GetAnnouncementsImpl implements GetAnnouncementsPort {
 
     private final AnnouncementGateway announcementGateway;
-    private final StorageService storageService;
+    private final StorageGateway storageGateway;
 
     @Value("${aws.s3.upload-bucket}")
     private String bucket;
@@ -60,6 +60,6 @@ public class GetAnnouncementsImpl implements GetAnnouncementsPort {
             return null;
         }
 
-        return storageService.generateReadPresignedUrl(bucket, announcement.getImageKey(), readExpirationMinutes);
+        return storageGateway.generateReadPresignedUrl(bucket, announcement.getImageKey(), readExpirationMinutes);
     }
 }
