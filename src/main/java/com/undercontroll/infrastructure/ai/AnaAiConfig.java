@@ -3,7 +3,6 @@ package com.undercontroll.infrastructure.ai;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.undercontroll.domain.gateway.AnaChatGateway;
 import com.undercontroll.infrastructure.ai.config.AiFeatureSettings;
-import com.undercontroll.infrastructure.ai.config.AiProvider;
 import com.undercontroll.infrastructure.ai.config.ChatModelFactory;
 import com.undercontroll.infrastructure.ai.config.ConditionalOnAiFeature;
 import com.undercontroll.infrastructure.metrics.AiMetrics;
@@ -28,15 +27,12 @@ public class AnaAiConfig {
     AiFeatureSettings anaAiSettings(
             @Value("${undercontroll.ai.ana.provider:none}") String provider,
             @Value("${undercontroll.ai.ana.model:}") String model,
-            @Value("${undercontroll.ai.gemini.chat-model:gemini-3.6-flash}") String geminiModel,
-            @Value("${undercontroll.ai.openai.chat-model:gpt-4.1-mini}") String openAiModel,
             @Value("${undercontroll.ai.ana.timeout:60s}") Duration timeout,
             @Value("${undercontroll.ai.ana.temperature:0.2}") Double temperature,
             @Value("${undercontroll.ai.ana.max-output-tokens:1024}") Integer maxOutputTokens,
             @Value("${undercontroll.ai.ana.thinking:default}") String thinking
     ) {
-        return AiFeatureSettings.chat("ana", provider,
-                AiProvider.parse("ana", provider).modelOrDefault(model, geminiModel, openAiModel), timeout, temperature, maxOutputTokens, thinking);
+        return AiFeatureSettings.chat("ana", provider, model, timeout, temperature, maxOutputTokens, thinking);
     }
 
     @Bean

@@ -23,13 +23,10 @@ public class TranscriptionAiConfig {
     AiFeatureSettings transcriptionAiSettings(
             @Value("${undercontroll.ai.transcription.provider:none}") String provider,
             @Value("${undercontroll.ai.transcription.model:}") String model,
-            @Value("${undercontroll.ai.gemini.transcription-model:gemini-3.5-flash-lite}") String geminiModel,
-            @Value("${undercontroll.ai.openai.transcription-model:whisper-1}") String openAiModel,
             @Value("${undercontroll.ai.transcription.timeout:60s}") Duration timeout,
             @Value("${undercontroll.ai.transcription.thinking:minimal}") String thinking
     ) {
-        return AiFeatureSettings.transcription("transcription", provider,
-                AiProvider.parse("transcription", provider).modelOrDefault(model, geminiModel, openAiModel), timeout, thinking);
+        return AiFeatureSettings.transcription("transcription", provider, model, timeout, thinking);
     }
 
     @Bean
