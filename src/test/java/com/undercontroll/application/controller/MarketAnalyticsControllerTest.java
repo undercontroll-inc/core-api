@@ -5,6 +5,7 @@ import com.undercontroll.application.controller.impl.MarketAnalyticsController;
 import com.undercontroll.domain.usecase.analytics.GetMarketAnalyticsPort;
 import com.undercontroll.infrastructure.config.SecurityConfig;
 import com.undercontroll.domain.gateway.TokenGateway;
+import com.undercontroll.domain.exception.MarketDataUnavailableException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -76,5 +77,16 @@ class MarketAnalyticsControllerTest {
     void forbiddenForCustomer() throws Exception {
         mockMvc.perform(get("/v1/api/analytics"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMINISTRATOR")
+    @DisplayName("GET /v1/api/analytics returns 503 when market views fail")
+    void marketDataUnavailable() throws Exception {
+        when(getMarketAnalyticsPort.execute()).thenThrow(new MarketDataUnavailableException(new IllegalStateException("db down")));
+
+        mockMvc.perform(get("/v1/api/analytics"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value(MarketDataUnavailableException.CODE));
     }
 }

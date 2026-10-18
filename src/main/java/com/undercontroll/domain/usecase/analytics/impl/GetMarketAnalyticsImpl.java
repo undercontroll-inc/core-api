@@ -17,7 +17,7 @@ public class GetMarketAnalyticsImpl implements GetMarketAnalyticsPort {
     private final MarketViewGateway marketViewGateway;
 
     @Override
-    @Cacheable(value = "marketAnalytics", key = "'current'")
+    @Cacheable(value = "marketAnalytics", key = "'current'", unless = "#result.bucketKey() == null")
     public Output execute() {
         return marketViewGateway.findCurrentBucketKey()
                 .map(this::build)

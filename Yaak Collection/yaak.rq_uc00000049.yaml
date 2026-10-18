@@ -9,7 +9,7 @@ authentication: {}
 authenticationType: null
 body: {}
 bodyType: null
-description: ""
+description: "503 MARKET_DATA_UNAVAILABLE when the ETL views cannot be read (not cached; retry later). Empty lists mean no published month yet."
 headers: []
 method: GET
 name: Get market analytics

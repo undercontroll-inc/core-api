@@ -18,7 +18,7 @@ public class GetMarketInsightsImpl implements GetMarketInsightsPort {
     private final MarketInsightGateway marketInsightGateway;
 
     @Override
-    @Cacheable(value = "marketInsights", key = "'current'")
+    @Cacheable(value = "marketInsights", key = "'current'", unless = "#result.payload() == null")
     public Output execute() {
         return marketViewGateway.findCurrentBucketKey()
                 .flatMap(marketInsightGateway::findSuccessfulByBucketKey)
