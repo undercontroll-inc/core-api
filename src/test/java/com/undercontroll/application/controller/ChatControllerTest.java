@@ -1,4 +1,4 @@
-package com.undercontroll.infrastructure.web.controller;
+package com.undercontroll.application.controller;
 
 import com.undercontroll.application.controller.impl.ChatController;
 import com.undercontroll.domain.exception.AnaUnavailableException;
@@ -13,8 +13,8 @@ import com.undercontroll.infrastructure.config.SecurityConfig;
 import com.undercontroll.infrastructure.handler.ChatExceptionHandler;
 import com.undercontroll.infrastructure.logging.MdcTaskDecorator;
 import com.undercontroll.domain.gateway.TokenGateway;
-import com.undercontroll.infrastructure.web.AnaChatSseSupport;
-import com.undercontroll.infrastructure.web.SseChatStreamSink;
+import com.undercontroll.application.controller.sse.AnaChatSseSupport;
+import com.undercontroll.application.controller.sse.SseChatStreamSink;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

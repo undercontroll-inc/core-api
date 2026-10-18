@@ -1,4 +1,4 @@
-package com.undercontroll.infrastructure.web.controller;
+package com.undercontroll.application.controller;
 
 import com.undercontroll.domain.usecase.user.UserOutput;
 import com.undercontroll.application.mapper.AuthDtoMapperImpl;

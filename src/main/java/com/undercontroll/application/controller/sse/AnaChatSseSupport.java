@@ -1,4 +1,4 @@
-package com.undercontroll.infrastructure.web;
+package com.undercontroll.application.controller.sse;
 
 import com.undercontroll.application.dto.chat.SendChatMessageRequest;
 import com.undercontroll.domain.usecase.chat.StreamChatMessagePort;

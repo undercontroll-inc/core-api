@@ -1,4 +1,4 @@
-package com.undercontroll.infrastructure.web.controller;
+package com.undercontroll.application.controller;
 
 import com.undercontroll.application.mapper.OrderDtoMapperImpl;
 import com.undercontroll.application.mapper.UserDtoMapperImpl;

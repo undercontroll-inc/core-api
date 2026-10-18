@@ -6,7 +6,7 @@ import com.undercontroll.application.dto.chat.SendChatMessageRequest;
 import com.undercontroll.application.dto.chat.SendChatMessageResponse;
 import com.undercontroll.domain.usecase.chat.GetChatSuggestionsPort;
 import com.undercontroll.domain.usecase.chat.SendChatMessagePort;
-import com.undercontroll.infrastructure.web.AnaChatSseSupport;
+import com.undercontroll.application.controller.sse.AnaChatSseSupport;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;

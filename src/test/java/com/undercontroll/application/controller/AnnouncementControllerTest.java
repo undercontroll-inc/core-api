@@ -1,4 +1,4 @@
-package com.undercontroll.infrastructure.web.controller;
+package com.undercontroll.application.controller;
 
 import com.undercontroll.domain.model.PresignedUpload;
 import com.undercontroll.domain.model.AccessTokenClaims;

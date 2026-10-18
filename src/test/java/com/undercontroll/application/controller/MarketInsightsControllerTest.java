@@ -1,4 +1,4 @@
-package com.undercontroll.infrastructure.web.controller;
+package com.undercontroll.application.controller;
 
 import com.undercontroll.application.controller.impl.MarketInsightsController;
 import com.undercontroll.domain.usecase.insights.GenerateMonthlyInsightsPort;
