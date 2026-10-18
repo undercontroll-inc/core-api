@@ -72,7 +72,15 @@ class ExportOrderImplTest {
         assertEquals("Capacitor", document.getValue().pecas().get(0).peca());
         assertEquals(String.format("R$ %.2f", 5.0), document.getValue().pecas().get(0).valor());
         assertEquals("ana@x.com", document.getValue().nome());
-        verify(storageGateway).storeOrderExport("12", pdf);
+        verify(storageGateway).storeOrderExport("12-NF-1.pdf", pdf);
+    }
+
+    @Test
+    @DisplayName("export key uses the order id, a safe NF and the pdf extension")
+    void exportKey() {
+        assertEquals("7.pdf", ExportOrderImpl.exportKey(Order.builder().id(7).build()));
+        assertEquals("7.pdf", ExportOrderImpl.exportKey(Order.builder().id(7).nf(" ").build()));
+        assertEquals("7-NF_12_A.pdf", ExportOrderImpl.exportKey(Order.builder().id(7).nf("NF 12/A").build()));
     }
 
     @Test

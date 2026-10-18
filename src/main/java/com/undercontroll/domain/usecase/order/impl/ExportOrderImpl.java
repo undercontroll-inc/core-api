@@ -74,10 +74,16 @@ public class ExportOrderImpl implements ExportOrderPort {
 
         byte[] pdfData = pdfExportGateway.exportOS(document);
 
-        final var key = String.format(order.getId().toString(), order.getNf(), ".pdf");
-
-        storageGateway.storeOrderExport(key, pdfData);
+        storageGateway.storeOrderExport(exportKey(order), pdfData);
 
         return pdfData;
+    }
+
+    static String exportKey(Order order) {
+        String nf = order.getNf();
+        if (nf == null || nf.isBlank()) {
+            return order.getId() + ".pdf";
+        }
+        return order.getId() + "-" + nf.trim().replaceAll("[^A-Za-z0-9._-]", "_") + ".pdf";
     }
 }
