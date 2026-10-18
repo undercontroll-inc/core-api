@@ -40,7 +40,7 @@ class ShopBriefingAdvisorTest {
     private ChatClientResponse response;
 
     @Test
-    @DisplayName("inserts the shop briefing after existing system messages")
+    @DisplayName("merges the shop briefing into the single system message")
     void appendsBriefing() {
         ChatClientRequest request = new ChatClientRequest(
                 new Prompt(List.of(
@@ -56,11 +56,11 @@ class ShopBriefingAdvisorTest {
         assertSame(response, advisor.adviseCall(request, chain));
 
         List<Message> messages = forwarded.getValue().prompt().getInstructions();
-        assertEquals(3, messages.size());
-        assertEquals("persona", messages.get(0).getText());
-        assertInstanceOf(SystemMessage.class, messages.get(1));
-        assertEquals(MessageType.SYSTEM, messages.get(1).getMessageType());
-        assertTrue(messages.get(1).getText().contains("Maria"));
+        assertEquals(2, messages.size());
+        assertInstanceOf(SystemMessage.class, messages.get(0));
+        assertEquals(MessageType.SYSTEM, messages.get(0).getMessageType());
+        assertTrue(messages.get(0).getText().startsWith("persona\n\n"));
+        assertTrue(messages.get(0).getText().contains("Maria"));
         assertEquals("Quais consertos estão abertos?", forwarded.getValue().prompt().getUserMessage().getText());
     }
 
@@ -98,8 +98,8 @@ class ShopBriefingAdvisorTest {
         assertEquals(1, emitted.size());
         assertSame(response, emitted.getFirst());
         List<Message> messages = forwarded.getValue().prompt().getInstructions();
-        assertEquals(3, messages.size());
-        assertTrue(messages.get(1).getText().contains("Maria"));
+        assertEquals(2, messages.size());
+        assertTrue(messages.get(0).getText().contains("Maria"));
     }
 
     @Test

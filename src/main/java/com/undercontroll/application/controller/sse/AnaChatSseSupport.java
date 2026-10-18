@@ -1,8 +1,8 @@
 package com.undercontroll.application.controller.sse;
 
 import com.undercontroll.application.dto.chat.SendChatMessageRequest;
+import com.undercontroll.domain.usecase.chat.AnaChatSession;
 import com.undercontroll.domain.usecase.chat.StreamChatMessagePort;
-import com.undercontroll.domain.usecase.chat.StreamChatSession;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
@@ -32,7 +32,7 @@ public class AnaChatSseSupport {
     }
 
     public ResponseEntity<SseEmitter> open(SendChatMessageRequest request) {
-        StreamChatSession session = streamChatMessagePort.prepare(request.content());
+        AnaChatSession session = streamChatMessagePort.prepare(request.content(), request.conversationId());
         SseEmitter emitter = new SseEmitter(SseChatStreamSink.TIMEOUT_MS);
         SseChatStreamSink sink = sinks.getObject().bind(emitter);
         taskExecutor.execute(new DelegatingSecurityContextRunnable(

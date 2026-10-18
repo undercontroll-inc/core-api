@@ -17,11 +17,13 @@ headers {
 
 body:json {
 {
-  "content": "{{chatContent}}"
+  "content": "{{chatContent}}",
+  "conversationId": "{{conversationId}}"
 }
 }
 
 docs {
+  Body conversationId is optional (default "default"); 409 CHAT_CONVERSATION_BUSY if that conversation is still answering.
   SSE events: start {conversationId}, status {phase}, delta {content}, then exactly one terminal event:
   - done {state: completed, content}
   - partial {state: partial, content, reason (max_tokens | interrupted | ...), retryable}

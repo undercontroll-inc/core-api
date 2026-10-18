@@ -4,7 +4,7 @@ import com.undercontroll.domain.gateway.ChatStreamSink;
 
 public interface StreamChatMessagePort {
 
-    StreamChatSession prepare(String message);
+    AnaChatSession prepare(String message, String conversationId);
 
-    void stream(StreamChatSession session, ChatStreamSink sink);
+    void stream(AnaChatSession session, ChatStreamSink sink);
 }

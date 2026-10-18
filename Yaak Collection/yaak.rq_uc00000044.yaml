@@ -10,10 +10,11 @@ authenticationType: null
 body:
   text: |-
     {
-      "content": "${[ chat_content ]}"
+      "content": "${[ chat_content ]}",
+      "conversationId": "${[ conversation_id ]}"
     }
 bodyType: application/json
-description: "Response {content, state: completed | partial, reason}. partial means the reply was cut (e.g. max_tokens) and is not stored in memory."
+description: "Body conversationId optional ([A-Za-z0-9_-]{1,64}, default 'default'). Response {conversationId, content, state, reason}. 409 CHAT_CONVERSATION_BUSY while the same conversation is answering. partial means the reply was cut (e.g. max_tokens) and is not stored in memory."
 headers:
 - enabled: true
   name: Content-Type

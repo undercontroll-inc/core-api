@@ -4,15 +4,16 @@ import com.undercontroll.domain.exception.AnaUnavailableException;
 import com.undercontroll.domain.gateway.ChatStreamSink;
 import com.undercontroll.domain.model.chat.AnaReply;
 import com.undercontroll.domain.model.chat.AnaTurnRequest;
+import com.undercontroll.domain.model.chat.ChatMessage;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
-import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.metadata.ChatGenerationMetadata;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -35,10 +36,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class SpringAiAnaChatAdapterTest {
 
-    private static final AnaTurnRequest TURN = new AnaTurnRequest("7", "Oi", "briefing", false);
-
-    @Mock
-    private ChatMemory chatMemory;
+    private static final AnaTurnRequest TURN = new AnaTurnRequest("7", "Oi", "briefing", List.of(), false);
 
     @Mock
     private AnaWebSearchTool webSearchTool;
@@ -47,23 +45,29 @@ class SpringAiAnaChatAdapterTest {
     private AnaShopTools shopTools;
 
     @Test
-    @DisplayName("reads conversation texts so follow-ups can reuse cited orders")
-    void recentConversationTexts() {
-        when(chatMemory.get("7")).thenReturn(List.of(
-                new UserMessage("Me fala do pedido 12"),
-                new AssistantMessage("O liquidificador da Maria ainda não foi olhado.")
-        ));
-        SpringAiAnaChatAdapter adapter = new SpringAiAnaChatAdapter(
-                ChatClient.builder(new StubChatModel(List.of("ok"), "STOP", null)).build(),
-                chatMemory,
-                webSearchTool,
-                shopTools
-        );
+    @DisplayName("history becomes user and assistant messages between the system prompt and the new question")
+    void historyGoesIntoPrompt() {
+        List<Prompt> prompts = new ArrayList<>();
+        ChatModel model = new StubChatModel(List.of("ok"), "STOP", null) {
+            @Override
+            public Flux<ChatResponse> stream(Prompt prompt) {
+                prompts.add(prompt);
+                return super.stream(prompt);
+            }
+        };
+        AnaTurnRequest turn = new AnaTurnRequest("7", "E agora?", "briefing", List.of(
+                ChatMessage.user("Me fala do pedido 12"),
+                ChatMessage.assistant("Está em análise."),
+                ChatMessage.assistant(" ")
+        ), false);
 
-        assertEquals(
-                List.of("Me fala do pedido 12", "O liquidificador da Maria ainda não foi olhado."),
-                adapter.recentConversationTexts("7"));
-        assertEquals(List.of(), adapter.recentConversationTexts(" "));
+        adapter(model).reply(turn);
+
+        List<Message> messages = prompts.getFirst().getInstructions();
+        assertEquals(List.of(MessageType.USER, MessageType.ASSISTANT, MessageType.USER),
+                messages.stream().map(Message::getMessageType).toList());
+        assertEquals("Me fala do pedido 12", messages.get(0).getText());
+        assertEquals("E agora?", messages.get(2).getText());
     }
 
     @Test
@@ -185,9 +189,9 @@ class SpringAiAnaChatAdapterTest {
         SpringAiAnaChatAdapter adapter = adapter(model);
 
         adapter.reply(TURN);
-        adapter.reply(new AnaTurnRequest("7", "manual?", "briefing", true));
+        adapter.reply(new AnaTurnRequest("7", "manual?", "briefing", List.of(), true));
 
-        assertEquals(List.of("get_last_announcement", "get_order", "search_components"), toolNames(prompts.get(0)));
+        assertEquals(List.of("get_last_announcement", "get_order", "list_orders", "search_components"), toolNames(prompts.get(0)));
         assertTrue(toolNames(prompts.get(1)).contains("search_web"));
     }
 
@@ -208,7 +212,6 @@ class SpringAiAnaChatAdapterTest {
     private SpringAiAnaChatAdapter adapter(ChatModel chatModel) {
         return new SpringAiAnaChatAdapter(
                 ChatClient.builder(chatModel).build(),
-                chatMemory,
                 webSearchTool,
                 shopTools
         );

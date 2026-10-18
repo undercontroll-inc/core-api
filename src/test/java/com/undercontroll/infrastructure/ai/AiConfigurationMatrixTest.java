@@ -11,7 +11,6 @@ import com.undercontroll.infrastructure.ai.config.ChatModelFactory;
 import com.undercontroll.infrastructure.mapper.InsightsPayloadJsonMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.ai.chat.memory.ChatMemoryRepository;
 import org.springframework.boot.convert.ApplicationConversionService;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -26,7 +25,6 @@ class AiConfigurationMatrixTest {
             .withInitializer(AiConfigurationMatrixTest::bootConversions)
             .withUserConfiguration(AnaAiConfig.class, InsightsAiConfig.class, TranscriptionAiConfig.class)
             .withBean(ChatModelFactory.class)
-            .withBean("anaChatMemoryRepository", ChatMemoryRepository.class, () -> mock(ChatMemoryRepository.class))
             .withBean(RestClient.Builder.class, RestClient::builder)
             .withBean(AnaShopTools.class, () -> mock(AnaShopTools.class))
             .withBean(ObjectMapper.class, ObjectMapper::new)

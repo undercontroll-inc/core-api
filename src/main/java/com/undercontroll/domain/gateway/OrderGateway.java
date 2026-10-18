@@ -10,6 +10,7 @@ import com.undercontroll.domain.model.dashboard.RevenuePoint;
 import com.undercontroll.domain.model.dashboard.StatusCount;
 import com.undercontroll.domain.model.market.RepairCatalogRow;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,6 +31,10 @@ public interface OrderGateway {
     List<Order> findReadyForPickup(int limit);
 
     Optional<Order> findDetailById(Integer id);
+
+    long countByStatusIn(Collection<OrderStatus> statuses);
+
+    PaginatedResult<Order> findPageByStatusIn(Collection<OrderStatus> statuses, int page, int size);
 
     PaginatedResult<Order> findAllPaginated(Integer offset, Integer limit);
 

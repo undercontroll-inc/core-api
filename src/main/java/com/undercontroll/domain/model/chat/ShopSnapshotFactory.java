@@ -12,6 +12,7 @@ import com.undercontroll.domain.model.chat.ShopSnapshot.StockFact;
 import com.undercontroll.domain.support.Texts;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -31,6 +32,51 @@ public final class ShopSnapshotFactory {
     }
 
     public static ShopSnapshot from(
+            List<Order> orders,
+            List<ComponentPart> parts,
+            List<Demand> demands,
+            Announcement lastAnnouncement
+    ) {
+        ShopSnapshot base = build(orders, parts, demands, lastAnnouncement);
+        long openTotal = count(orders, OrderStatus.PENDING, OrderStatus.IN_ANALYSIS);
+        long pickupTotal = count(orders, OrderStatus.COMPLETED);
+        return withTotals(base, openTotal, pickupTotal, null);
+    }
+
+    public static ShopSnapshot from(
+            List<Order> orders,
+            List<ComponentPart> parts,
+            List<Demand> demands,
+            Announcement lastAnnouncement,
+            long openTotal,
+            long pickupTotal,
+            LocalDateTime takenAt
+    ) {
+        return withTotals(build(orders, parts, demands, lastAnnouncement), openTotal, pickupTotal, takenAt);
+    }
+
+    private static ShopSnapshot withTotals(ShopSnapshot base, long openTotal, long pickupTotal, LocalDateTime takenAt) {
+        return new ShopSnapshot(
+                base.openRepairs(),
+                base.readyForPickup(),
+                base.lowStockParts(),
+                base.pendingParts(),
+                base.lastAnnouncementTitle(),
+                Math.max(openTotal, base.openRepairs().size()),
+                Math.max(pickupTotal, base.readyForPickup().size()),
+                takenAt
+        );
+    }
+
+    private static long count(List<Order> orders, OrderStatus... statuses) {
+        if (orders == null) {
+            return 0;
+        }
+        List<OrderStatus> wanted = Arrays.asList(statuses);
+        return orders.stream().filter(order -> wanted.contains(order.getStatus())).count();
+    }
+
+    private static ShopSnapshot build(
             List<Order> orders,
             List<ComponentPart> parts,
             List<Demand> demands,

@@ -75,6 +75,35 @@ class ShopSuggestionsTest {
     }
 
     @Test
+    @DisplayName("chat briefing states the real totals, flags truncated lists and the snapshot time")
+    void chatBriefingTotals() {
+        ShopSnapshot base = sampleShop();
+        ShopSnapshot snapshot = new ShopSnapshot(
+                base.openRepairs(), base.readyForPickup(), base.lowStockParts(), base.pendingParts(),
+                base.lastAnnouncementTitle(), 12, base.readyForPickup().size(),
+                java.time.LocalDateTime.of(2026, 10, 17, 9, 30));
+
+        String briefing = ShopBriefingWriter.chatBriefing(snapshot);
+
+        assertTrue(snapshot.moreOpen());
+        assertFalse(snapshot.morePickup());
+        assertTrue(briefing.contains("Retrato da oficina de 17/10/2026 09:30 (UTC)"));
+        assertTrue(briefing.contains("Consertos em andamento (mostrando " + base.openRepairs().size() + " de 12; há mais, use list_orders"));
+        assertTrue(briefing.contains("Consertos prontos para o cliente buscar (total " + base.readyForPickup().size() + ")"));
+    }
+
+    @Test
+    @DisplayName("factory totals never undercount what is shown")
+    void factoryTotals() {
+        ShopSnapshot snapshot = ShopSnapshotFactory.from(
+                List.of(Order.builder().id(1).status(OrderStatus.PENDING).build()),
+                List.of(), List.of(), null, 0, 7, null);
+
+        assertEquals(1, snapshot.openTotal());
+        assertEquals(7, snapshot.pickupTotal());
+    }
+
+    @Test
     @DisplayName("extracts pedido ids from shop questions")
     void mentionedOrderIds() {
         assertEquals(List.of(12), ShopBriefingWriter.mentionedOrderIds("Me fala do pedido 12"));

@@ -58,18 +58,19 @@ public class ShopBriefingAdvisor implements CallAdvisor, StreamAdvisor {
         if (briefing.isBlank()) {
             return request;
         }
+        List<String> systemTexts = new ArrayList<>();
+        List<Message> rest = new ArrayList<>();
+        for (Message message : request.prompt().getInstructions()) {
+            if (message.getMessageType() == MessageType.SYSTEM) {
+                systemTexts.add(message.getText());
+            } else {
+                rest.add(message);
+            }
+        }
+        systemTexts.add(delimited(briefing));
         List<Message> messages = new ArrayList<>();
-        List<Message> instructions = request.prompt().getInstructions();
-        int index = 0;
-        while (index < instructions.size() && instructions.get(index).getMessageType() == MessageType.SYSTEM) {
-            messages.add(instructions.get(index));
-            index++;
-        }
-        messages.add(new SystemMessage(delimited(briefing)));
-        while (index < instructions.size()) {
-            messages.add(instructions.get(index));
-            index++;
-        }
+        messages.add(new SystemMessage(String.join("\n\n", systemTexts)));
+        messages.addAll(rest);
         return request.mutate()
                 .prompt(new Prompt(messages, request.prompt().getOptions()))
                 .build();

@@ -5,6 +5,7 @@ import com.undercontroll.domain.model.chat.ShopSnapshot.DemandFact;
 import com.undercontroll.domain.model.chat.ShopSnapshot.RepairFact;
 import com.undercontroll.domain.support.Texts;
 
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -17,6 +18,7 @@ public final class ShopBriefingWriter {
 
     private static final int MENTIONED_ORDER_LIMIT = 3;
     private static final int ORDER_DETAIL_LIMIT = 8;
+    private static final DateTimeFormatter TAKEN_AT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final Pattern MENTIONED_ORDER = Pattern.compile("\\bpedidos?\\s+(\\d+)\\b");
 
     private ShopBriefingWriter() {
@@ -25,10 +27,16 @@ public final class ShopBriefingWriter {
     public static String chatBriefing(ShopSnapshot snapshot) {
         ShopSnapshot safe = snapshot == null ? ShopSnapshot.empty() : snapshot;
         StringBuilder text = new StringBuilder();
-        appendSection(text, "Consertos em andamento", safe.openRepairs().stream()
+        if (safe.takenAt() != null) {
+            text.append("Retrato da oficina de ").append(TAKEN_AT.format(safe.takenAt())).append(" (UTC).\n");
+        }
+        appendSection(text, sectionTitle("Consertos em andamento", safe.openRepairs().size(), safe.openTotal()),
+                safe.openRepairs().stream()
                 .map(ShopBriefingWriter::repairLine)
                 .toList());
-        appendSection(text, "Consertos prontos para o cliente buscar", safe.readyForPickup().stream()
+        appendSection(text, sectionTitle("Consertos prontos para o cliente buscar",
+                        safe.readyForPickup().size(), safe.pickupTotal()),
+                safe.readyForPickup().stream()
                 .map(ShopBriefingWriter::repairLine)
                 .toList());
         appendSection(text, "Peças com pouco estoque", safe.lowStockParts().stream()
@@ -73,6 +81,13 @@ public final class ShopBriefingWriter {
             }
         }
         return text.toString().trim();
+    }
+
+    static String sectionTitle(String title, int shown, long total) {
+        if (total > shown) {
+            return title + " (mostrando " + shown + " de " + total + "; há mais, use list_orders para ver todos)";
+        }
+        return title + " (total " + total + ")";
     }
 
     private static String repairLine(RepairFact repair) {

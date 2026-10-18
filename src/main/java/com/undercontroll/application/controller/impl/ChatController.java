@@ -25,8 +25,11 @@ public class ChatController implements ChatApi {
 
     @Override
     public ResponseEntity<SendChatMessageResponse> sendMessage(SendChatMessageRequest message) {
-        AnaReply reply = sendChatMessagePort.execute(message.content());
+        SendChatMessagePort.Output output = sendChatMessagePort.execute(
+                new SendChatMessagePort.Input(message.content(), message.conversationId()));
+        AnaReply reply = output.reply();
         return ResponseEntity.ok(new SendChatMessageResponse(
+                output.conversationId(),
                 reply.content(),
                 reply.state().name().toLowerCase(Locale.ROOT),
                 reply.reason()

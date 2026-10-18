@@ -5,11 +5,13 @@ import com.undercontroll.domain.gateway.AnaChatGateway;
 import com.undercontroll.domain.gateway.ChatStreamSink;
 import com.undercontroll.domain.model.chat.AnaReply;
 import com.undercontroll.domain.model.chat.AnaTurnRequest;
+import com.undercontroll.domain.model.chat.ChatMessage;
 import com.undercontroll.domain.support.Durations;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import reactor.core.Disposable;
 import reactor.core.Disposables;
@@ -23,18 +25,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class SpringAiAnaChatAdapter implements AnaChatGateway {
 
     private final ChatClient anaChatClient;
-    private final ChatMemory anaChatMemory;
     private final AnaWebSearchTool anaWebSearchTool;
     private final AnaShopTools anaShopTools;
 
     public SpringAiAnaChatAdapter(
             ChatClient anaChatClient,
-            ChatMemory anaChatMemory,
             AnaWebSearchTool anaWebSearchTool,
             AnaShopTools anaShopTools
     ) {
         this.anaChatClient = anaChatClient;
-        this.anaChatMemory = anaChatMemory;
         this.anaWebSearchTool = anaWebSearchTool;
         this.anaShopTools = anaShopTools;
     }
@@ -87,27 +86,11 @@ public class SpringAiAnaChatAdapter implements AnaChatGateway {
         }
     }
 
-    @Override
-    public List<String> recentConversationTexts(String conversationId) {
-        if (conversationId == null || conversationId.isBlank() || anaChatMemory == null) {
-            return List.of();
-        }
-        try {
-            return anaChatMemory.get(conversationId).stream()
-                    .map(Message::getText)
-                    .filter(text -> text != null && !text.isBlank())
-                    .toList();
-        } catch (RuntimeException ex) {
-            log.warn("Ana chat memory read failed conversationId={} cause={}", conversationId, ex.toString());
-            return List.of();
-        }
-    }
-
     private Flux<ChatResponse> responses(AnaTurnRequest turn) {
         var spec = anaChatClient.prompt()
                 .advisors(advisor -> advisor
-                        .param(ChatMemory.CONVERSATION_ID, turn.conversationId())
                         .param(ShopBriefingAdvisor.PARAM, turn.briefing() == null ? "" : turn.briefing()))
+                .messages(history(turn.history()))
                 .user(turn.message());
         if (turn.webSearch()) {
             spec = spec.tools(anaShopTools, anaWebSearchTool);
@@ -115,6 +98,15 @@ public class SpringAiAnaChatAdapter implements AnaChatGateway {
             spec = spec.tools(anaShopTools);
         }
         return spec.stream().chatResponse();
+    }
+
+    static List<Message> history(List<ChatMessage> history) {
+        return history.stream()
+                .filter(message -> message.text() != null && !message.text().isBlank())
+                .map(message -> message.role() == ChatMessage.Role.USER
+                        ? (Message) new UserMessage(message.text())
+                        : new AssistantMessage(message.text()))
+                .toList();
     }
 
     private static String toolsLabel(AnaTurnRequest turn) {

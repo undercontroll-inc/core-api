@@ -10,6 +10,7 @@ import com.undercontroll.domain.model.ComponentPart;
 import com.undercontroll.domain.model.Demand;
 import com.undercontroll.domain.model.Order;
 import com.undercontroll.domain.model.OrderItem;
+import com.undercontroll.domain.model.PaginatedResult;
 import com.undercontroll.domain.model.User;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -182,6 +183,41 @@ class AnaShopToolsTest {
         assertEquals("HOLIDAY", ok.data().type());
         assertEquals(ToolResult.Status.NOT_FOUND, tools.getLastAnnouncement().status());
         assertEquals(ToolResult.Status.UNAVAILABLE, tools.getLastAnnouncement().status());
+    }
+
+    @Test
+    @DisplayName("list_orders pages by status and reports total and has_more")
+    void listOrders() {
+        List<OrderStatus> open = List.of(OrderStatus.PENDING, OrderStatus.IN_ANALYSIS);
+        when(orderGateway.findPageByStatusIn(open, 0, AnaShopTools.LIMIT)).thenReturn(new PaginatedResult<>(
+                List.of(Order.builder().id(5).status(OrderStatus.PENDING).build()), 16));
+        when(orderGateway.findPageByStatusIn(List.of(OrderStatus.COMPLETED), 1, AnaShopTools.LIMIT))
+                .thenReturn(new PaginatedResult<>(List.of(Order.builder().id(6).build()), 16));
+        when(orderGateway.findPageByStatusIn(List.of(OrderStatus.DELIVERED), 0, AnaShopTools.LIMIT))
+                .thenReturn(new PaginatedResult<>(List.of(), 0));
+
+        ToolResult<AnaShopTools.OrderPage> first = tools.listOrders(null, null);
+        ToolResult<AnaShopTools.OrderPage> second = tools.listOrders("Prontos", 2);
+
+        assertEquals(16, first.data().total());
+        assertTrue(first.data().hasMore());
+        assertEquals(5, first.data().orders().get(0).id());
+        assertEquals(2, second.data().page());
+        assertFalse(second.data().hasMore());
+        assertEquals(ToolResult.Status.NOT_FOUND, tools.listOrders("entregues", 0).status());
+        assertEquals(ToolResult.Status.INVALID_INPUT, tools.listOrders("cancelados", 1).status());
+    }
+
+    @Test
+    @DisplayName("list_orders maps status words and reports database failures as unavailable")
+    void listOrdersStatuses() {
+        when(orderGateway.findPageByStatusIn(List.of(OrderStatus.values()), 0, AnaShopTools.LIMIT))
+                .thenThrow(new IllegalStateException("db down"));
+
+        assertEquals(List.of(OrderStatus.PENDING, OrderStatus.IN_ANALYSIS), AnaShopTools.statuses("em andamento"));
+        assertEquals(List.of(OrderStatus.COMPLETED), AnaShopTools.statuses("pronto"));
+        assertEquals(List.of(OrderStatus.DELIVERED), AnaShopTools.statuses("entregue"));
+        assertEquals(ToolResult.Status.UNAVAILABLE, tools.listOrders("todos", 1).status());
     }
 
     @Test

@@ -30,6 +30,11 @@ public interface OrderJpaRepository extends JpaRepository<OrderJpaEntity, Intege
     @EntityGraph(attributePaths = {"user", "orderItems"})
     List<OrderJpaEntity> findByStatusIn(Collection<OrderStatus> statuses, Pageable pageable);
 
+    long countByStatusIn(Collection<OrderStatus> statuses);
+
+    @EntityGraph(attributePaths = {"user"})
+    Page<OrderJpaEntity> findPageByStatusIn(Collection<OrderStatus> statuses, Pageable pageable);
+
     @EntityGraph(attributePaths = {"user", "orderItems"})
     @Query("SELECT o FROM OrderJpaEntity o WHERE o.id = :id")
     Optional<OrderJpaEntity> findDetailById(@Param("id") Integer id);

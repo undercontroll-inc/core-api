@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -109,6 +110,23 @@ public class OrderGatewayImpl implements OrderGateway {
         return orderJpaRepository.findByStatus(OrderStatus.COMPLETED, pageable).stream()
                 .map(orderMapper::toDomainWithoutDemands)
                 .toList();
+    }
+
+    @Override
+    public long countByStatusIn(Collection<OrderStatus> statuses) {
+        return orderJpaRepository.countByStatusIn(statuses);
+    }
+
+    @Override
+    public PaginatedResult<Order> findPageByStatusIn(Collection<OrderStatus> statuses, int page, int size) {
+        Page<OrderJpaEntity> result = orderJpaRepository.findPageByStatusIn(
+                statuses,
+                PageRequest.of(Math.max(0, page), Math.max(1, size), Sort.by(Sort.Direction.DESC, "id"))
+        );
+        return new PaginatedResult<>(
+                result.getContent().stream().map(orderMapper::toDomainWithoutDemands).toList(),
+                result.getTotalElements()
+        );
     }
 
     @Override

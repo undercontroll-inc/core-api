@@ -15,7 +15,7 @@ class RedisConfigTest {
     void versionedKeys() {
         RedisCacheConfiguration configuration = new RedisConfig().cacheConfiguration();
 
-        assertThat(configuration.getKeyPrefixFor("orders")).isEqualTo("v2:orders::");
+        assertThat(configuration.getKeyPrefixFor("orders")).isEqualTo("v3:orders::");
         assertThat(configuration.getTtlFunction().getTimeToLive("k", "v")).isEqualTo(Duration.ofMinutes(10));
         assertThat(configuration.getAllowCacheNullValues()).isFalse();
     }

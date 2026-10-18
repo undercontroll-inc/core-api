@@ -50,6 +50,25 @@ class OrderGatewayImplTest {
     private OrderGatewayImpl orderGateway;
 
     @Test
+    @DisplayName("counts and pages orders by status without loading the whole table")
+    void statusQueries() {
+        List<OrderStatus> open = List.of(OrderStatus.PENDING, OrderStatus.IN_ANALYSIS);
+        OrderJpaEntity entity = OrderJpaEntity.builder().id(3).build();
+        Order order = Order.builder().id(3).build();
+        when(orderJpaRepository.countByStatusIn(open)).thenReturn(12L);
+        when(orderJpaRepository.findPageByStatusIn(org.mockito.ArgumentMatchers.eq(open), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(entity),
+                        org.springframework.data.domain.PageRequest.of(1, 15), 16));
+        when(orderMapper.toDomainWithoutDemands(entity)).thenReturn(order);
+
+        assertEquals(12L, orderGateway.countByStatusIn(open));
+        var page = orderGateway.findPageByStatusIn(open, 1, 15);
+
+        assertEquals(List.of(order), page.content());
+        assertEquals(16L, page.totalElements());
+    }
+
+    @Test
     @DisplayName("findDetailById loads items from the order graph and demands in a second query")
     void findDetailByIdSplitsBags() {
         OrderJpaEntity entity = OrderJpaEntity.builder().id(9).build();

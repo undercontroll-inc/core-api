@@ -1,5 +1,7 @@
 package com.undercontroll.infrastructure.ai;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.undercontroll.domain.enums.OrderStatus;
 import com.undercontroll.domain.gateway.AnnouncementGateway;
 import com.undercontroll.domain.gateway.ComponentGateway;
 import com.undercontroll.domain.gateway.OrderGateway;
@@ -8,7 +10,9 @@ import com.undercontroll.domain.model.ComponentPart;
 import com.undercontroll.domain.model.Demand;
 import com.undercontroll.domain.model.Order;
 import com.undercontroll.domain.model.OrderItem;
+import com.undercontroll.domain.model.PaginatedResult;
 import com.undercontroll.domain.model.User;
+import com.undercontroll.domain.support.Texts;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
@@ -16,6 +20,7 @@ import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Locale;
 
 @Slf4j
 @Component
@@ -47,6 +52,45 @@ public class AnaShopTools {
         } catch (RuntimeException ex) {
             return unavailable("get_order", ex);
         }
+    }
+
+    @Tool(name = "list_orders", description = """
+            Lista consertos/pedidos por situação, paginado (15 por página, mais recentes primeiro).
+            Use quando o dono quiser todos os consertos de uma situação ou quando o resumo disser que há mais.
+            Responde com total e has_more; se has_more for true, diga que há mais e ofereça a próxima página.
+            """)
+    public ToolResult<OrderPage> listOrders(
+            @ToolParam(required = false, description = "abertos, prontos, entregues ou todos (padrão: abertos)") String status,
+            @ToolParam(required = false, description = "Página, começando em 1") Integer page
+    ) {
+        List<OrderStatus> statuses = statuses(status);
+        if (statuses == null) {
+            return ToolResult.invalidInput("Situação inválida. Use abertos, prontos, entregues ou todos.");
+        }
+        int pageNumber = page == null || page < 1 ? 1 : page;
+        try {
+            PaginatedResult<Order> result = orderGateway.findPageByStatusIn(statuses, pageNumber - 1, LIMIT);
+            if (result.totalElements() == 0) {
+                return ToolResult.notFound("Nenhum conserto nessa situação.");
+            }
+            List<OrderLine> orders = result.content().stream().map(AnaShopTools::toOrderLine).toList();
+            boolean hasMore = (long) pageNumber * LIMIT < result.totalElements();
+            return ToolResult.ok(new OrderPage(orders, pageNumber, result.totalElements(), hasMore));
+        } catch (RuntimeException ex) {
+            return unavailable("list_orders", ex);
+        }
+    }
+
+    static List<OrderStatus> statuses(String status) {
+        String value = status == null || status.isBlank() ? "abertos" : Texts.stripAccents(status.trim().toLowerCase(Locale.ROOT));
+        return switch (value) {
+            case "abertos", "aberto", "em andamento", "andamento", "pending", "in_analysis" ->
+                    List.of(OrderStatus.PENDING, OrderStatus.IN_ANALYSIS);
+            case "prontos", "pronto", "completed" -> List.of(OrderStatus.COMPLETED);
+            case "entregues", "entregue", "delivered" -> List.of(OrderStatus.DELIVERED);
+            case "todos", "all" -> List.of(OrderStatus.values());
+            default -> null;
+        };
     }
 
     @Tool(name = "search_components", description = """
@@ -172,6 +216,14 @@ public class AnaShopTools {
             String customerDescription,
             String technicalDescription,
             int itemCount
+    ) {
+    }
+
+    public record OrderPage(
+            List<OrderLine> orders,
+            int page,
+            long total,
+            @JsonProperty("has_more") boolean hasMore
     ) {
     }
 

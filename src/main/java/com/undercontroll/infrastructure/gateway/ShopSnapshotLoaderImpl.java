@@ -1,5 +1,6 @@
 package com.undercontroll.infrastructure.gateway;
 
+import com.undercontroll.domain.enums.OrderStatus;
 import com.undercontroll.domain.gateway.AnnouncementGateway;
 import com.undercontroll.domain.gateway.ComponentGateway;
 import com.undercontroll.domain.gateway.DemandGateway;
@@ -12,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,7 +40,10 @@ public class ShopSnapshotLoaderImpl implements ShopSnapshotLoader {
                         ShopSnapshotFactory.STOCK_LIMIT
                 ),
                 demandGateway.findRecent(ShopSnapshotFactory.DEMAND_LIMIT),
-                announcementGateway.findLastAnnouncement().orElse(null)
+                announcementGateway.findLastAnnouncement().orElse(null),
+                orderGateway.countByStatusIn(List.of(OrderStatus.PENDING, OrderStatus.IN_ANALYSIS)),
+                orderGateway.countByStatusIn(List.of(OrderStatus.COMPLETED)),
+                LocalDateTime.now(ZoneOffset.UTC)
         );
     }
 }

@@ -51,6 +51,10 @@ variables:
   value: Quais consertos estao em andamento?
   id: vg00000010
 - enabled: true
+  name: conversation_id
+  value: default
+  id: vg00000099
+- enabled: true
   name: base_url
   value: http://localhost:8080
   id: vg00000011

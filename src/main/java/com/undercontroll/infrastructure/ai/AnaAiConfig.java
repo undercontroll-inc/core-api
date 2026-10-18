@@ -5,9 +5,6 @@ import com.undercontroll.infrastructure.ai.config.AiFeatureSettings;
 import com.undercontroll.infrastructure.ai.config.ChatModelFactory;
 import com.undercontroll.infrastructure.ai.config.ConditionalOnAiFeature;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.memory.ChatMemory;
-import org.springframework.ai.chat.memory.ChatMemoryRepository;
-import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -39,22 +36,6 @@ public class AnaAiConfig {
         return new ShopBriefingAdvisor();
     }
 
-    @Bean(name = "anaChatMemory")
-    ChatMemory anaChatMemory(
-            @Qualifier("anaChatMemoryRepository") ChatMemoryRepository chatMemoryRepository,
-            @Value("${undercontroll.ai.ana.memory-window:10}") int memoryWindow
-    ) {
-        return MessageWindowChatMemory.builder()
-                .chatMemoryRepository(chatMemoryRepository)
-                .maxMessages(memoryWindow)
-                .build();
-    }
-
-    @Bean
-    AnaChatMemoryAdvisor anaChatMemoryAdvisor(@Qualifier("anaChatMemory") ChatMemory anaChatMemory) {
-        return new AnaChatMemoryAdvisor(anaChatMemory);
-    }
-
     @Bean
     AnaWebSearchTool anaWebSearchTool(RestClient.Builder restClientBuilder) {
         return new AnaWebSearchTool(restClientBuilder);
@@ -65,22 +46,20 @@ public class AnaAiConfig {
             ChatModelFactory chatModelFactory,
             @Qualifier("anaAiSettings") AiFeatureSettings anaAiSettings,
             ShopBriefingAdvisor shopBriefingAdvisor,
-            AnaChatMemoryAdvisor anaChatMemoryAdvisor,
             @Value("classpath:prompts/ana-system-prompt.txt") Resource systemPrompt
     ) {
         return ChatClient.builder(chatModelFactory.create(anaAiSettings))
                 .defaultSystem(systemPrompt, StandardCharsets.UTF_8)
-                .defaultAdvisors(shopBriefingAdvisor, anaChatMemoryAdvisor)
+                .defaultAdvisors(shopBriefingAdvisor)
                 .build();
     }
 
     @Bean
     AnaChatGateway anaChatGateway(
             @Qualifier("anaChatClient") ChatClient anaChatClient,
-            @Qualifier("anaChatMemory") ChatMemory anaChatMemory,
             AnaWebSearchTool anaWebSearchTool,
             AnaShopTools anaShopTools
     ) {
-        return new SpringAiAnaChatAdapter(anaChatClient, anaChatMemory, anaWebSearchTool, anaShopTools);
+        return new SpringAiAnaChatAdapter(anaChatClient, anaWebSearchTool, anaShopTools);
     }
 }

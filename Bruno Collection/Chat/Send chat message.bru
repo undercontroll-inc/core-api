@@ -16,10 +16,14 @@ headers {
 
 body:json {
 {
-  "content": "{{chatContent}}"
+  "content": "{{chatContent}}",
+  "conversationId": "{{conversationId}}"
 }
 }
 
 docs {
-  Response {content, state: completed | partial, reason}. partial means the reply was cut (e.g. max_tokens) and is not stored in memory.
+  Body conversationId is optional ([A-Za-z0-9_-]{1,64}, default "default").
+  Response {conversationId, content, state: completed | partial, reason}.
+  409 CHAT_CONVERSATION_BUSY while another message of the same conversation is being answered.
+  partial means the reply was cut (e.g. max_tokens) and is not stored in memory.
 }

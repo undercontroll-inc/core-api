@@ -142,6 +142,7 @@ undercontroll:
       suggestion-ttl-hours: 12
       memory-ttl-hours: 24
       memory-window: 10
+      lock-ttl: 90s
     insights:
       provider: ${INSIGHTS_PROVIDER:none}
       model: ${INSIGHTS_MODEL:}

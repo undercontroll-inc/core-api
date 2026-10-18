@@ -1,5 +1,6 @@
 package com.undercontroll.domain.model.chat;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public record ShopSnapshot(
@@ -7,8 +8,30 @@ public record ShopSnapshot(
         List<RepairFact> readyForPickup,
         List<StockFact> lowStockParts,
         List<DemandFact> pendingParts,
-        String lastAnnouncementTitle
+        String lastAnnouncementTitle,
+        long openTotal,
+        long pickupTotal,
+        LocalDateTime takenAt
 ) {
+
+    public ShopSnapshot(
+            List<RepairFact> openRepairs,
+            List<RepairFact> readyForPickup,
+            List<StockFact> lowStockParts,
+            List<DemandFact> pendingParts,
+            String lastAnnouncementTitle
+    ) {
+        this(openRepairs, readyForPickup, lowStockParts, pendingParts, lastAnnouncementTitle,
+                openRepairs.size(), readyForPickup.size(), null);
+    }
+
+    public boolean moreOpen() {
+        return openTotal > openRepairs.size();
+    }
+
+    public boolean morePickup() {
+        return pickupTotal > readyForPickup.size();
+    }
 
     public record RepairFact(Integer orderId, String customer, String appliance, String statusLabel) {
 

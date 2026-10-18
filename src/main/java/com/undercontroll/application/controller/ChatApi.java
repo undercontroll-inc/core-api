@@ -28,7 +28,49 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 public interface ChatApi {
 
     @Operation(summary = "Send a question to Ana", description = "state is completed or partial (reason tells why, e.g. max_tokens)")
-    @PostApiResponses
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Reply with conversationId, content, state and reason"),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Bad request (blank content or invalid conversationId)",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Unauthorized",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "Forbidden",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "Another message of this conversation is still being answered (code CHAT_CONVERSATION_BUSY)",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "503",
+                    description = "Ana is unavailable",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)
+                    )
+            )
+    })
     @PostMapping("/messages")
     ResponseEntity<SendChatMessageResponse> sendMessage(@Valid @RequestBody SendChatMessageRequest message);
 
@@ -61,6 +103,14 @@ public interface ChatApi {
             @ApiResponse(
                     responseCode = "403",
                     description = "Forbidden",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "Another message of this conversation is still being answered (code CHAT_CONVERSATION_BUSY)",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ErrorResponse.class)
