@@ -2,6 +2,7 @@ package com.undercontroll.infrastructure.gateway;
 
 import com.undercontroll.domain.exception.MarketDataUnavailableException;
 import com.undercontroll.domain.gateway.MarketViewGateway;
+import com.undercontroll.domain.market.MarketEvidence;
 import com.undercontroll.domain.model.market.MarketBrandSummary;
 import com.undercontroll.domain.model.market.MarketCategorySummary;
 import com.undercontroll.domain.model.market.MarketPriceMovement;
@@ -10,7 +11,6 @@ import com.undercontroll.domain.model.market.MarketRisingProduct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
-import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.DataClassRowMapper;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -37,17 +37,9 @@ public class MarketViewGatewayImpl implements MarketViewGateway {
 
     @Override
     public Optional<String> findCurrentBucketKey() {
-        return Optional.ofNullable(single(
-                () -> jdbc.getJdbcTemplate().queryForObject(MarketViewSql.CURRENT_BUCKET, String.class)));
-    }
-
-    @Override
-    public Optional<String> findPreviousBucketKey(String currentBucketKey) {
-        if (currentBucketKey == null) {
-            return Optional.empty();
-        }
-        return Optional.ofNullable(single(
-                () -> jdbc.queryForObject(MarketViewSql.PREVIOUS_BUCKET, bucketParams(currentBucketKey), String.class)));
+        return list(() -> jdbc.getJdbcTemplate().queryForList(MarketViewSql.CURRENT_BUCKET, String.class))
+                .stream()
+                .findFirst();
     }
 
     @Override
@@ -77,12 +69,12 @@ public class MarketViewGatewayImpl implements MarketViewGateway {
 
     @Override
     public List<MarketPriceMovement> findPriceMovements(String bucketKey) {
-        return list(() -> jdbc.query(MarketViewSql.PRICE_MOVEMENTS, bucketParams(bucketKey), MOVEMENT));
+        return list(() -> jdbc.query(MarketViewSql.PRICE_MOVEMENTS, movementParams(bucketKey), MOVEMENT));
     }
 
     @Override
     public List<MarketPriceMovement> findStockOpportunities(String bucketKey) {
-        return list(() -> jdbc.query(MarketViewSql.STOCK_OPPORTUNITIES, bucketParams(bucketKey), MOVEMENT));
+        return list(() -> jdbc.query(MarketViewSql.STOCK_OPPORTUNITIES, movementParams(bucketKey), MOVEMENT));
     }
 
     @Override
@@ -102,7 +94,9 @@ public class MarketViewGatewayImpl implements MarketViewGateway {
 
     @Override
     public List<MarketProductCurrent> findPriceDispersion() {
-        return list(() -> jdbc.getJdbcTemplate().query(MarketViewSql.PRICE_DISPERSION, PRODUCT));
+        MapSqlParameterSource params = new MapSqlParameterSource(MarketViewSql.PARAM_MIN_PRICES,
+                MarketEvidence.MIN_VALID_PRICES);
+        return list(() -> jdbc.query(MarketViewSql.PRICE_DISPERSION, params, PRODUCT));
     }
 
     @Override
@@ -123,6 +117,10 @@ public class MarketViewGatewayImpl implements MarketViewGateway {
         return new MapSqlParameterSource(MarketViewSql.PARAM_BUCKET, bucketKey);
     }
 
+    private static MapSqlParameterSource movementParams(String bucketKey) {
+        return bucketParams(bucketKey).addValue(MarketViewSql.PARAM_MIN_PAIRED, MarketEvidence.MIN_PAIRED_PRODUCTS);
+    }
+
     private static MapSqlParameterSource bucketAndLimit(String bucketKey, int limit) {
         return bucketParams(bucketKey).addValue(MarketViewSql.PARAM_LIMIT, limit);
     }
@@ -130,8 +128,6 @@ public class MarketViewGatewayImpl implements MarketViewGateway {
     private static <T> T single(Supplier<T> query) {
         try {
             return query.get();
-        } catch (EmptyResultDataAccessException ex) {
-            return null;
         } catch (DataAccessException ex) {
             throw unavailable(ex);
         }

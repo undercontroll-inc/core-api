@@ -5,6 +5,7 @@ import com.undercontroll.domain.gateway.InsightsLlmGateway;
 import com.undercontroll.domain.gateway.MarketInsightGateway;
 import com.undercontroll.domain.gateway.MarketViewGateway;
 import com.undercontroll.domain.gateway.OrderGateway;
+import com.undercontroll.domain.market.MarketEvidence;
 import com.undercontroll.domain.market.RepairCatalogFactory;
 import com.undercontroll.domain.market.RepairCatalogMatcher;
 import com.undercontroll.domain.model.MarketMonthlyInsight;
@@ -69,7 +70,7 @@ public class GenerateMonthlyInsightsImpl implements GenerateMonthlyInsightsPort 
             return InsightGenerationResult.noLlm(bucketKey);
         }
 
-        String comparison = marketViewGateway.findPreviousBucketKey(bucketKey).orElse(null);
+        String comparison = MarketEvidence.comparisonBucket(marketViewGateway.findPriceMovements(bucketKey));
         List<MarketCategorySummary> categories = marketViewGateway.findCategorySummary(bucketKey);
         List<RepairCatalogItem> catalog = RepairCatalogFactory.fromRows(
                 orderGateway.getRepairCatalog(LocalDate.now(ZoneOffset.UTC).minusDays(insightGenerationSettings.repairCatalogDays())),

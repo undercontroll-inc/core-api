@@ -50,7 +50,7 @@ class RepairCatalogMatcherTest {
                 1, "MUITO_ALTO", 1, "CRESCIMENTO", 80.0, "PRIORIDADE_ALTA", "HIGH",
                 domainId, "MLB1", "Cat", "Brand", brandSlug, "M", productKey,
                 "110V", 1000, 20.0, "L", "A", 100.0, 90.0, 100.0, 110.0, 1.0, 10.0,
-                5, 3, 0.9, "DOMINIO_WHITELIST", "http://x"
+                null, 5, 5, false, 3, 0.9, "DOMINIO_WHITELIST", "http://x"
         );
     }
 }

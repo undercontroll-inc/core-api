@@ -11,7 +11,7 @@ public record MarketCategorySummary(
         Double avgPriceMedian,
         Double priceFloor,
         Double priceCeiling,
-        Double avgOfferCount,
+        Double avgValidPriceCount,
         Double avgPriceDeltaPct,
         Double avgDiscountPct,
         Long risingCount,

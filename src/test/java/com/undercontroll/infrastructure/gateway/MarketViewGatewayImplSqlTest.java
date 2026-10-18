@@ -18,7 +18,9 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MarketViewGatewayImplSqlTest {
 
@@ -30,7 +32,8 @@ class MarketViewGatewayImplSqlTest {
         database = new EmbeddedDatabaseBuilder()
                 .setType(EmbeddedDatabaseType.H2)
                 .setName("market-views;MODE=PostgreSQL")
-                .addScript("market/market-views.sql")
+                .addScript("schema.sql")
+                .addScript("market/market-data.sql")
                 .build();
         gateway = new MarketViewGatewayImpl(new NamedParameterJdbcTemplate(database));
     }
@@ -41,66 +44,95 @@ class MarketViewGatewayImplSqlTest {
     }
 
     @Test
-    @DisplayName("bucket and counters read the current product view")
+    @DisplayName("bucket comes from the published snapshot and counters only see the published run")
     void countersAndBucket() {
         assertEquals("2026-08", gateway.findCurrentBucketKey().orElseThrow());
-        assertEquals("2026-07", gateway.findPreviousBucketKey("2026-08").orElseThrow());
-        assertEquals(1L, gateway.countCurrentProducts());
-        assertEquals(1L, gateway.countDistinctBrands());
+        assertEquals(3L, gateway.countCurrentProducts());
+        assertEquals(2L, gateway.countDistinctBrands());
     }
 
     @Test
-    @DisplayName("brand rows map every column, including nulls and numeric conversions")
+    @DisplayName("brand rows aggregate the published run")
     void brands() {
         List<MarketBrandSummary> top = gateway.findTopBrands("2026-08", 1);
         List<MarketBrandSummary> momentum = gateway.findBrandMomentum("2026-08");
 
-        assertEquals(new MarketBrandSummary("electrolux", "2026-08", "Electrolux", 10L, 2L, 80.5, 1, 599.9,
-                400.0, 800.0, 2.5, 5.0, 3L), top.getFirst());
         assertEquals(1, top.size());
-        assertEquals("mondial", momentum.getFirst().brandSlug());
-        assertNull(momentum.getFirst().avgPriceDeltaPct());
+        MarketBrandSummary electrolux = top.getFirst();
+        assertEquals("electrolux", electrolux.brandSlug());
+        assertEquals(2L, electrolux.productCount());
+        assertEquals(1, electrolux.bestRank());
+        assertEquals(80.6, electrolux.avgScore());
+        assertEquals(1L, electrolux.risingCount());
+        assertEquals(List.of("electrolux", "mondial"), momentum.stream().map(MarketBrandSummary::brandSlug).toList());
     }
 
     @Test
-    @DisplayName("category rows alias the sample name and filter uncovered domains")
+    @DisplayName("category rows expose the average valid price count and filter uncovered domains")
     void categories() {
         MarketCategorySummary top = gateway.findTopCategories("2026-08", 5).getFirst();
 
-        assertEquals(new MarketCategorySummary("MLB-MICROWAVES", "2026-08", "Micro-ondas", 12L, 4L, 70.0, 90.0,
-                599.0, 400.0, 800.0, 6.0, 1.0, 4.0, 2L, 1L, 2L), top);
+        assertEquals("MLB-MICROWAVES", top.domainId());
+        assertEquals("Micro-ondas", top.categoryName());
+        assertEquals(2L, top.productCount());
+        assertEquals(5.0, top.avgValidPriceCount());
+        assertEquals(1L, top.risingCount());
+        assertEquals(1L, top.highConfidenceCount());
         assertEquals(2, gateway.findCategorySummary("2026-08").size());
-        assertEquals(List.of("MLB-AIR_FRYERS"), gateway.findUncoveredCategories("2026-08", Set.of("MLB-MICROWAVES"))
+        assertEquals(List.of("MLB-MICROWAVES"), gateway.findUncoveredCategories("2026-08", Set.of("MLB-AIR_FRYERS"))
                 .stream().map(MarketCategorySummary::domainId).toList());
-        assertEquals(2, gateway.findUncoveredCategories("2026-08", Set.of()).size());
+        assertTrue(gateway.findUncoveredCategories("2026-08", Set.of("MLB-MICROWAVES")).isEmpty());
+        assertEquals(1, gateway.findUncoveredCategories("2026-08", Set.of()).size());
     }
 
     @Test
-    @DisplayName("price movement queries keep their filters and ordering")
+    @DisplayName("price movements only keep consecutive cohorts with the minimum paired products")
     void movements() {
         List<MarketPriceMovement> movements = gateway.findPriceMovements("2026-08");
         List<MarketPriceMovement> opportunities = gateway.findStockOpportunities("2026-08");
 
-        assertEquals(new MarketPriceMovement("MLB-MICROWAVES", "2026-08", "2026-07", 4L, 10L, 3L, 599.0, 540.0, 10.9, 2.0),
-                movements.getFirst());
-        assertEquals(2, movements.size());
+        assertEquals(new MarketPriceMovement("MLB-MICROWAVES", "2026-08", "2026-07", true, 4, 6, 5,
+                599.0, 540.0, 10.9), movements.getFirst());
+        assertEquals(List.of("MLB-MICROWAVES", "MLB-AIR_FRYERS"),
+                movements.stream().map(MarketPriceMovement::domainId).toList());
         assertEquals(List.of("MLB-AIR_FRYERS"), opportunities.stream().map(MarketPriceMovement::domainId).toList());
+        assertTrue(gateway.findPriceMovements("2026-07").isEmpty());
     }
 
     @Test
-    @DisplayName("product and rising rows map all columns")
+    @DisplayName("product rows carry the offer sample and dispersion needs three valid prices")
     void products() {
-        MarketProductCurrent product = gateway.findAllCurrentProducts().getFirst();
-        MarketRisingProduct rising = gateway.findRisingProductsHighConfidence().getFirst();
+        List<MarketProductCurrent> products = gateway.findAllCurrentProducts();
+        MarketProductCurrent microwave = products.stream()
+                .filter(product -> product.externalId().equals("MLB1")).findFirst().orElseThrow();
 
-        assertEquals("micro-ondas 20l", product.canonicalTitle());
-        assertEquals(1200, product.powerWatts());
-        assertEquals(0.9876, product.relevance());
-        assertEquals(9, product.offerCount());
-        assertEquals("https://ml/1", product.permalink());
-        assertEquals(1, gateway.findPriceDispersion().size());
-        assertEquals(579.9, rising.priceMedian());
-        assertEquals("220V", rising.voltage());
-        assertEquals(2, rising.rankDelta());
+        assertEquals(3, products.size());
+        assertNull(microwave.availableOfferCount());
+        assertEquals(9, microwave.observedOfferCount());
+        assertEquals(8, microwave.validPriceCount());
+        assertFalse(microwave.sampleComplete());
+        assertEquals(4, microwave.observedSellerCount());
+        assertEquals(0.9876, microwave.relevance());
+        assertEquals("https://ml/1", microwave.permalink());
+        assertEquals(List.of("MLB1", "MLB3"), gateway.findPriceDispersion().stream()
+                .map(MarketProductCurrent::externalId).sorted().toList());
+    }
+
+    @Test
+    @DisplayName("rising products keep only high confidence growth from the published run")
+    void rising() {
+        List<MarketRisingProduct> rising = gateway.findRisingProductsHighConfidence();
+
+        assertEquals(1, rising.size());
+        MarketRisingProduct product = rising.getFirst();
+        assertEquals("MLB1", product.externalId());
+        assertEquals(579.9, product.priceMedian());
+        assertEquals(8, product.validPriceCount());
+        assertEquals(9, product.observedOfferCount());
+        assertNull(product.availableOfferCount());
+        assertFalse(product.sampleComplete());
+        assertEquals(4, product.observedSellerCount());
+        assertEquals("220V", product.voltage());
+        assertEquals(2, product.rankDelta());
     }
 }

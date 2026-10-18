@@ -32,8 +32,10 @@ REGRAS INVIOLÁVEIS DE INTERPRETAÇÃO
    histórico, diga isso com clareza e não estime.
 5. Só afirme que um produto subiu ou caiu no ranking com confiança alta e variação de
    posição presente. Com confiança baixa, trate como primeira observação.
-6. Não afirme movimento de preço de um produto com menos de 3 ofertas: a mediana oscila
-   por ruído. Para agregados por categoria, exija pelo menos 2 produtos.
+6. Não afirme movimento de preço de um produto com menos de 3 preços válidos
+   (valid_price_count): a mediana oscila por ruído. A variação de preço por categoria é
+   price_index_delta_pct, que compara só os mesmos produtos nos dois meses; não calcule
+   variação a partir de médias.
 7. Nunca invente marca, modelo, preço, categoria ou percentual. Se o dado não existir,
    diga "não disponível".
 8. Todo número no texto precisa existir no JSON de contexto. Ao citar

@@ -8,6 +8,7 @@ import com.undercontroll.domain.gateway.OrderGateway;
 import com.undercontroll.domain.model.MarketMonthlyInsight;
 import com.undercontroll.domain.model.insight.InsightPromptContext;
 import com.undercontroll.domain.model.insight.InsightsPayload;
+import com.undercontroll.domain.model.market.MarketPriceMovement;
 import com.undercontroll.domain.model.market.MatchCoverage;
 import com.undercontroll.domain.model.market.RepairCatalogRow;
 import com.undercontroll.domain.usecase.insights.InsightGenerationResult;
@@ -158,7 +159,6 @@ class GenerateMonthlyInsightsImplTest {
         when(marketViewGateway.findCurrentBucketKey()).thenReturn(Optional.of("2026-08"));
         when(marketInsightGateway.findByBucketKey("2026-08")).thenReturn(Optional.empty());
         when(insightsLlmGateway.getIfAvailable()).thenReturn(llmGateway);
-        when(marketViewGateway.findPreviousBucketKey("2026-08")).thenReturn(Optional.empty());
         when(marketViewGateway.findCategorySummary("2026-08")).thenReturn(List.of());
         when(orderGateway.getRepairCatalog(any())).thenReturn(List.of());
         when(marketViewGateway.findAllCurrentProducts()).thenReturn(List.of());
@@ -178,7 +178,6 @@ class GenerateMonthlyInsightsImplTest {
         when(marketViewGateway.findCurrentBucketKey()).thenReturn(Optional.of("2026-08"));
         when(marketInsightGateway.findByBucketKey("2026-08")).thenReturn(Optional.empty());
         when(insightsLlmGateway.getIfAvailable()).thenReturn(llmGateway);
-        when(marketViewGateway.findPreviousBucketKey("2026-08")).thenReturn(Optional.empty());
         when(marketViewGateway.findCategorySummary("2026-08")).thenReturn(List.of());
         when(orderGateway.getRepairCatalog(any())).thenReturn(List.of());
         when(marketViewGateway.findAllCurrentProducts()).thenReturn(List.of());
@@ -204,7 +203,8 @@ class GenerateMonthlyInsightsImplTest {
 
     private void stubSuccessfulLlm(String bucketKey) {
         when(insightsLlmGateway.getIfAvailable()).thenReturn(llmGateway);
-        when(marketViewGateway.findPreviousBucketKey(bucketKey)).thenReturn(Optional.of("2026-07"));
+        when(marketViewGateway.findPriceMovements(bucketKey)).thenReturn(List.of(
+                new MarketPriceMovement("MLB-MICROWAVES", bucketKey, "2026-07", true, 4, 6, 5, 599.0, 540.0, 10.9)));
         when(marketViewGateway.findCategorySummary(bucketKey)).thenReturn(List.of());
         when(orderGateway.getRepairCatalog(any())).thenReturn(
                 List.of(new RepairCatalogRow("Electrolux", "ME23S", "MICROONDAS", 12L))

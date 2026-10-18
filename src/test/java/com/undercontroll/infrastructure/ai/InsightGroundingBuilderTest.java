@@ -71,7 +71,7 @@ class InsightGroundingBuilderTest {
                         599.0, 400.0, 800.0, 6.0, 1.0, 4.0, 2L, 1L, 2L)
         ));
         when(marketViewGateway.findPriceMovements("2026-08")).thenReturn(List.of(
-                new MarketPriceMovement("MLB-MICROWAVES", "2026-08", "2026-07", 4L, 10L, 3L, 599.0, 540.0, 10.9, 2.0)
+                new MarketPriceMovement("MLB-MICROWAVES", "2026-08", "2026-07", true, 4, 6, 5, 599.0, 540.0, 10.9)
         ));
         when(marketViewGateway.findStockOpportunities("2026-08")).thenReturn(List.of());
         when(marketViewGateway.findRisingProductsHighConfidence()).thenReturn(List.of());
@@ -93,7 +93,7 @@ class InsightGroundingBuilderTest {
         assertEquals("Electrolux", grounding.marketSnapshot().topBrands().get(0).name());
         assertEquals("Micro-ondas", grounding.marketSnapshot().topCategories().get(0).name());
         assertEquals(1, grounding.priceMovements().size());
-        assertEquals(10.9, grounding.priceMovements().get(0).priceDeltaPct());
+        assertEquals(10.9, grounding.priceMovements().get(0).priceIndexDeltaPct());
         assertEquals("Air fryer", grounding.categorySummary().get(0).categoryName());
         verify(marketViewGateway, never()).findCategorySummary(any());
         assertTrue(evidence.contains(12));
@@ -139,7 +139,7 @@ class InsightGroundingBuilderTest {
                 prompt, new EvidenceIndex(new com.fasterxml.jackson.databind.ObjectMapper()));
         List<MarketPriceMovement> rows = new ArrayList<>();
         for (int i = 0; i < 20; i++) {
-            rows.add(new MarketPriceMovement("MLB-X", "2026-08", "2026-07", 2L, 3L, 1L, 10.0 + i, 9.0, 1.0, 0.0));
+            rows.add(new MarketPriceMovement("MLB-X", "2026-08", "2026-07", true, 3, 3, 3, 10.0 + i, 9.0, 1.0));
         }
         when(marketViewGateway.findPriceMovements("2026-08")).thenReturn(rows);
 
