@@ -11,21 +11,30 @@ import org.springframework.web.client.RestClientResponseException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Slf4j
 public class AnaWebSearchTool {
 
+    static final String NO_RESULT = "Nenhum resultado útil para essa busca.";
+
     private final RestClient restClient;
 
     public AnaWebSearchTool(RestClient.Builder restClientBuilder) {
+        this(restClientBuilder.clone()
+                .requestFactory(requestFactory())
+                .baseUrl("https://api.duckduckgo.com")
+                .build());
+    }
+
+    AnaWebSearchTool(RestClient restClient) {
+        this.restClient = restClient;
+    }
+
+    private static SimpleClientHttpRequestFactory requestFactory() {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(Duration.ofSeconds(2));
         factory.setReadTimeout(Duration.ofSeconds(3));
-        this.restClient = restClientBuilder.clone()
-                .requestFactory(factory)
-                .baseUrl("https://api.duckduckgo.com")
-                .build();
+        return factory;
     }
 
     @Tool(name = "search_web", description = """
@@ -33,11 +42,11 @@ public class AnaWebSearchTool {
             Não use para dados da oficina (pedidos, estoque, avisos) — isso está no resumo ou nas outras ferramentas.
             Só depois de olhar a oficina.
             """)
-    public String searchWeb(
+    public ToolResult<WebResult> searchWeb(
             @ToolParam(description = "Consulta em português sobre o aparelho (manual, recall ou dica)") String query
     ) {
         if (query == null || query.isBlank()) {
-            return "Busca vazia.";
+            return ToolResult.invalidInput("Informe o que buscar.");
         }
         long started = System.nanoTime();
         int queryChars = query.length();
@@ -58,69 +67,64 @@ public class AnaWebSearchTool {
                         queryChars,
                         Durations.millisSince(started)
                 );
-                return "Nenhum resultado.";
+                return ToolResult.notFound(NO_RESULT);
             }
-            return format(body);
+            WebResult result = parse(body);
+            return result == null ? ToolResult.notFound(NO_RESULT) : ToolResult.ok(result);
         } catch (RestClientResponseException ex) {
+            String traceId = ToolResult.newTraceId();
             log.warn(
-                    "Web search failed queryChars={} status={} durationMs={}",
+                    "Web search failed queryChars={} status={} traceId={} durationMs={}",
                     queryChars,
                     ex.getStatusCode().value(),
+                    traceId,
                     Durations.millisSince(started)
             );
-            return "Busca indisponível no momento.";
+            return ToolResult.unavailable(traceId, !ex.getStatusCode().is4xxClientError());
         } catch (RuntimeException ex) {
+            String traceId = ToolResult.newTraceId();
             log.warn(
-                    "Web search failed queryChars={} durationMs={} cause={}",
+                    "Web search failed queryChars={} traceId={} durationMs={} cause={}",
                     queryChars,
+                    traceId,
                     Durations.millisSince(started),
                     ex.getClass().getSimpleName()
             );
-            return "Busca indisponível no momento.";
+            return ToolResult.unavailable(traceId, true);
         }
     }
 
     @SuppressWarnings("unchecked")
-    private static String format(Map<String, Object> body) {
+    static WebResult parse(Map<String, Object> body) {
         String heading = stringValue(body.get("Heading"));
-        String abstractText = stringValue(body.get("AbstractText"));
-        if (abstractText.isBlank()) {
-            abstractText = stringValue(body.get("Abstract"));
+        String summary = stringValue(body.get("AbstractText"));
+        if (summary.isBlank()) {
+            summary = stringValue(body.get("Abstract"));
         }
-        String url = stringValue(body.get("AbstractURL"));
-        String related = "";
-        Object relatedTopics = body.get("RelatedTopics");
-        if (relatedTopics instanceof List<?> topics) {
+        List<String> related = List.of();
+        if (body.get("RelatedTopics") instanceof List<?> topics) {
             related = topics.stream()
                     .filter(Map.class::isInstance)
                     .map(item -> stringValue(((Map<String, Object>) item).get("Text")))
                     .filter(text -> !text.isBlank())
                     .limit(3)
-                    .collect(Collectors.joining(" | "));
+                    .toList();
         }
-        if (abstractText.isBlank() && related.isBlank()) {
-            return "Nenhum resultado útil para essa busca.";
+        if (summary.isBlank() && related.isEmpty()) {
+            return null;
         }
-        StringBuilder result = new StringBuilder();
-        if (!heading.isBlank()) {
-            result.append(heading).append(". ");
-        }
-        if (!abstractText.isBlank()) {
-            result.append(abstractText);
-        }
-        if (!related.isBlank()) {
-            if (!result.isEmpty()) {
-                result.append(" ");
-            }
-            result.append(related);
-        }
-        if (!url.isBlank()) {
-            result.append(" Fonte: ").append(url);
-        }
-        return result.toString().trim();
+        String source = stringValue(body.get("AbstractURL"));
+        return new WebResult(blankToNull(heading), blankToNull(summary), related, blankToNull(source));
+    }
+
+    private static String blankToNull(String value) {
+        return value.isBlank() ? null : value;
     }
 
     private static String stringValue(Object value) {
         return value == null ? "" : value.toString().trim();
+    }
+
+    public record WebResult(String heading, String summary, List<String> related, String source) {
     }
 }

@@ -33,16 +33,19 @@ public class AnaShopTools {
             Use só se o resumo da oficina não tiver esse pedido, ou se o dono pedir um pedido específico.
             Não use para listar consertos em andamento — isso já está no resumo.
             """)
-    public OrderDetail getOrder(
+    public ToolResult<OrderDetail> getOrder(
             @ToolParam(description = "Id numérico do conserto/pedido") Integer orderId
     ) {
+        if (orderId == null || orderId <= 0) {
+            return ToolResult.invalidInput("Informe o número do pedido.");
+        }
         try {
             return orderGateway.findDetailById(orderId)
                     .map(AnaShopTools::toOrderDetail)
-                    .orElse(null);
+                    .map(ToolResult::ok)
+                    .orElseGet(() -> ToolResult.notFound("Pedido " + orderId + " não encontrado."));
         } catch (RuntimeException ex) {
-            log.warn("Ana shop tool failed tool=get_order orderId={}", orderId, ex);
-            return null;
+            return unavailable("get_order", ex);
         }
     }
 
@@ -51,7 +54,7 @@ public class AnaShopTools {
             Use quando o dono perguntar de uma peça ou categoria que o resumo não cobre.
             O resumo já traz as peças com pouco estoque; não chame só para repetir isso.
             """)
-    public List<PartLine> searchComponents(
+    public ToolResult<List<PartLine>> searchComponents(
             @ToolParam(required = false, description = "Nome da peça; vazio se for buscar por categoria ou listar estoque baixo") String name,
             @ToolParam(required = false, description = "Categoria da peça; vazio se o nome já foi informado") String category
     ) {
@@ -64,10 +67,12 @@ public class AnaShopTools {
             } else {
                 parts = componentGateway.findLowestStock(LIMIT);
             }
-            return parts.stream().limit(LIMIT).map(AnaShopTools::toPartLine).toList();
+            if (parts.isEmpty()) {
+                return ToolResult.notFound("Nenhuma peça encontrada no estoque para essa busca.");
+            }
+            return ToolResult.ok(parts.stream().limit(LIMIT).map(AnaShopTools::toPartLine).toList());
         } catch (RuntimeException ex) {
-            log.warn("Ana shop tool failed tool=search_components", ex);
-            return List.of();
+            return unavailable("search_components", ex);
         }
     }
 
@@ -75,15 +80,21 @@ public class AnaShopTools {
             Conteúdo completo do último aviso do aplicativo (título, texto e tipo).
             O resumo só tem o título. Use se pedirem o que o aviso diz.
             """)
-    public AnnouncementLine getLastAnnouncement() {
+    public ToolResult<AnnouncementLine> getLastAnnouncement() {
         try {
             return announcementGateway.findLastAnnouncement()
                     .map(AnaShopTools::toAnnouncementLine)
-                    .orElse(null);
+                    .map(ToolResult::ok)
+                    .orElseGet(() -> ToolResult.notFound("Nenhum aviso publicado."));
         } catch (RuntimeException ex) {
-            log.warn("Ana shop tool failed tool=get_last_announcement", ex);
-            return null;
+            return unavailable("get_last_announcement", ex);
         }
+    }
+
+    private static <T> ToolResult<T> unavailable(String tool, RuntimeException ex) {
+        String traceId = ToolResult.newTraceId();
+        log.warn("Ana shop tool failed tool={} traceId={}", tool, traceId, ex);
+        return ToolResult.unavailable(traceId, true);
     }
 
     private static OrderLine toOrderLine(Order order) {
