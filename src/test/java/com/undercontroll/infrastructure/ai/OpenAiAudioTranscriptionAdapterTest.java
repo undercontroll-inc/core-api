@@ -1,5 +1,6 @@
 package com.undercontroll.infrastructure.ai;
 
+import com.undercontroll.infrastructure.metrics.TestMetrics;
 import com.undercontroll.domain.exception.TranscriptionUnavailableException;
 import com.undercontroll.domain.model.AudioClip;
 import org.junit.jupiter.api.DisplayName;
@@ -31,7 +32,7 @@ class OpenAiAudioTranscriptionAdapterTest {
         when(transcriptionModel.call(any(AudioTranscriptionPrompt.class)))
                 .thenReturn(new AudioTranscriptionResponse(new AudioTranscription("  Não gela ")));
 
-        String text = new OpenAiAudioTranscriptionAdapter(transcriptionModel, "whisper-1")
+        String text = new OpenAiAudioTranscriptionAdapter(transcriptionModel, "whisper-1", TestMetrics.feature("transcription"))
                 .transcribe(audio);
 
         assertEquals("Não gela", text);
@@ -42,7 +43,7 @@ class OpenAiAudioTranscriptionAdapterTest {
     void blankOutput() {
         when(transcriptionModel.call(any(AudioTranscriptionPrompt.class)))
                 .thenReturn(new AudioTranscriptionResponse(new AudioTranscription(" ")));
-        OpenAiAudioTranscriptionAdapter adapter = new OpenAiAudioTranscriptionAdapter(transcriptionModel, "whisper-1");
+        OpenAiAudioTranscriptionAdapter adapter = new OpenAiAudioTranscriptionAdapter(transcriptionModel, "whisper-1", TestMetrics.feature("transcription"));
         AudioClip audio = new AudioClip("bytes".getBytes(), "audio/webm", "note.webm");
 
         assertThrows(TranscriptionUnavailableException.class, () ->
@@ -54,7 +55,7 @@ class OpenAiAudioTranscriptionAdapterTest {
     void wrapsErrors() {
         when(transcriptionModel.call(any(AudioTranscriptionPrompt.class)))
                 .thenThrow(new IllegalStateException("whisper down"));
-        OpenAiAudioTranscriptionAdapter adapter = new OpenAiAudioTranscriptionAdapter(transcriptionModel, "whisper-1");
+        OpenAiAudioTranscriptionAdapter adapter = new OpenAiAudioTranscriptionAdapter(transcriptionModel, "whisper-1", TestMetrics.feature("transcription"));
         AudioClip audio = new AudioClip("bytes".getBytes(), "audio/webm", "note.webm");
 
         assertThrows(TranscriptionUnavailableException.class, () ->
@@ -67,7 +68,7 @@ class OpenAiAudioTranscriptionAdapterTest {
         var resource = OpenAiAudioTranscriptionAdapter.resource(new AudioClip("bytes".getBytes(), "audio/webm", "note.webm"));
 
         assertEquals("note.webm", resource.getFilename());
-        assertEquals(5, new OpenAiAudioTranscriptionAdapter(transcriptionModel, "whisper-1").supportedFormats().size());
+        assertEquals(5, new OpenAiAudioTranscriptionAdapter(transcriptionModel, "whisper-1", TestMetrics.feature("transcription")).supportedFormats().size());
         assertArrayEquals("bytes".getBytes(), resource.getContentAsByteArray());
     }
 }

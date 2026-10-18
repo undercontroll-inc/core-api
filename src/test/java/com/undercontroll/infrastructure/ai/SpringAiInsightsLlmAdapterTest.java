@@ -1,5 +1,9 @@
 package com.undercontroll.infrastructure.ai;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.undercontroll.infrastructure.metrics.AiMetrics;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import com.undercontroll.infrastructure.metrics.TestMetrics;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.undercontroll.domain.exception.InsightLlmException;
@@ -60,6 +64,7 @@ class SpringAiInsightsLlmAdapterTest {
             new InsightGenerationSettings("gemini", "gemini-2.5-flash", "7", 3, 90, "hash");
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final SimpleMeterRegistry registry = new SimpleMeterRegistry();
     private final ChatClient chatClient = mock(ChatClient.class, RETURNS_DEEP_STUBS);
     private final GoogleGenAiChatOptions geminiDefaults = GoogleGenAiChatOptions.builder().model("gemini-2.5-flash").build();
 
@@ -109,6 +114,8 @@ class SpringAiInsightsLlmAdapterTest {
         InsightDraft draft = adapter(geminiDefaults).draft(InsightDraftRequest.first(INPUT, CONTRACT));
 
         assertEquals(List.of(new InsightDraft.Item("ALERTA_PRECO:MLB-MICROWAVES", "t", "a")), draft.insights());
+        assertEquals(1, registry.find(AiMetrics.CALL).tags("feature", "insights", "outcome", "success", "finish_reason", "stop")
+                .timer().count());
     }
 
     @Test
@@ -121,12 +128,15 @@ class SpringAiInsightsLlmAdapterTest {
         assertEquals(LlmFailure.Kind.INVALID_OUTPUT, assertThrows(InsightLlmException.class,
                 () -> adapter.draft(request)).failure().kind());
         stubResponse(" ", "STOP");
-        assertEquals(LlmFailure.Kind.INVALID_OUTPUT, assertThrows(InsightLlmException.class,
-                () -> adapter.draft(request)).failure().kind());
+        InsightLlmException empty = assertThrows(InsightLlmException.class, () -> adapter.draft(request));
+        assertEquals(LlmFailure.Kind.INVALID_OUTPUT, empty.failure().kind());
+        assertTrue(empty.getCause() instanceof LlmOutputException);
         stubResponse("not json", "STOP");
         InsightLlmException malformed = assertThrows(InsightLlmException.class, () -> adapter.draft(request));
         assertEquals(LlmFailure.Kind.INVALID_OUTPUT, malformed.failure().kind());
-        assertTrue(malformed.getCause() instanceof LlmOutputException);
+        assertTrue(malformed.getCause() instanceof JsonProcessingException);
+        assertEquals(1, registry.find(AiMetrics.CALL).tags("outcome", "invalid_output", "finish_reason", "max_tokens")
+                .timer().count());
     }
 
     @Test
@@ -142,6 +152,7 @@ class SpringAiInsightsLlmAdapterTest {
                 () -> adapter(geminiDefaults).draft(InsightDraftRequest.first(INPUT, CONTRACT)));
 
         assertEquals(new LlmFailure(LlmFailure.Kind.RATE_LIMITED, 429, Duration.ofSeconds(12)), error.failure());
+        assertEquals(1, registry.find(AiMetrics.CALL).tag("outcome", "rate_limited").timer().count());
     }
 
     @Test
@@ -149,7 +160,7 @@ class SpringAiInsightsLlmAdapterTest {
     void noCandidates() {
         ChatClient untouched = mock(ChatClient.class);
         SpringAiInsightsLlmAdapter adapter = new SpringAiInsightsLlmAdapter(untouched, geminiDefaults, objectMapper,
-                SETTINGS, new ByteArrayResource(new byte[0]));
+                SETTINGS, new ByteArrayResource(new byte[0]), TestMetrics.feature("insights"));
         InsightGenerationInput empty = new InsightGenerationInput("2026-08", null, MatchCoverage.empty(), List.of(),
                 List.of(), List.of());
 
@@ -187,6 +198,6 @@ class SpringAiInsightsLlmAdapterTest {
 
     private SpringAiInsightsLlmAdapter adapter(ChatOptions defaults) {
         return new SpringAiInsightsLlmAdapter(chatClient, defaults, objectMapper, SETTINGS,
-                new ByteArrayResource("<mesAtual>".getBytes()));
+                new ByteArrayResource("<mesAtual>".getBytes()), TestMetrics.feature(registry, "insights"));
     }
 }

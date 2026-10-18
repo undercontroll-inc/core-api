@@ -2,6 +2,7 @@ package com.undercontroll.domain.usecase.insights.impl;
 
 import com.undercontroll.domain.enums.InsightJobStatus;
 import com.undercontroll.domain.gateway.InsightJobGateway;
+import com.undercontroll.domain.gateway.InsightMetricsGateway;
 import com.undercontroll.domain.gateway.InsightsLlmGateway;
 import com.undercontroll.domain.gateway.MarketSnapshotGateway;
 import com.undercontroll.domain.model.insight.InsightGenerationSettings;
@@ -28,6 +29,7 @@ public class EnqueueInsightJobImpl implements EnqueueInsightJobPort {
     private final ObjectProvider<InsightsLlmGateway> insightsLlmGateway;
     private final InsightGenerationSettings settings;
     private final Clock clock;
+    private final InsightMetricsGateway metrics;
 
     @Override
     public Result execute(boolean requeueFailed) {
@@ -39,6 +41,7 @@ public class EnqueueInsightJobImpl implements EnqueueInsightJobPort {
             return Result.awaitingData();
         }
         PublishedMarketSnapshot snapshot = published.get();
+        metrics.snapshotPublished(snapshot.publishedAt());
         Instant now = clock.instant();
         InsightJob job = insightJobGateway.enqueue(new NewInsightJob(
                 snapshot.snapshotId(),

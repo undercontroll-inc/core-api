@@ -13,6 +13,7 @@ import com.undercontroll.domain.gateway.AudioTranscriptionGateway;
 import com.undercontroll.domain.model.AudioClip;
 import com.undercontroll.domain.model.AudioFormat;
 import com.undercontroll.domain.support.Durations;
+import com.undercontroll.infrastructure.metrics.FeatureMetrics;
 import com.undercontroll.infrastructure.ai.config.AiFeatureSettings;
 import com.undercontroll.infrastructure.ai.config.ModelCapabilities;
 import com.undercontroll.infrastructure.ai.config.ThinkingPolicy;
@@ -34,16 +35,18 @@ public class GeminiAudioTranscriptionAdapter implements AudioTranscriptionGatewa
     private final String model;
     private final ThinkingPolicy thinking;
     private final ModelCapabilities capabilities;
+    private final FeatureMetrics metrics;
 
-    public GeminiAudioTranscriptionAdapter(Client client, AiFeatureSettings settings) {
-        this(client.models, settings);
+    public GeminiAudioTranscriptionAdapter(Client client, AiFeatureSettings settings, FeatureMetrics metrics) {
+        this(client.models, settings, metrics);
     }
 
-    GeminiAudioTranscriptionAdapter(Models models, AiFeatureSettings settings) {
+    GeminiAudioTranscriptionAdapter(Models models, AiFeatureSettings settings, FeatureMetrics metrics) {
         this.models = models;
         this.model = settings.model();
         this.thinking = settings.thinking();
         this.capabilities = settings.capabilities();
+        this.metrics = metrics;
     }
 
     @Override
@@ -73,6 +76,7 @@ public class GeminiAudioTranscriptionAdapter implements AudioTranscriptionGatewa
                         bytes.length,
                         Durations.millisSince(started)
                 );
+                metrics.record("empty", null, started);
                 throw new TranscriptionUnavailableException();
             }
             log.info(
@@ -83,6 +87,7 @@ public class GeminiAudioTranscriptionAdapter implements AudioTranscriptionGatewa
                     text.trim().length(),
                     Durations.millisSince(started)
             );
+            metrics.record("success", null, started);
             return text.trim();
         } catch (TranscriptionUnavailableException ex) {
             throw ex;
@@ -93,6 +98,7 @@ public class GeminiAudioTranscriptionAdapter implements AudioTranscriptionGatewa
                     Durations.millisSince(started),
                     ex.toString()
             );
+            metrics.record(LlmErrorClassifier.classify(ex).kind().name(), null, started);
             throw new TranscriptionUnavailableException(ex);
         }
     }

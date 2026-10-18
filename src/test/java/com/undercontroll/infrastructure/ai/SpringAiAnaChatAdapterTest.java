@@ -1,5 +1,12 @@
 package com.undercontroll.infrastructure.ai;
 
+import com.undercontroll.infrastructure.metrics.AiMetrics;
+import com.undercontroll.infrastructure.metrics.TestMetrics;
+import io.micrometer.core.instrument.Tag;
+import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.util.Set;
+import java.util.stream.Collectors;
 import com.undercontroll.domain.exception.AnaUnavailableException;
 import com.undercontroll.domain.gateway.ChatStreamSink;
 import com.undercontroll.domain.model.chat.AnaReply;
@@ -40,6 +47,8 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class SpringAiAnaChatAdapterTest {
+
+    private final SimpleMeterRegistry registry = new SimpleMeterRegistry();
 
     private static final AnaTurnRequest TURN = new AnaTurnRequest("7", "Oi", "briefing", List.of(), false, Deadline.after(Duration.ofSeconds(60)));
 
@@ -156,6 +165,11 @@ class SpringAiAnaChatAdapterTest {
         assertEquals("Tem 2.", completed.content());
         assertEquals(AnaReply.State.PARTIAL, partial.state());
         assertEquals("max_tokens", partial.reason());
+        Timer done = registry.find(AiMetrics.CALL).tags("outcome", "completed", "finish_reason", "stop").timer();
+        assertEquals(1, done.count());
+        assertEquals(Set.of("feature", "provider", "model", "outcome", "finish_reason"),
+                done.getId().getTags().stream().map(Tag::getKey).collect(Collectors.toSet()));
+        assertEquals(1, registry.find(AiMetrics.CALL).tags("outcome", "partial", "finish_reason", "length").timer().count());
     }
 
     @Test
@@ -166,6 +180,8 @@ class SpringAiAnaChatAdapterTest {
 
         assertThrows(AnaUnavailableException.class, () -> blank.reply(TURN));
         assertThrows(AnaUnavailableException.class, () -> failing.reply(TURN));
+        assertEquals(1, registry.find(AiMetrics.CALL).tag("outcome", "empty").timer().count());
+        assertEquals(1, registry.find(AiMetrics.CALL).tag("outcome", "unknown").timer().count());
     }
 
     @Test
@@ -297,7 +313,8 @@ class SpringAiAnaChatAdapterTest {
                 webSearchTool,
                 shopTools,
                 Duration.ofSeconds(30),
-                Duration.ofSeconds(20)
+                Duration.ofSeconds(20),
+                TestMetrics.feature(registry, "ana")
         );
     }
 

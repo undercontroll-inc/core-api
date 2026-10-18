@@ -5,6 +5,8 @@ import com.undercontroll.infrastructure.ai.config.AiFeatureSettings;
 import com.undercontroll.infrastructure.ai.config.AiProvider;
 import com.undercontroll.infrastructure.ai.config.ChatModelFactory;
 import com.undercontroll.infrastructure.ai.config.ConditionalOnAiFeature;
+import com.undercontroll.infrastructure.metrics.AiMetrics;
+import com.undercontroll.infrastructure.metrics.FeatureMetrics;
 import org.springframework.ai.openai.OpenAiAudioTranscriptionModel;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,16 +32,18 @@ public class TranscriptionAiConfig {
     @Bean
     AudioTranscriptionGateway audioTranscriptionGateway(
             ChatModelFactory chatModelFactory,
+            AiMetrics aiMetrics,
             @Qualifier("transcriptionAiSettings") AiFeatureSettings settings
     ) {
+        FeatureMetrics metrics = aiMetrics.feature(settings);
         if (settings.provider() == AiProvider.OPENAI) {
             OpenAiAudioTranscriptionModel model = new OpenAiAudioTranscriptionModel(
                     chatModelFactory.openAiAudioApi(settings),
                     OpenAiAudioTranscriptionAdapter.options(settings.model()),
                     ChatModelFactory.noRetry()
             );
-            return new OpenAiAudioTranscriptionAdapter(model, settings.model());
+            return new OpenAiAudioTranscriptionAdapter(model, settings.model(), metrics);
         }
-        return new GeminiAudioTranscriptionAdapter(chatModelFactory.geminiClient(settings), settings);
+        return new GeminiAudioTranscriptionAdapter(chatModelFactory.geminiClient(settings), settings, metrics);
     }
 }

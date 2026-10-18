@@ -5,10 +5,10 @@ import com.undercontroll.domain.gateway.AnaChatGateway;
 import com.undercontroll.infrastructure.ai.config.AiFeatureSettings;
 import com.undercontroll.infrastructure.ai.config.ChatModelFactory;
 import com.undercontroll.infrastructure.ai.config.ConditionalOnAiFeature;
-import io.micrometer.observation.ObservationRegistry;
+import com.undercontroll.infrastructure.metrics.AiMetrics;
+import com.undercontroll.infrastructure.metrics.FeatureMetrics;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.model.tool.ToolCallingManager;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -46,16 +46,22 @@ public class AnaAiConfig {
     }
 
     @Bean
+    FeatureMetrics anaMetrics(AiMetrics aiMetrics, @Qualifier("anaAiSettings") AiFeatureSettings anaAiSettings) {
+        return aiMetrics.feature(anaAiSettings);
+    }
+
+    @Bean
     BudgetedToolCallingManager anaToolCallingManager(
             ObjectMapper objectMapper,
-            ObjectProvider<ObservationRegistry> observationRegistry,
+            ChatModelFactory chatModelFactory,
+            @Qualifier("anaMetrics") FeatureMetrics anaMetrics,
             @Value("${undercontroll.ai.ana.max-tool-rounds:2}") int maxToolRounds,
             @Value("${undercontroll.ai.ana.max-web-searches:1}") int maxWebSearches
     ) {
         ToolCallingManager delegate = ToolCallingManager.builder()
-                .observationRegistry(observationRegistry.getIfAvailable(() -> ObservationRegistry.NOOP))
+                .observationRegistry(chatModelFactory.observationRegistry())
                 .build();
-        return new BudgetedToolCallingManager(delegate, objectMapper, maxToolRounds, maxWebSearches);
+        return new BudgetedToolCallingManager(delegate, objectMapper, maxToolRounds, maxWebSearches, anaMetrics);
     }
 
     @Bean(name = "anaChatClient")
@@ -66,7 +72,8 @@ public class AnaAiConfig {
             ShopBriefingAdvisor shopBriefingAdvisor,
             @Value("classpath:prompts/ana-system-prompt.txt") Resource systemPrompt
     ) {
-        return ChatClient.builder(chatModelFactory.create(anaAiSettings, anaToolCallingManager))
+        return ChatClient.builder(chatModelFactory.create(anaAiSettings, anaToolCallingManager),
+                        chatModelFactory.observationRegistry(), null, null)
                 .defaultSystem(systemPrompt, StandardCharsets.UTF_8)
                 .defaultAdvisors(shopBriefingAdvisor)
                 .build();
@@ -77,9 +84,11 @@ public class AnaAiConfig {
             @Qualifier("anaChatClient") ChatClient anaChatClient,
             AnaWebSearchTool anaWebSearchTool,
             AnaShopTools anaShopTools,
+            @Qualifier("anaMetrics") FeatureMetrics anaMetrics,
             @Value("${undercontroll.ai.ana.first-token-timeout:30s}") Duration firstTokenTimeout,
             @Value("${undercontroll.ai.ana.idle-timeout:20s}") Duration idleTimeout
     ) {
-        return new SpringAiAnaChatAdapter(anaChatClient, anaWebSearchTool, anaShopTools, firstTokenTimeout, idleTimeout);
+        return new SpringAiAnaChatAdapter(anaChatClient, anaWebSearchTool, anaShopTools, firstTokenTimeout, idleTimeout,
+                anaMetrics);
     }
 }

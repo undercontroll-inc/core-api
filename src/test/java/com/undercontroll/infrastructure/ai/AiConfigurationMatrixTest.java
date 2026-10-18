@@ -1,5 +1,8 @@
 package com.undercontroll.infrastructure.ai;
 
+import com.undercontroll.infrastructure.metrics.AiMetrics;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.time.Clock;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.undercontroll.domain.gateway.AnaChatGateway;
 import com.undercontroll.domain.gateway.AudioTranscriptionGateway;
@@ -31,6 +34,7 @@ class AiConfigurationMatrixTest {
             .withBean(RestClient.Builder.class, RestClient::builder)
             .withBean(AnaShopTools.class, () -> mock(AnaShopTools.class))
             .withBean(ObjectMapper.class, ObjectMapper::new)
+            .withBean(AiMetrics.class, () -> new AiMetrics(new SimpleMeterRegistry(), Clock.systemUTC()))
             .withBean(InsightsPayloadJsonMapper.class, () -> mock(InsightsPayloadJsonMapper.class))
             .withPropertyValues(
                     "undercontroll.ai.gemini.api-key=test-gemini",
@@ -125,6 +129,7 @@ class AiConfigurationMatrixTest {
                 .withInitializer(AiConfigurationMatrixTest::bootConversions)
                 .withUserConfiguration(TranscriptionAiConfig.class)
                 .withBean(ChatModelFactory.class)
+                .withBean(AiMetrics.class, () -> new AiMetrics(new SimpleMeterRegistry(), Clock.systemUTC()))
                 .withPropertyValues("undercontroll.ai.transcription.provider=openai")
                 .run(context -> {
                     assertThat(context).hasFailed();

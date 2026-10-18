@@ -5,6 +5,7 @@ import com.undercontroll.domain.gateway.AudioTranscriptionGateway;
 import com.undercontroll.domain.model.AudioClip;
 import com.undercontroll.domain.model.AudioFormat;
 import com.undercontroll.domain.support.Durations;
+import com.undercontroll.infrastructure.metrics.FeatureMetrics;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.audio.transcription.AudioTranscriptionPrompt;
 import org.springframework.ai.audio.transcription.TranscriptionModel;
@@ -23,10 +24,12 @@ public class OpenAiAudioTranscriptionAdapter implements AudioTranscriptionGatewa
 
     private final TranscriptionModel transcriptionModel;
     private final String model;
+    private final FeatureMetrics metrics;
 
-    public OpenAiAudioTranscriptionAdapter(TranscriptionModel transcriptionModel, String model) {
+    public OpenAiAudioTranscriptionAdapter(TranscriptionModel transcriptionModel, String model, FeatureMetrics metrics) {
         this.transcriptionModel = transcriptionModel;
         this.model = model;
+        this.metrics = metrics;
     }
 
     public static OpenAiAudioTranscriptionOptions options(String model) {
@@ -51,6 +54,7 @@ public class OpenAiAudioTranscriptionAdapter implements AudioTranscriptionGatewa
                         model,
                         Durations.millisSince(started)
                 );
+                metrics.record("empty", null, started);
                 throw new TranscriptionUnavailableException();
             }
             log.info(
@@ -59,6 +63,7 @@ public class OpenAiAudioTranscriptionAdapter implements AudioTranscriptionGatewa
                     text.trim().length(),
                     Durations.millisSince(started)
             );
+            metrics.record("success", null, started);
             return text.trim();
         } catch (TranscriptionUnavailableException ex) {
             throw ex;
@@ -69,6 +74,7 @@ public class OpenAiAudioTranscriptionAdapter implements AudioTranscriptionGatewa
                     Durations.millisSince(started),
                     ex.toString()
             );
+            metrics.record(LlmErrorClassifier.classify(ex).kind().name(), null, started);
             throw new TranscriptionUnavailableException(ex);
         }
     }

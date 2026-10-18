@@ -6,6 +6,7 @@ import com.undercontroll.domain.exception.InsightLlmException;
 import com.undercontroll.domain.exception.MarketDataUnavailableException;
 import com.undercontroll.domain.gateway.InsightDraftCodec;
 import com.undercontroll.domain.gateway.InsightJobGateway;
+import com.undercontroll.domain.gateway.InsightMetricsGateway;
 import com.undercontroll.domain.gateway.InsightsLlmGateway;
 import com.undercontroll.domain.gateway.MarketSnapshotGateway;
 import com.undercontroll.domain.gateway.MarketViewGateway;
@@ -60,6 +61,7 @@ public class RunInsightJobImpl implements RunInsightJobPort {
     private final Clock clock;
     private final Sleeper sleeper;
     private final RandomGenerator random;
+    private final InsightMetricsGateway metrics;
 
     public RunInsightJobImpl(
             MarketSnapshotGateway marketSnapshotGateway,
@@ -74,7 +76,8 @@ public class RunInsightJobImpl implements RunInsightJobPort {
             InsightRetryPolicy retryPolicy,
             Clock clock,
             Sleeper sleeper,
-            RandomGenerator random
+            RandomGenerator random,
+            InsightMetricsGateway metrics
     ) {
         this.marketSnapshotGateway = marketSnapshotGateway;
         this.marketViewGateway = marketViewGateway;
@@ -89,6 +92,7 @@ public class RunInsightJobImpl implements RunInsightJobPort {
         this.clock = clock;
         this.sleeper = sleeper;
         this.random = random;
+        this.metrics = metrics;
     }
 
     @Override
@@ -98,6 +102,7 @@ public class RunInsightJobImpl implements RunInsightJobPort {
         Deadline deadline = Deadline.after(jobSettings.deadline());
         Run run = new Run(job, owner);
         Outcome outcome = run.execute(deadline);
+        metrics.recordJob(outcome.name(), Duration.ofNanos(System.nanoTime() - started));
         log.info("Insight job finished jobId={} snapshotId={} attempt={} outcome={} durationMs={}",
                 job.id(), job.snapshotId(), job.attemptCount(), outcome, Durations.millisSince(started));
         return outcome;
@@ -176,6 +181,7 @@ public class RunInsightJobImpl implements RunInsightJobPort {
                 draft = call(llm, InsightDraftRequest.first(input, contract), deadline);
                 save(InsightAttemptStatus.DRAFTED, draft, null);
                 errors = InsightDraftValidator.validate(draft, input.candidates(), contract);
+                metrics.recordDraftValidation(false, errors.isEmpty());
             } catch (InsightLlmException ex) {
                 if (ex.failure().kind() != LlmFailure.Kind.INVALID_OUTPUT) {
                     throw ex;
@@ -200,6 +206,7 @@ public class RunInsightJobImpl implements RunInsightJobPort {
                 throw ex;
             }
             List<String> remaining = InsightDraftValidator.validate(repaired, input.candidates(), contract);
+            metrics.recordDraftValidation(true, remaining.isEmpty());
             if (!remaining.isEmpty()) {
                 save(InsightAttemptStatus.INVALID, repaired, remaining);
                 failInvalid(remaining);
@@ -261,6 +268,7 @@ public class RunInsightJobImpl implements RunInsightJobPort {
             );
             try {
                 insightJobGateway.publish(publication, owner, now());
+                metrics.insightsPublished(publication.publishedAt());
                 return Outcome.PUBLISHED;
             } catch (InsightLeaseLostException ex) {
                 log.warn("Insight job lease lost before publishing jobId={}", job.id());

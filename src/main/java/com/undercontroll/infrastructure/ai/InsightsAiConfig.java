@@ -9,6 +9,7 @@ import com.undercontroll.domain.support.Sleeper;
 import com.undercontroll.infrastructure.ai.config.AiFeatureSettings;
 import com.undercontroll.infrastructure.ai.config.ChatModelFactory;
 import com.undercontroll.infrastructure.ai.config.ConditionalOnAiFeature;
+import com.undercontroll.infrastructure.metrics.AiMetrics;
 import com.undercontroll.domain.insight.InsightContract;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
@@ -111,6 +112,7 @@ public class InsightsAiConfig {
     @ConditionalOnAiFeature("insights")
     InsightsLlmGateway insightsLlmGateway(
             ChatModelFactory chatModelFactory,
+            AiMetrics aiMetrics,
             @Qualifier("insightsAiSettings") AiFeatureSettings insightsAiSettings,
             ObjectMapper objectMapper,
             InsightGenerationSettings settings,
@@ -118,7 +120,7 @@ public class InsightsAiConfig {
             @Value("classpath:prompts/insights-user-prompt.txt") Resource userPrompt
     ) {
         ChatModel chatModel = chatModelFactory.create(insightsAiSettings);
-        ChatClient chatClient = ChatClient.builder(chatModel)
+        ChatClient chatClient = ChatClient.builder(chatModel, chatModelFactory.observationRegistry(), null, null)
                 .defaultSystem(systemPrompt, StandardCharsets.UTF_8)
                 .defaultTemplateRenderer(StTemplateRenderer.builder()
                         .startDelimiterToken('<')
@@ -126,6 +128,6 @@ public class InsightsAiConfig {
                         .build())
                 .build();
         return new SpringAiInsightsLlmAdapter(chatClient, chatModel.getDefaultOptions(), objectMapper, settings,
-                userPrompt);
+                userPrompt, aiMetrics.feature(insightsAiSettings));
     }
 }

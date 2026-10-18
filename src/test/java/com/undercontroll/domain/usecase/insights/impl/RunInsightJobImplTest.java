@@ -5,6 +5,7 @@ import com.undercontroll.domain.enums.InsightAttemptStatus;
 import com.undercontroll.domain.enums.InsightJobStatus;
 import com.undercontroll.domain.exception.InsightLlmException;
 import com.undercontroll.domain.exception.MarketDataUnavailableException;
+import com.undercontroll.domain.gateway.InsightMetricsGateway;
 import com.undercontroll.domain.gateway.InsightsLlmGateway;
 import com.undercontroll.domain.gateway.MarketSnapshotGateway;
 import com.undercontroll.domain.gateway.MarketViewGateway;
@@ -43,6 +44,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -69,6 +71,7 @@ class RunInsightJobImplTest {
     @SuppressWarnings("unchecked")
     private final ObjectProvider<InsightsLlmGateway> llmProvider = mock(ObjectProvider.class);
     private final InMemoryInsightJobGateway jobs = new InMemoryInsightJobGateway();
+    private final InsightMetricsGateway metrics = mock(InsightMetricsGateway.class);
     private final List<Duration> sleeps = new ArrayList<>();
     private RunInsightJobImpl useCase;
 
@@ -97,6 +100,9 @@ class RunInsightJobImplTest {
         InsightAttempt attempt = jobs.attemptsOf(1L).getFirst();
         assertEquals(InsightAttemptStatus.VALID, attempt.status());
         assertEquals(1, attempt.llmCalls());
+        verify(metrics).recordJob(eq("PUBLISHED"), any(Duration.class));
+        verify(metrics).recordDraftValidation(false, true);
+        verify(metrics).insightsPublished(NOW);
     }
 
     @Test
@@ -149,6 +155,8 @@ class RunInsightJobImplTest {
         assertEquals(INVALID, repair.previousDraft());
         assertTrue(repair.errors().getFirst().contains("writes digits directly"));
         assertEquals(2, jobs.attemptsOf(1L).getFirst().llmCalls());
+        verify(metrics).recordDraftValidation(false, false);
+        verify(metrics).recordDraftValidation(true, true);
     }
 
     @Test
@@ -321,7 +329,7 @@ class RunInsightJobImplTest {
         return new RunInsightJobImpl(snapshotGateway, marketViewGateway, loader, jobs,
                 new JacksonInsightDraftCodec(new ObjectMapper()), llmProvider,
                 new InsightGenerationSettings("gemini", "m", "7", 3, 90, "hash"), jobSettings, new InsightContract(3),
-                InsightRetryPolicy.DEFAULT, Clock.fixed(NOW, ZoneOffset.UTC), sleeps::add, () -> Long.MIN_VALUE);
+                InsightRetryPolicy.DEFAULT, Clock.fixed(NOW, ZoneOffset.UTC), sleeps::add, () -> Long.MIN_VALUE, metrics);
     }
 
     private static InsightLlmException failure(LlmFailure.Kind kind, Integer status, Duration retryAfter) {

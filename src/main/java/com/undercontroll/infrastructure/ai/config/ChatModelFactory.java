@@ -57,6 +57,10 @@ public class ChatModelFactory {
         this.openAiBaseUrl = openAiBaseUrl;
     }
 
+    public ObservationRegistry observationRegistry() {
+        return observationRegistry;
+    }
+
     public ChatModel create(AiFeatureSettings settings) {
         return create(settings, ToolCallingManager.builder().observationRegistry(observationRegistry).build());
     }

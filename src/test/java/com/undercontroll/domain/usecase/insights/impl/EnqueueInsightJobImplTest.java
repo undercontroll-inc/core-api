@@ -1,6 +1,7 @@
 package com.undercontroll.domain.usecase.insights.impl;
 
 import com.undercontroll.domain.enums.InsightJobStatus;
+import com.undercontroll.domain.gateway.InsightMetricsGateway;
 import com.undercontroll.domain.gateway.InsightsLlmGateway;
 import com.undercontroll.domain.gateway.MarketSnapshotGateway;
 import com.undercontroll.domain.model.insight.InsightGenerationSettings;
@@ -20,6 +21,8 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class EnqueueInsightJobImplTest {
@@ -30,9 +33,10 @@ class EnqueueInsightJobImplTest {
     @SuppressWarnings("unchecked")
     private final ObjectProvider<InsightsLlmGateway> llm = mock(ObjectProvider.class);
     private final InMemoryInsightJobGateway jobs = new InMemoryInsightJobGateway();
+    private final InsightMetricsGateway metrics = mock(InsightMetricsGateway.class);
     private final EnqueueInsightJobImpl useCase = new EnqueueInsightJobImpl(snapshots, jobs, llm,
             new InsightGenerationSettings("gemini", "gemini-2.5-flash", "7", 5, 90, "hash"),
-            Clock.fixed(NOW, ZoneOffset.UTC));
+            Clock.fixed(NOW, ZoneOffset.UTC), metrics);
 
     @BeforeEach
     void setUp() {
@@ -56,6 +60,7 @@ class EnqueueInsightJobImplTest {
         assertEquals("gemini-2.5-flash", job.model());
         assertEquals(job.id(), again.job().id());
         assertEquals(1, jobs.jobs.size());
+        verify(metrics, times(2)).snapshotPublished(NOW);
     }
 
     @Test

@@ -8,6 +8,7 @@ import com.undercontroll.domain.model.chat.AnaTurnRequest;
 import com.undercontroll.domain.model.chat.ChatMessage;
 import com.undercontroll.domain.support.Deadline;
 import com.undercontroll.domain.support.Durations;
+import com.undercontroll.infrastructure.metrics.FeatureMetrics;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -28,24 +29,31 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Slf4j
 public class SpringAiAnaChatAdapter implements AnaChatGateway {
 
+    static final String PARTIAL = "partial";
+    static final String EMPTY = "empty";
+    static final String CANCELLED = "cancelled";
+
     private final ChatClient anaChatClient;
     private final AnaWebSearchTool anaWebSearchTool;
     private final AnaShopTools anaShopTools;
     private final Duration firstTokenTimeout;
     private final Duration idleTimeout;
+    private final FeatureMetrics metrics;
 
     public SpringAiAnaChatAdapter(
             ChatClient anaChatClient,
             AnaWebSearchTool anaWebSearchTool,
             AnaShopTools anaShopTools,
             Duration firstTokenTimeout,
-            Duration idleTimeout
+            Duration idleTimeout,
+            FeatureMetrics metrics
     ) {
         this.anaChatClient = anaChatClient;
         this.anaWebSearchTool = anaWebSearchTool;
         this.anaShopTools = anaShopTools;
         this.firstTokenTimeout = firstTokenTimeout;
         this.idleTimeout = idleTimeout;
+        this.metrics = metrics;
     }
 
     @Override
@@ -59,18 +67,22 @@ public class SpringAiAnaChatAdapter implements AnaChatGateway {
             if (text.isBlank()) {
                 log.warn("Ana chat failed conversationId={} durationMs={} cause={}",
                         turn.conversationId(), Durations.millisSince(started), ex.toString());
+                metrics.record(LlmErrorClassifier.classify(ex).kind().name(), null, started);
                 throw new AnaUnavailableException(ex);
             }
             log.warn("Ana chat interrupted conversationId={} durationMs={} cause={}",
                     turn.conversationId(), Durations.millisSince(started), ex.toString());
+            metrics.record(PARTIAL, AnaFinishReason.of(ex), started);
             return AnaReply.partial(text.content(), AnaFinishReason.of(ex));
         }
         if (text.isBlank()) {
             log.warn("Ana chat unavailable conversationId={} durationMs={}",
                     turn.conversationId(), Durations.millisSince(started));
+            metrics.record(EMPTY, text.finishReason, started);
             throw new AnaUnavailableException();
         }
         AnaReply reply = text.reply();
+        metrics.record(reply.state().name(), text.finishReason, started);
         log.info("Ana chat finished conversationId={} state={} reason={} durationMs={}",
                 turn.conversationId(), reply.state(), reply.reason(), Durations.millisSince(started));
         return reply;
@@ -80,7 +92,7 @@ public class SpringAiAnaChatAdapter implements AnaChatGateway {
     public void streamReply(AnaTurnRequest turn, ChatStreamSink sink) {
         long started = System.nanoTime();
         log.info("Ana chat stream started conversationId={} tools={}", turn.conversationId(), toolsLabel(turn));
-        StreamTurn stream = new StreamTurn(turn.conversationId(), started, sink);
+        StreamTurn stream = new StreamTurn(turn.conversationId(), started, sink, metrics);
         Disposable.Swap subscription = Disposables.swap();
         sink.onCancel(() -> {
             stream.cancelled();
@@ -174,13 +186,15 @@ public class SpringAiAnaChatAdapter implements AnaChatGateway {
         private final String conversationId;
         private final long started;
         private final ChatStreamSink sink;
+        private final FeatureMetrics metrics;
         private final TurnText text = new TurnText();
         private final AtomicBoolean finished = new AtomicBoolean();
 
-        private StreamTurn(String conversationId, long started, ChatStreamSink sink) {
+        private StreamTurn(String conversationId, long started, ChatStreamSink sink, FeatureMetrics metrics) {
             this.conversationId = conversationId;
             this.started = started;
             this.sink = sink;
+            this.metrics = metrics;
         }
 
         void next(ChatResponse response) {
@@ -197,10 +211,12 @@ public class SpringAiAnaChatAdapter implements AnaChatGateway {
             if (text.isBlank()) {
                 log.warn("Ana chat stream unavailable conversationId={} durationMs={}",
                         conversationId, Durations.millisSince(started));
+                metrics.record(EMPTY, text.finishReason, started);
                 sink.error(AnaUnavailableException.CODE, AnaUnavailableException.MESSAGE);
                 return;
             }
             AnaReply reply = text.reply();
+            metrics.record(reply.state().name(), text.finishReason, started);
             log.info("Ana chat stream finished conversationId={} state={} reason={} durationMs={}",
                     conversationId, reply.state(), reply.reason(), Durations.millisSince(started));
             if (reply.isCompleted()) {
@@ -217,6 +233,8 @@ public class SpringAiAnaChatAdapter implements AnaChatGateway {
             log.warn("Ana chat stream failed conversationId={} partial={} durationMs={} cause={}",
                     conversationId, !text.isBlank(), Durations.millisSince(started), error.toString());
             boolean timeout = error instanceof TimeoutException;
+            metrics.record(text.isBlank() ? LlmErrorClassifier.classify(error).kind().name() : PARTIAL,
+                    AnaFinishReason.of(error), started);
             if (!text.isBlank()) {
                 sink.partial(text.content(), AnaFinishReason.of(error));
             } else if (timeout) {
@@ -230,6 +248,7 @@ public class SpringAiAnaChatAdapter implements AnaChatGateway {
             if (finished.compareAndSet(false, true)) {
                 log.info("Ana chat stream cancelled conversationId={} durationMs={}",
                         conversationId, Durations.millisSince(started));
+                metrics.record(CANCELLED, null, started);
             }
         }
     }

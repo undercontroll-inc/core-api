@@ -14,6 +14,7 @@ import com.undercontroll.domain.model.insight.InsightGenerationSettings;
 import com.undercontroll.domain.model.insight.InsightMonthLabel;
 import com.undercontroll.domain.model.insight.LlmFailure;
 import com.undercontroll.domain.support.Durations;
+import com.undercontroll.infrastructure.metrics.FeatureMetrics;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -38,13 +39,15 @@ public class SpringAiInsightsLlmAdapter implements InsightsLlmGateway {
     private final ObjectMapper objectMapper;
     private final InsightGenerationSettings settings;
     private final Resource userPrompt;
+    private final FeatureMetrics metrics;
 
     public SpringAiInsightsLlmAdapter(
             ChatClient chatClient,
             ChatOptions defaultOptions,
             ObjectMapper objectMapper,
             InsightGenerationSettings settings,
-            Resource userPrompt
+            Resource userPrompt,
+            FeatureMetrics metrics
     ) {
         if (!(defaultOptions instanceof StructuredOutputChatOptions)) {
             throw new IllegalStateException("undercontroll.ai.insights.provider=" + settings.provider()
@@ -55,6 +58,7 @@ public class SpringAiInsightsLlmAdapter implements InsightsLlmGateway {
         this.objectMapper = objectMapper;
         this.settings = settings;
         this.userPrompt = userPrompt;
+        this.metrics = metrics;
     }
 
     @Override
@@ -70,6 +74,7 @@ public class SpringAiInsightsLlmAdapter implements InsightsLlmGateway {
             throw ex;
         } catch (RuntimeException ex) {
             LlmFailure failure = LlmErrorClassifier.classify(ex);
+            metrics.record(failure.kind().name(), null, started);
             log.warn("Insight draft failed bucketKey={} kind={} status={} durationMs={}",
                     input.bucketKey(), failure.kind(), failure.httpStatus(), Durations.millisSince(started));
             throw new InsightLlmException(failure, failure.kind() + ": " + ex.getMessage(), ex);
@@ -88,18 +93,25 @@ public class SpringAiInsightsLlmAdapter implements InsightsLlmGateway {
                 input.bucketKey(), request.repairing(), settings.provider(), settings.model(), finishReason,
                 Durations.millisSince(started));
         if (finishReason != null && TRUNCATED.contains(finishReason.toUpperCase(Locale.ROOT))) {
-            throw new LlmOutputException("Insight draft was truncated (finish reason " + finishReason + ")");
+            metrics.record(LlmFailure.Kind.INVALID_OUTPUT.name(), finishReason, started);
+            throw new InsightLlmException(LlmFailure.of(LlmFailure.Kind.INVALID_OUTPUT),
+                    "Insight draft was truncated (finish reason " + finishReason + ")", null);
         }
         String content = response == null || response.getResult() == null
                 ? null
                 : response.getResult().getOutput().getText();
-        if (content == null || content.isBlank()) {
-            throw new LlmOutputException("Insight draft is empty");
-        }
         try {
-            return objectMapper.readValue(content, InsightDraftJson.class).toDomain();
-        } catch (JsonProcessingException ex) {
-            throw new LlmOutputException("Insight draft is not valid JSON for " + InsightContract.VERSION, ex);
+            if (content == null || content.isBlank()) {
+                throw new LlmOutputException("Insight draft is empty");
+            }
+            InsightDraft draft = objectMapper.readValue(content, InsightDraftJson.class).toDomain();
+            metrics.record("success", finishReason, started);
+            return draft;
+        } catch (JsonProcessingException | LlmOutputException ex) {
+            metrics.record(LlmFailure.Kind.INVALID_OUTPUT.name(), finishReason, started);
+            throw new InsightLlmException(LlmFailure.of(LlmFailure.Kind.INVALID_OUTPUT),
+                    ex instanceof LlmOutputException ? ex.getMessage()
+                            : "Insight draft is not valid JSON for " + InsightContract.VERSION, ex);
         }
     }
 

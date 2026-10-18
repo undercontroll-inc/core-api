@@ -1,5 +1,8 @@
 package com.undercontroll.infrastructure.ai;
 
+import com.undercontroll.infrastructure.metrics.AiMetrics;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import com.undercontroll.infrastructure.metrics.TestMetrics;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -26,7 +29,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class BudgetedToolCallingManagerTest {
 
     private final RecordingManager delegate = new RecordingManager();
-    private final BudgetedToolCallingManager manager = new BudgetedToolCallingManager(delegate, new ObjectMapper(), 2, 1);
+    private final SimpleMeterRegistry registry = new SimpleMeterRegistry();
+    private final BudgetedToolCallingManager manager = new BudgetedToolCallingManager(delegate, new ObjectMapper(), 2, 1,
+            TestMetrics.feature(registry, "ana"));
 
     @Test
     @DisplayName("within budget the delegate executes every call")
@@ -57,6 +62,10 @@ class BudgetedToolCallingManagerTest {
         assertThat(responses.get(0).responseData()).contains("invalid_input").contains("buscas na internet");
         assertThat(responses.get(1).responseData()).isEqualTo("ran:get_order");
         assertThat(result.returnDirect()).isFalse();
+        assertThat(registry.find(AiMetrics.TOOL_CALLS).tags("tool", "search_web", "outcome", "refused").counter().count())
+                .isEqualTo(1.0);
+        assertThat(registry.find(AiMetrics.TOOL_CALLS).tags("tool", "get_order", "outcome", "executed").counter().count())
+                .isEqualTo(1.0);
     }
 
     @Test
@@ -91,6 +100,8 @@ class BudgetedToolCallingManagerTest {
 
         assertThatThrownBy(() -> manager.executeToolCalls(new Prompt(history), toolCalls(call("9", "get_order"))))
                 .isInstanceOf(BudgetedToolCallingManager.ToolBudgetExceededException.class);
+        assertThat(registry.find(AiMetrics.TOOL_CALLS).tags("tool", "get_order", "outcome", "stopped").counter().count())
+                .isEqualTo(1.0);
         assertThatThrownBy(() -> manager.executeToolCalls(new Prompt(history),
                 new ChatResponse(List.of(new Generation(new AssistantMessage("texto"))))))
                 .isInstanceOf(IllegalStateException.class);

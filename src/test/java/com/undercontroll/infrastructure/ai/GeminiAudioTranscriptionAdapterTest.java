@@ -1,5 +1,6 @@
 package com.undercontroll.infrastructure.ai;
 
+import com.undercontroll.infrastructure.metrics.TestMetrics;
 import com.google.genai.Models;
 import com.google.genai.types.Content;
 import com.google.genai.types.GenerateContentConfig;
@@ -40,7 +41,7 @@ class GeminiAudioTranscriptionAdapterTest {
                 .thenReturn(response);
         when(response.text()).thenReturn("  Compressor ruindo ");
 
-        String text = new GeminiAudioTranscriptionAdapter(models, settings("gemini-3.5-flash-lite", "minimal"))
+        String text = new GeminiAudioTranscriptionAdapter(models, settings("gemini-3.5-flash-lite", "minimal"), TestMetrics.feature("transcription"))
                 .transcribe(new AudioClip("bytes".getBytes(), "audio/webm", "note.webm", AudioFormat.WEBM));
 
         assertEquals("Compressor ruindo", text);
@@ -52,7 +53,7 @@ class GeminiAudioTranscriptionAdapterTest {
         when(models.generateContent(eq("gemini-3.5-flash-lite"), any(Content.class), any(GenerateContentConfig.class)))
                 .thenReturn(response);
         when(response.text()).thenReturn(" ");
-        GeminiAudioTranscriptionAdapter adapter = new GeminiAudioTranscriptionAdapter(models, settings("gemini-3.5-flash-lite", "minimal"));
+        GeminiAudioTranscriptionAdapter adapter = new GeminiAudioTranscriptionAdapter(models, settings("gemini-3.5-flash-lite", "minimal"), TestMetrics.feature("transcription"));
         AudioClip audio = new AudioClip("bytes".getBytes(), "audio/webm", "note.webm", AudioFormat.WEBM);
 
         assertThrows(TranscriptionUnavailableException.class, () ->
@@ -65,14 +66,14 @@ class GeminiAudioTranscriptionAdapterTest {
         assertEquals("audio/mp3", GeminiAudioTranscriptionAdapter.mimeType(AudioFormat.MP3));
         assertEquals("audio/mp4", GeminiAudioTranscriptionAdapter.mimeType(AudioFormat.M4A));
         assertEquals("audio/wav", GeminiAudioTranscriptionAdapter.mimeType(AudioFormat.WAV));
-        assertTrue(new GeminiAudioTranscriptionAdapter(models, settings("gemini-3.5-flash-lite", "minimal"))
+        assertTrue(new GeminiAudioTranscriptionAdapter(models, settings("gemini-3.5-flash-lite", "minimal"), TestMetrics.feature("transcription"))
                 .supportedFormats().containsAll(EnumSet.allOf(AudioFormat.class)));
     }
 
     @Test
     @DisplayName("sends the configured thinking level for Gemini 3 transcription")
     void minimalThinkingOnGemini3() {
-        GenerateContentConfig config = new GeminiAudioTranscriptionAdapter(models, settings("gemini-3.5-flash-lite", "minimal"))
+        GenerateContentConfig config = new GeminiAudioTranscriptionAdapter(models, settings("gemini-3.5-flash-lite", "minimal"), TestMetrics.feature("transcription"))
                 .config();
 
         assertEquals("MINIMAL", config.thinkingConfig().orElseThrow().thinkingLevel().orElseThrow().toString());
@@ -81,9 +82,9 @@ class GeminiAudioTranscriptionAdapterTest {
     @Test
     @DisplayName("uses a thinking budget on Gemini 2.5 and nothing on dedicated transcribe models")
     void thinkingByCapability() {
-        GenerateContentConfig budget = new GeminiAudioTranscriptionAdapter(models, settings("gemini-2.5-flash", "off"))
+        GenerateContentConfig budget = new GeminiAudioTranscriptionAdapter(models, settings("gemini-2.5-flash", "off"), TestMetrics.feature("transcription"))
                 .config();
-        GenerateContentConfig dedicated = new GeminiAudioTranscriptionAdapter(models, settings("gemini-3-transcribe", "minimal"))
+        GenerateContentConfig dedicated = new GeminiAudioTranscriptionAdapter(models, settings("gemini-3-transcribe", "minimal"), TestMetrics.feature("transcription"))
                 .config();
 
         assertEquals(0, budget.thinkingConfig().orElseThrow().thinkingBudget().orElseThrow());

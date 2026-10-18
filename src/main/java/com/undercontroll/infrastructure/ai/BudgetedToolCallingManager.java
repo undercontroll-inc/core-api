@@ -2,6 +2,7 @@ package com.undercontroll.infrastructure.ai;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.undercontroll.infrastructure.metrics.FeatureMetrics;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.AssistantMessage.ToolCall;
@@ -32,12 +33,20 @@ public class BudgetedToolCallingManager implements ToolCallingManager {
     private final ObjectMapper objectMapper;
     private final int maxRounds;
     private final int maxWebSearches;
+    private final FeatureMetrics metrics;
 
-    public BudgetedToolCallingManager(ToolCallingManager delegate, ObjectMapper objectMapper, int maxRounds, int maxWebSearches) {
+    public BudgetedToolCallingManager(
+            ToolCallingManager delegate,
+            ObjectMapper objectMapper,
+            int maxRounds,
+            int maxWebSearches,
+            FeatureMetrics metrics
+    ) {
         this.delegate = delegate;
         this.objectMapper = objectMapper;
         this.maxRounds = maxRounds;
         this.maxWebSearches = maxWebSearches;
+        this.metrics = metrics;
     }
 
     @Override
@@ -54,6 +63,7 @@ public class BudgetedToolCallingManager implements ToolCallingManager {
         AssistantMessage assistant = generation.getOutput();
         int rounds = rounds(prompt);
         if (rounds > maxRounds) {
+            assistant.getToolCalls().forEach(call -> metrics.tool(call.name(), "stopped"));
             throw new ToolBudgetExceededException(rounds);
         }
         int webSearches = webSearches(prompt);
@@ -71,6 +81,10 @@ public class BudgetedToolCallingManager implements ToolCallingManager {
                 allowed.add(call);
             }
         }
+        allowed.forEach(call -> metrics.tool(call.name(), "executed"));
+        assistant.getToolCalls().stream()
+                .filter(call -> refused.containsKey(call.id()))
+                .forEach(call -> metrics.tool(call.name(), "refused"));
         if (refused.isEmpty()) {
             return delegate.executeToolCalls(prompt, chatResponse);
         }
