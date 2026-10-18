@@ -14,7 +14,6 @@ import com.undercontroll.domain.enums.UserType;
 import com.undercontroll.domain.gateway.TokenGateway;
 import com.undercontroll.domain.usecase.order.*;
 import com.undercontroll.infrastructure.config.SecurityConfig;
-import com.undercontroll.infrastructure.config.RateLimitProperties;
 import com.undercontroll.application.controller.impl.OrderController;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -36,7 +35,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@Import({SecurityConfig.class, RateLimitProperties.class, OrderDtoMapperImpl.class, UserDtoMapperImpl.class, OrderItemDtoMapperImpl.class, ComponentPartDtoMapperImpl.class})
+@Import({SecurityConfig.class, OrderDtoMapperImpl.class, UserDtoMapperImpl.class, OrderItemDtoMapperImpl.class, ComponentPartDtoMapperImpl.class})
 @AutoConfigureMockMvc(addFilters = true)
 @WebMvcTest(OrderController.class)
 class OrderControllerTest {

@@ -8,7 +8,6 @@ import com.undercontroll.domain.usecase.demand.DeleteAllDemandsByOrderPort;
 import com.undercontroll.domain.usecase.demand.DeleteDemandPort;
 import com.undercontroll.domain.usecase.demand.DemandOutput;
 import com.undercontroll.domain.usecase.demand.GetDemandsPort;
-import com.undercontroll.infrastructure.config.RateLimitProperties;
 import com.undercontroll.infrastructure.config.SecurityConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,7 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(DemandController.class)
-@Import({SecurityConfig.class, RateLimitProperties.class, DemandDtoMapperImpl.class})
+@Import({SecurityConfig.class, DemandDtoMapperImpl.class})
 class DemandControllerTest {
 
     @Autowired

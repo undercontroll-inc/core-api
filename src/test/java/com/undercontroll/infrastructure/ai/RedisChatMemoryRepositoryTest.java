@@ -1,7 +1,6 @@
 package com.undercontroll.infrastructure.ai;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.undercontroll.infrastructure.config.AnaProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,10 +32,8 @@ class RedisChatMemoryRepositoryTest {
 
     @BeforeEach
     void setUp() {
-        AnaProperties properties = new AnaProperties();
-        properties.setMemoryTtlHours(24);
         when(redis.opsForValue()).thenReturn(values);
-        repository = new RedisChatMemoryRepository(redis, new ObjectMapper(), properties);
+        repository = new RedisChatMemoryRepository(redis, new ObjectMapper(), 24);
     }
 
     @Test

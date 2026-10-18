@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.undercontroll.domain.gateway.TokenGateway;
 import com.undercontroll.domain.usecase.component.*;
 import com.undercontroll.infrastructure.config.SecurityConfig;
-import com.undercontroll.infrastructure.config.RateLimitProperties;
 import com.undercontroll.application.dto.component.RegisterComponentRequest;
 import com.undercontroll.application.dto.component.UpdateComponentRequest;
 import com.undercontroll.application.controller.impl.ComponentController;
@@ -29,7 +28,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@Import({SecurityConfig.class, RateLimitProperties.class, ComponentPartDtoMapperImpl.class})
+@Import({SecurityConfig.class, ComponentPartDtoMapperImpl.class})
 @AutoConfigureMockMvc
 @WebMvcTest(ComponentController.class)
 class ComponentControllerTest {

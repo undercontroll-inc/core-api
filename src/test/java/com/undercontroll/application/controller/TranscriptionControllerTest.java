@@ -5,7 +5,6 @@ import com.undercontroll.application.mapper.TranscriptionDtoMapper;
 import com.undercontroll.domain.exception.InvalidTranscriptionException;
 import com.undercontroll.domain.exception.TranscriptionUnavailableException;
 import com.undercontroll.domain.usecase.transcription.TranscribeAudioPort;
-import com.undercontroll.infrastructure.config.RateLimitProperties;
 import com.undercontroll.infrastructure.config.SecurityConfig;
 import com.undercontroll.infrastructure.handler.TranscriptionExceptionHandler;
 import com.undercontroll.domain.gateway.TokenGateway;
@@ -31,7 +30,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @Import({
         SecurityConfig.class,
-        RateLimitProperties.class,
         TranscriptionExceptionHandler.class,
         TranscriptionDtoMapper.class
 })

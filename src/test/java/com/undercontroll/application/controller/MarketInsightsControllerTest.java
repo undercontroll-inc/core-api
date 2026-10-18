@@ -4,7 +4,6 @@ import com.undercontroll.application.controller.impl.MarketInsightsController;
 import com.undercontroll.domain.usecase.insights.GenerateMonthlyInsightsPort;
 import com.undercontroll.domain.usecase.insights.GetMarketInsightsPort;
 import com.undercontroll.domain.usecase.insights.InsightGenerationResult;
-import com.undercontroll.infrastructure.config.RateLimitProperties;
 import com.undercontroll.infrastructure.config.SecurityConfig;
 import com.undercontroll.domain.gateway.TokenGateway;
 import org.junit.jupiter.api.DisplayName;
@@ -29,7 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ActiveProfiles("dev")
-@Import({SecurityConfig.class, RateLimitProperties.class})
+@Import({SecurityConfig.class})
 @AutoConfigureMockMvc
 @WebMvcTest(MarketInsightsController.class)
 class MarketInsightsControllerTest {

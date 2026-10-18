@@ -13,7 +13,6 @@ import com.undercontroll.domain.model.dashboard.RevenuePoint;
 import com.undercontroll.domain.model.dashboard.StatusCount;
 import com.undercontroll.domain.usecase.dashboard.*;
 import com.undercontroll.domain.usecase.order.GetOrdersByStatusPort;
-import com.undercontroll.infrastructure.config.RateLimitProperties;
 import com.undercontroll.infrastructure.config.SecurityConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,7 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(DashboardController.class)
-@Import({SecurityConfig.class, RateLimitProperties.class, DashboardDtoMapperImpl.class})
+@Import({SecurityConfig.class, DashboardDtoMapperImpl.class})
 class DashboardControllerTest {
 
     @Autowired

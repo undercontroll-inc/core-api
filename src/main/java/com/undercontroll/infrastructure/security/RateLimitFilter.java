@@ -1,6 +1,5 @@
 package com.undercontroll.infrastructure.security;
 
-import com.undercontroll.infrastructure.config.RateLimitProperties;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.BucketConfiguration;
 import io.github.bucket4j.caffeine.CaffeineProxyManager;
@@ -10,8 +9,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -24,18 +23,26 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class RateLimitFilter extends OncePerRequestFilter {
 
     private static final String AUTH_PATH         = "/v1/api/auth";
     private static final String AUTH_REFRESH_PATH = "/v1/api/auth/refresh";
 
-    private final RateLimitProperties props;
+    private final int authRequestsPerMinute;
+    private final int generalRequestsPerMinute;
 
     private CaffeineProxyManager<String> authManager;
     private CaffeineProxyManager<String> generalManager;
     private BucketConfiguration authConfig;
     private BucketConfiguration generalConfig;
+
+    public RateLimitFilter(
+            @Value("${rate-limit.auth-requests-per-minute:10}") int authRequestsPerMinute,
+            @Value("${rate-limit.general-requests-per-minute:100}") int generalRequestsPerMinute
+    ) {
+        this.authRequestsPerMinute = authRequestsPerMinute;
+        this.generalRequestsPerMinute = generalRequestsPerMinute;
+    }
 
     @PostConstruct
     void init() {
@@ -51,14 +58,14 @@ public class RateLimitFilter extends OncePerRequestFilter {
         );
         authConfig = BucketConfiguration.builder()
                 .addLimit(Bandwidth.builder()
-                        .capacity(props.getAuthRequestsPerMinute())
-                        .refillGreedy(props.getAuthRequestsPerMinute(), Duration.ofMinutes(1))
+                        .capacity(authRequestsPerMinute)
+                        .refillGreedy(authRequestsPerMinute, Duration.ofMinutes(1))
                         .build())
                 .build();
         generalConfig = BucketConfiguration.builder()
                 .addLimit(Bandwidth.builder()
-                        .capacity(props.getGeneralRequestsPerMinute())
-                        .refillGreedy(props.getGeneralRequestsPerMinute(), Duration.ofMinutes(1))
+                        .capacity(generalRequestsPerMinute)
+                        .refillGreedy(generalRequestsPerMinute, Duration.ofMinutes(1))
                         .build())
                 .build();
     }

@@ -9,7 +9,6 @@ import com.undercontroll.domain.usecase.order_item.GetOrderItemByIdPort;
 import com.undercontroll.domain.usecase.order_item.GetOrderItemsPort;
 import com.undercontroll.domain.usecase.order_item.OrderItemOutput;
 import com.undercontroll.domain.usecase.order_item.UpdateOrderItemPort;
-import com.undercontroll.infrastructure.config.RateLimitProperties;
 import com.undercontroll.infrastructure.config.SecurityConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,7 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(OrderItemController.class)
-@Import({SecurityConfig.class, RateLimitProperties.class, OrderItemDtoMapperImpl.class})
+@Import({SecurityConfig.class, OrderItemDtoMapperImpl.class})
 class OrderItemControllerTest {
 
     private static final OrderItemOutput ITEM = new OrderItemOutput(10, null, "X1", "TV", "LG", "220V", "SN1", 80.0, null);

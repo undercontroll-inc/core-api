@@ -3,7 +3,6 @@ package com.undercontroll.application.controller;
 import com.undercontroll.application.mapper.MarketAnalyticsDtoMapperImpl;
 import com.undercontroll.application.controller.impl.MarketAnalyticsController;
 import com.undercontroll.domain.usecase.analytics.GetMarketAnalyticsPort;
-import com.undercontroll.infrastructure.config.RateLimitProperties;
 import com.undercontroll.infrastructure.config.SecurityConfig;
 import com.undercontroll.domain.gateway.TokenGateway;
 import org.junit.jupiter.api.DisplayName;
@@ -23,7 +22,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@Import({SecurityConfig.class, RateLimitProperties.class, MarketAnalyticsDtoMapperImpl.class})
+@Import({SecurityConfig.class, MarketAnalyticsDtoMapperImpl.class})
 @AutoConfigureMockMvc
 @WebMvcTest(MarketAnalyticsController.class)
 class MarketAnalyticsControllerTest {

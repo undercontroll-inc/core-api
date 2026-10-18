@@ -74,9 +74,6 @@ public class MicrometerMetricsAdapter implements MetricsGateway {
                 case EMAIL_FAILED -> new MeterSpec("email.failed", null, "Total de falhas ao enviar emails");
                 case ANNOUNCEMENT_CREATED -> new MeterSpec("announcement.created", null, "Total de anúncios criados");
                 case ANNOUNCEMENT_EMAILS_SENT -> new MeterSpec("announcement.emails.sent", null, "Total de emails de anúncio enviados");
-                case CACHE_HIT -> new MeterSpec("cache.hit", "all", "Total de cache hits");
-                case CACHE_MISS -> new MeterSpec("cache.miss", "all", "Total de cache misses");
-                case CACHE_EVICTION -> new MeterSpec("cache.eviction", "all", "Total de cache evictions");
             };
         }
     }

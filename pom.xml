@@ -218,21 +218,30 @@
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.45</minimum>
+                                            <minimum>0.75</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
                                 <rule>
                                     <element>PACKAGE</element>
                                     <includes>
+                                        <include>com.undercontroll.application.controller.impl</include>
+                                        <include>com.undercontroll.application.controller.sse</include>
+                                        <include>com.undercontroll.application.mapper</include>
+                                        <include>com.undercontroll.domain.gateway</include>
                                         <include>com.undercontroll.domain.market</include>
-                                        <include>com.undercontroll.domain.model.chat</include>
-                                        <include>com.undercontroll.domain.model.insight</include>
-                                        <include>com.undercontroll.domain.usecase.chat.impl</include>
-                                        <include>com.undercontroll.domain.usecase.insights.impl</include>
-                                        <include>com.undercontroll.domain.usecase.transcription.impl</include>
+                                        <include>com.undercontroll.domain.model</include>
+                                        <include>com.undercontroll.domain.model.*</include>
+                                        <include>com.undercontroll.domain.support</include>
+                                        <include>com.undercontroll.domain.usecase.*</include>
                                         <include>com.undercontroll.infrastructure.logging</include>
+                                        <include>com.undercontroll.infrastructure.messaging.producers</include>
+                                        <include>com.undercontroll.infrastructure.metrics</include>
+                                        <include>com.undercontroll.infrastructure.pdf</include>
+                                        <include>com.undercontroll.infrastructure.scheduling</include>
                                         <include>com.undercontroll.infrastructure.security</include>
+                                        <include>com.undercontroll.infrastructure.seed</include>
+                                        <include>com.undercontroll.infrastructure.storage</include>
                                     </includes>
                                     <limits>
                                         <limit>

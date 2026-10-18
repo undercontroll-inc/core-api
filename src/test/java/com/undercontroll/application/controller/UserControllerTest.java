@@ -12,7 +12,6 @@ import com.undercontroll.domain.exception.InvalidTokenException;
 import com.undercontroll.domain.gateway.TokenGateway;
 import com.undercontroll.domain.usecase.user.*;
 import com.undercontroll.infrastructure.config.SecurityConfig;
-import com.undercontroll.infrastructure.config.RateLimitProperties;
 import com.undercontroll.application.controller.impl.UserController;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,7 +32,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(UserController.class)
-@Import({SecurityConfig.class, RateLimitProperties.class, UserDtoMapperImpl.class})
+@Import({SecurityConfig.class, UserDtoMapperImpl.class})
 class UserControllerTest {
 
     @Autowired

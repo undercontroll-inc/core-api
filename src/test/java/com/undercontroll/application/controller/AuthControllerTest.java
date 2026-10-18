@@ -12,7 +12,6 @@ import com.undercontroll.domain.enums.UserType;
 import com.undercontroll.domain.exception.InvalidTokenException;
 import com.undercontroll.domain.usecase.auth.AuthUserPort;
 import com.undercontroll.domain.usecase.auth.RefreshTokenPort;
-import com.undercontroll.infrastructure.config.RateLimitProperties;
 import com.undercontroll.infrastructure.config.SecurityConfig;
 import com.undercontroll.infrastructure.handler.GlobalExceptionHandler;
 import com.undercontroll.domain.gateway.TokenGateway;
@@ -36,7 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AuthController.class)
-@Import({SecurityConfig.class, RateLimitProperties.class, GlobalExceptionHandler.class, AuthDtoMapperImpl.class, UserDtoMapperImpl.class})
+@Import({SecurityConfig.class, GlobalExceptionHandler.class, AuthDtoMapperImpl.class, UserDtoMapperImpl.class})
 class AuthControllerTest {
 
     @Autowired

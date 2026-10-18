@@ -2,13 +2,13 @@ package com.undercontroll.infrastructure.ai;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.undercontroll.infrastructure.config.AnaProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.memory.ChatMemoryRepository;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -25,16 +25,16 @@ public class RedisChatMemoryRepository implements ChatMemoryRepository {
 
     private final StringRedisTemplate redis;
     private final ObjectMapper objectMapper;
-    private final AnaProperties anaProperties;
+    private final Duration memoryTtl;
 
     public RedisChatMemoryRepository(
             StringRedisTemplate redis,
             ObjectMapper objectMapper,
-            AnaProperties anaProperties
+            @Value("${undercontroll.ana.memory-ttl-hours:24}") int memoryTtlHours
     ) {
         this.redis = redis;
         this.objectMapper = objectMapper;
-        this.anaProperties = anaProperties;
+        this.memoryTtl = Duration.ofHours(memoryTtlHours);
     }
 
     @Override
@@ -82,7 +82,7 @@ public class RedisChatMemoryRepository implements ChatMemoryRepository {
         try {
             String json = objectMapper.writeValueAsString(stored);
             String redisKey = key(conversationId);
-            redis.opsForValue().set(redisKey, json, Duration.ofHours(anaProperties.getMemoryTtlHours()));
+            redis.opsForValue().set(redisKey, json, memoryTtl);
         } catch (Exception ex) {
             log.warn("Chat memory save failed conversationId={}", conversationId, ex);
             throw new IllegalStateException("Failed to persist chat memory", ex);

@@ -1,7 +1,6 @@
 package com.undercontroll.infrastructure.ai;
 
 import com.undercontroll.domain.gateway.AnaChatGateway;
-import com.undercontroll.infrastructure.config.AnaProperties;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.ChatMemoryRepository;
@@ -32,11 +31,11 @@ public class AnaChatClientConfig {
     @Bean(name = "anaChatMemory")
     ChatMemory anaChatMemory(
             @Qualifier("anaChatMemoryRepository") ChatMemoryRepository chatMemoryRepository,
-            AnaProperties anaProperties
+            @Value("${undercontroll.ana.memory-window:10}") int memoryWindow
     ) {
         return MessageWindowChatMemory.builder()
                 .chatMemoryRepository(chatMemoryRepository)
-                .maxMessages(anaProperties.getMemoryWindow())
+                .maxMessages(memoryWindow)
                 .build();
     }
 

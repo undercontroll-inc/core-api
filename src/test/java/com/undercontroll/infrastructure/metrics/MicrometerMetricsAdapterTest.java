@@ -23,7 +23,6 @@ class MicrometerMetricsAdapterTest {
         assertThat(registry.find("auth.login.success").tag("type", "password").counter()).isNotNull();
         assertThat(registry.find("order.created").counter()).isNotNull();
         assertThat(registry.find("inventory.insufficient.stock").counter()).isNotNull();
-        assertThat(registry.find("cache.hit").tag("type", "all").counter()).isNotNull();
         assertThat(registry.find("order.processing.time").timer()).isNotNull();
         assertThat(registry.getMeters()).hasSize(MetricName.values().length + 1);
         assertThat(Arrays.stream(MetricName.values()).map(MicrometerMetricsAdapter.MeterSpec::of).distinct())

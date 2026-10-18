@@ -10,7 +10,6 @@ import com.undercontroll.domain.enums.AnnouncementType;
 import com.undercontroll.domain.gateway.TokenGateway;
 import com.undercontroll.domain.usecase.announcement.*;
 import com.undercontroll.infrastructure.config.SecurityConfig;
-import com.undercontroll.infrastructure.config.RateLimitProperties;
 import com.undercontroll.application.dto.announcement.CreateAnnouncementRequest;
 import com.undercontroll.application.dto.announcement.UpdateAnnouncementRequest;
 import com.undercontroll.application.controller.impl.AnnouncementController;
@@ -34,7 +33,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@Import({SecurityConfig.class, RateLimitProperties.class, AnnouncementDtoMapperImpl.class})
+@Import({SecurityConfig.class, AnnouncementDtoMapperImpl.class})
 @AutoConfigureMockMvc(addFilters = true)
 @WebMvcTest(AnnouncementController.class)
 class AnnouncementControllerTest {

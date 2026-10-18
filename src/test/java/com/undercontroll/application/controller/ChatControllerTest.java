@@ -8,7 +8,6 @@ import com.undercontroll.domain.usecase.chat.SendChatMessagePort;
 import com.undercontroll.domain.usecase.chat.StreamChatMessagePort;
 import com.undercontroll.domain.usecase.chat.StreamChatSession;
 import com.undercontroll.infrastructure.config.AsyncConfig;
-import com.undercontroll.infrastructure.config.RateLimitProperties;
 import com.undercontroll.infrastructure.config.SecurityConfig;
 import com.undercontroll.infrastructure.handler.ChatExceptionHandler;
 import com.undercontroll.infrastructure.logging.MdcTaskDecorator;
@@ -49,7 +48,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @Import({
         SecurityConfig.class,
-        RateLimitProperties.class,
         ChatExceptionHandler.class,
         AnaChatSseSupport.class,
         SseChatStreamSink.class,
