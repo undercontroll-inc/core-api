@@ -41,32 +41,6 @@ public interface OrderJpaRepository extends JpaRepository<OrderJpaEntity, Intege
     Optional<OrderJpaEntity> findOrderByOrderItemId(@Param("orderItemId") Integer orderItemId);
 
     @Query(value = """
-    SELECT COALESCE(SUM(c.price * d.quantity), 0.0)
-    FROM orders o
-    INNER JOIN demand d ON o.id = d.order_id
-    INNER JOIN component c ON d.component_id = c.id
-    WHERE o.id = :orderId
-    """, nativeQuery = true)
-    Double calculatePartsTotalByOrderId(@Param("orderId") Integer orderId);
-
-    @Query(value = """
-    SELECT
-        c.id,
-        c.name,
-        c.description,
-        c.brand,
-        c.price,
-        c.supplier,
-        c.category,
-        d.quantity
-    FROM orders o
-    INNER JOIN demand d ON o.id = d.order_id
-    INNER JOIN component c ON d.component_id = c.id
-    WHERE o.id = :orderId
-    """, nativeQuery = true)
-    List<Object[]> findAllPartsByOrderIdNative(@Param("orderId") Integer orderId);
-
-    @Query(value = """
     SELECT COALESCE(SUM(o.total), 0.0)
     FROM orders o
     WHERE (CAST(:startDate AS DATE) IS NULL OR o.received_at >= CAST(:startDate AS DATE))

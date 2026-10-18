@@ -5,6 +5,12 @@ import com.undercontroll.domain.model.Order;
 import com.undercontroll.domain.model.PaginatedResult;
 import com.undercontroll.domain.gateway.OrderGateway;
 import com.undercontroll.domain.model.Demand;
+import com.undercontroll.domain.model.dashboard.ApplianceCount;
+import com.undercontroll.domain.model.dashboard.ComponentUsage;
+import com.undercontroll.domain.model.dashboard.CustomerTypePoint;
+import com.undercontroll.domain.model.dashboard.RevenuePoint;
+import com.undercontroll.domain.model.dashboard.StatusCount;
+import com.undercontroll.domain.model.market.RepairCatalogRow;
 import com.undercontroll.infrastructure.mapper.DemandMapper;
 import com.undercontroll.infrastructure.mapper.OrderMapper;
 import com.undercontroll.infrastructure.persistence.entity.OrderJpaEntity;
@@ -128,16 +134,6 @@ public class OrderGatewayImpl implements OrderGateway {
     }
 
     @Override
-    public Double calculatePartsTotalByOrderId(Integer orderId) {
-        return orderJpaRepository.calculatePartsTotalByOrderId(orderId);
-    }
-
-    @Override
-    public List<Object[]> findAllPartsByOrderIdNative(Integer orderId) {
-        return orderJpaRepository.findAllPartsByOrderIdNative(orderId);
-    }
-
-    @Override
     public Double calculateTotalRevenueFiltered(LocalDate startDate, List<String> statuses) {
         return orderJpaRepository.calculateTotalRevenueFiltered(startDate, statuses);
     }
@@ -163,33 +159,33 @@ public class OrderGatewayImpl implements OrderGateway {
     }
 
     @Override
-    public List<Object[]> getRevenueEvolution(LocalDate startDate, List<String> statuses) {
-        return orderJpaRepository.getRevenueEvolution(startDate, statuses);
+    public List<RevenuePoint> getRevenueEvolution(LocalDate startDate, List<String> statuses) {
+        return orderJpaRepository.getRevenueEvolution(startDate, statuses).stream().map(OrderReportRows::revenue).toList();
     }
 
     @Override
-    public List<Object[]> getCustomerTypeEvolution(LocalDate startDate, List<String> statuses) {
-        return orderJpaRepository.getCustomerTypeEvolution(startDate, statuses);
+    public List<CustomerTypePoint> getCustomerTypeEvolution(LocalDate startDate, List<String> statuses) {
+        return orderJpaRepository.getCustomerTypeEvolution(startDate, statuses).stream().map(OrderReportRows::customerType).toList();
     }
 
     @Override
-    public List<Object[]> getOrdersByStatus(LocalDate startDate) {
-        return orderJpaRepository.getOrdersByStatus(startDate);
+    public List<StatusCount> getOrdersByStatus(LocalDate startDate) {
+        return orderJpaRepository.getOrdersByStatus(startDate).stream().map(OrderReportRows::statusCount).toList();
     }
 
     @Override
-    public List<Object[]> getTopAppliances(LocalDate startDate, List<String> statuses) {
-        return orderJpaRepository.getTopAppliances(startDate, statuses);
+    public List<ApplianceCount> getTopAppliances(LocalDate startDate, List<String> statuses) {
+        return orderJpaRepository.getTopAppliances(startDate, statuses).stream().map(OrderReportRows::appliance).toList();
     }
 
     @Override
-    public List<Object[]> getTopComponents(LocalDate startDate, List<String> statuses) {
-        return orderJpaRepository.getTopComponents(startDate, statuses);
+    public List<ComponentUsage> getTopComponents(LocalDate startDate, List<String> statuses) {
+        return orderJpaRepository.getTopComponents(startDate, statuses).stream().map(OrderReportRows::componentUsage).toList();
     }
 
     @Override
-    public List<Object[]> getRepairCatalog(LocalDate startDate) {
-        return orderJpaRepository.getRepairCatalog(startDate);
+    public List<RepairCatalogRow> getRepairCatalog(LocalDate startDate) {
+        return orderJpaRepository.getRepairCatalog(startDate).stream().map(OrderReportRows::repairCatalog).toList();
     }
 
 }

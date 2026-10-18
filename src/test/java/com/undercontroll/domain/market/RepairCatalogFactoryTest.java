@@ -1,6 +1,7 @@
 package com.undercontroll.domain.market;
 
 import com.undercontroll.domain.model.market.RepairCatalogItem;
+import com.undercontroll.domain.model.market.RepairCatalogRow;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -14,9 +15,8 @@ class RepairCatalogFactoryTest {
     @Test
     @DisplayName("builds slug and product_key from order_item rows")
     void fromRows() {
-        Object[] row = new Object[]{"Electrolux", "ME23S", "Microondas", 3L};
-        List<Object[]> rows = List.<Object[]>of(row);
-        List<RepairCatalogItem> items = RepairCatalogFactory.fromRows(rows, List.of());
+        List<RepairCatalogItem> items = RepairCatalogFactory.fromRows(
+                List.of(new RepairCatalogRow("Electrolux", "ME23S", "Microondas", 3L)), List.of());
 
         assertEquals(1, items.size());
         assertEquals("electrolux", items.get(0).brandSlug());
@@ -29,5 +29,6 @@ class RepairCatalogFactoryTest {
     @DisplayName("returns empty list when there are no rows")
     void emptyRows() {
         assertTrue(RepairCatalogFactory.fromRows(List.of(), List.of()).isEmpty());
+        assertTrue(RepairCatalogFactory.fromRows(null, List.of()).isEmpty());
     }
 }

@@ -9,6 +9,7 @@ import com.undercontroll.domain.model.MarketMonthlyInsight;
 import com.undercontroll.domain.model.insight.InsightPromptContext;
 import com.undercontroll.domain.model.insight.InsightsPayload;
 import com.undercontroll.domain.model.market.MatchCoverage;
+import com.undercontroll.domain.model.market.RepairCatalogRow;
 import com.undercontroll.domain.usecase.insights.InsightGenerationResult;
 import com.undercontroll.infrastructure.config.InsightsProperties;
 import org.junit.jupiter.api.BeforeEach;
@@ -206,7 +207,7 @@ class GenerateMonthlyInsightsImplTest {
         when(marketViewGateway.findPreviousBucketKey(bucketKey)).thenReturn(Optional.of("2026-07"));
         when(marketViewGateway.findCategorySummary(bucketKey)).thenReturn(List.of());
         when(orderGateway.getRepairCatalog(any())).thenReturn(
-                List.<Object[]>of(new Object[]{"Electrolux", "ME23S", "MICROONDAS", 12L})
+                List.of(new RepairCatalogRow("Electrolux", "ME23S", "MICROONDAS", 12L))
         );
         when(marketViewGateway.findAllCurrentProducts()).thenReturn(List.of());
         InsightsPayload payload = new InsightsPayload(

@@ -26,21 +26,6 @@ public class GetTopAppliancesImpl implements GetTopAppliancesPort {
                 .map(OrderStatus::name)
                 .toList();
 
-        List<Object[]> rows = orderGateway.getTopAppliances(startDate, statuses);
-
-        return rows.stream()
-                .map(row -> new ApplianceCount(
-                        (String) row[0],
-                        (String) row[1],
-                        toLong(row[2])
-                ))
-                .toList();
-    }
-
-    private Long toLong(Object value) {
-        if (value == null) return 0L;
-        if (value instanceof Long l) return l;
-        if (value instanceof Number n) return n.longValue();
-        return 0L;
+        return orderGateway.getTopAppliances(startDate, statuses);
     }
 }

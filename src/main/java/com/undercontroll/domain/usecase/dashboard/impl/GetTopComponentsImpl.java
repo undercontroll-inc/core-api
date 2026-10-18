@@ -10,7 +10,6 @@ import com.undercontroll.domain.usecase.dashboard.GetTopComponentsPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -27,31 +26,6 @@ public class GetTopComponentsImpl implements GetTopComponentsPort {
                 .map(OrderStatus::name)
                 .toList();
 
-        List<Object[]> rows = orderGateway.getTopComponents(startDate, statuses);
-
-        return rows.stream()
-                .map(row -> new ComponentUsage(
-                        toInteger(row[0]),
-                        (String) row[1],
-                        (String) row[2],
-                        (String) row[3],
-                        toLong(row[4])
-                ))
-                .toList();
-    }
-
-    private Integer toInteger(Object value) {
-        if (value == null) return null;
-        if (value instanceof Integer i) return i;
-        if (value instanceof Number n) return n.intValue();
-        return null;
-    }
-
-    private Long toLong(Object value) {
-        if (value == null) return 0L;
-        if (value instanceof BigDecimal bd) return bd.longValue();
-        if (value instanceof Long l) return l;
-        if (value instanceof Number n) return n.longValue();
-        return 0L;
+        return orderGateway.getTopComponents(startDate, statuses);
     }
 }

@@ -10,7 +10,6 @@ import com.undercontroll.domain.usecase.dashboard.GetCustomerTypeEvolutionPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.sql.Date;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -27,28 +26,6 @@ public class GetCustomerTypeEvolutionImpl implements GetCustomerTypeEvolutionPor
                 .map(OrderStatus::name)
                 .toList();
 
-        List<Object[]> rows = orderGateway.getCustomerTypeEvolution(startDate, statuses);
-
-        return rows.stream()
-                .map(row -> new CustomerTypePoint(
-                        toLocalDate(row[0]),
-                        toLong(row[1]),
-                        toLong(row[2])
-                ))
-                .toList();
-    }
-
-    private LocalDate toLocalDate(Object value) {
-        if (value == null) return null;
-        if (value instanceof Date sqlDate) return sqlDate.toLocalDate();
-        if (value instanceof LocalDate ld) return ld;
-        return null;
-    }
-
-    private Long toLong(Object value) {
-        if (value == null) return 0L;
-        if (value instanceof Long l) return l;
-        if (value instanceof Number n) return n.longValue();
-        return 0L;
+        return orderGateway.getCustomerTypeEvolution(startDate, statuses);
     }
 }
