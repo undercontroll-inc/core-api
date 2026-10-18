@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
 import java.util.Optional;
@@ -20,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -27,6 +29,9 @@ class UserUseCasesTest {
 
     @Mock
     private UserGateway userGateway;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
 
     private static User user(int id, String name) {
         return User.builder().id(id).name(name).email(name + "@x.com").password("hash").userType(UserType.CUSTOMER).build();
@@ -64,8 +69,9 @@ class UserUseCasesTest {
     void update() {
         User existing = user(1, "ana");
         when(userGateway.findById(1)).thenReturn(Optional.of(existing));
+        when(passwordEncoder.encode("new")).thenReturn("encoded-new");
 
-        new UpdateUserImpl(userGateway).execute(1, new UpdateUserPort.Input(
+        new UpdateUserImpl(userGateway, passwordEncoder).execute(1, new UpdateUserPort.Input(
                 "Ana", "Souza", "new", "Rua 2", "123", "1198", "avatar", "01000-000", true, false, false, UserType.ADMINISTRATOR
         ));
 
@@ -77,7 +83,22 @@ class UserUseCasesTest {
         assertEquals("avatar", existing.getAvatarUrl());
         assertEquals(UserType.ADMINISTRATOR, existing.getUserType());
         assertEquals(true, existing.getAlreadyRecurrent());
+        assertEquals("encoded-new", existing.getPassword());
         verify(userGateway).save(existing);
+    }
+
+    @Test
+    @DisplayName("update keeps the stored hash when the password is blank")
+    void updateKeepsPasswordWhenBlank() {
+        User existing = user(1, "ana");
+        when(userGateway.findById(1)).thenReturn(Optional.of(existing));
+
+        new UpdateUserImpl(userGateway, passwordEncoder).execute(1, new UpdateUserPort.Input(
+                null, null, " ", null, null, null, null, null, null, null, null, null
+        ));
+
+        assertEquals("hash", existing.getPassword());
+        verifyNoInteractions(passwordEncoder);
     }
 
     @Test
@@ -86,7 +107,7 @@ class UserUseCasesTest {
         when(userGateway.findById(9)).thenReturn(Optional.empty());
         UpdateUserPort.Input input = new UpdateUserPort.Input(null, null, null, null, null, null, null, null, null, null, null, null);
 
-        assertThrows(UserNotFoundException.class, () -> new UpdateUserImpl(userGateway).execute(9, input));
+        assertThrows(UserNotFoundException.class, () -> new UpdateUserImpl(userGateway, passwordEncoder).execute(9, input));
         assertThrows(UserNotFoundException.class, () -> new DeleteUserImpl(userGateway).execute(9));
         assertThrows(InvalidUserException.class, () -> new DeleteUserImpl(userGateway).execute(null));
     }

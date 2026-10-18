@@ -6,6 +6,7 @@ import com.undercontroll.domain.exception.UserNotFoundException;
 import com.undercontroll.domain.gateway.UserGateway;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -15,6 +16,7 @@ import java.util.Optional;
 public class UpdateUserImpl implements UpdateUserPort {
 
     private final UserGateway userGateway;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     @CacheEvict(value = {"users", "customers", "user"}, allEntries = true)
@@ -42,8 +44,8 @@ public class UpdateUserImpl implements UpdateUserPort {
         if (request.cpf() != null) {
             userFound.setCpf(request.cpf());
         }
-        if (request.password() != null) {
-            userFound.setPassword(request.password());
+        if (request.password() != null && !request.password().isBlank()) {
+            userFound.setPassword(passwordEncoder.encode(request.password()));
         }
         if (request.hasWhatsApp() != null) {
             userFound.setHasWhatsApp(request.hasWhatsApp());
