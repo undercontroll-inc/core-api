@@ -23,7 +23,7 @@ public class SpringAiInsightsLlmAdapter implements InsightsLlmGateway {
     private final InsightPayloadValidator insightPayloadValidator;
     private final InsightsProperties insightsProperties;
     private final Resource userPrompt;
-    private final MarketInsightTools marketInsightTools;
+    private final InsightGroundingBuilder insightGroundingBuilder;
     private final InsightsPayloadJsonMapper payloadMapper;
 
     public SpringAiInsightsLlmAdapter(
@@ -32,7 +32,7 @@ public class SpringAiInsightsLlmAdapter implements InsightsLlmGateway {
             InsightPayloadValidator insightPayloadValidator,
             InsightsProperties insightsProperties,
             Resource userPrompt,
-            MarketInsightTools marketInsightTools,
+            InsightGroundingBuilder insightGroundingBuilder,
             InsightsPayloadJsonMapper payloadMapper
     ) {
         this.insightsChatClient = insightsChatClient;
@@ -40,7 +40,7 @@ public class SpringAiInsightsLlmAdapter implements InsightsLlmGateway {
         this.insightPayloadValidator = insightPayloadValidator;
         this.insightsProperties = insightsProperties;
         this.userPrompt = userPrompt;
-        this.marketInsightTools = marketInsightTools;
+        this.insightGroundingBuilder = insightGroundingBuilder;
         this.payloadMapper = payloadMapper;
     }
 
@@ -88,7 +88,7 @@ public class SpringAiInsightsLlmAdapter implements InsightsLlmGateway {
 
     private String groundingJson(InsightGenerationContext.State state) {
         try {
-            return objectMapper.writeValueAsString(marketInsightTools.grounding(state));
+            return objectMapper.writeValueAsString(insightGroundingBuilder.build(state));
         } catch (JsonProcessingException ex) {
             throw new IllegalStateException("Failed to serialize insight grounding", ex);
         }

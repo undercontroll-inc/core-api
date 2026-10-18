@@ -82,7 +82,8 @@ public class GenerateMonthlyInsightsImpl implements GenerateMonthlyInsightsPort 
                 comparison,
                 coverage,
                 RepairCatalogMatcher.clientDomainIds(catalog),
-                catalog
+                catalog,
+                categories
         );
 
         Exception lastError = null;

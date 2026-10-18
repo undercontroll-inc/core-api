@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
-public class MarketInsightTools {
+public class InsightGroundingBuilder {
 
     static final int REPAIR_CATALOG_LIMIT = 25;
     static final int SNAPSHOT_TOP_N = 5;
@@ -34,7 +34,7 @@ public class MarketInsightTools {
 
     private final MarketViewGateway marketViewGateway;
 
-    public InsightGrounding grounding(InsightGenerationContext.State state) {
+    public InsightGrounding build(InsightGenerationContext.State state) {
         return new InsightGrounding(
                 matchCoverage(state),
                 repairCatalog(state),
@@ -153,8 +153,7 @@ public class MarketInsightTools {
     }
 
     List<MarketCategorySummary> categorySummary(InsightGenerationContext.State state) {
-        List<MarketCategorySummary> rows = cap(
-                marketViewGateway.findCategorySummary(state.bucketKey()), CATEGORY_LIMIT);
+        List<MarketCategorySummary> rows = cap(state.categories(), CATEGORY_LIMIT);
         state.evidence().ingest(rows);
         return rows;
     }

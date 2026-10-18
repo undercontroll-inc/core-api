@@ -24,16 +24,19 @@ import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class MarketInsightToolsTest {
+class InsightGroundingBuilderTest {
 
     @Mock
     private MarketViewGateway marketViewGateway;
 
     @InjectMocks
-    private MarketInsightTools tools;
+    private InsightGroundingBuilder tools;
 
     @Test
     @DisplayName("grounding loads required facts and deepening blocks in one pass")
@@ -47,7 +50,10 @@ class MarketInsightToolsTest {
                         new RepairCatalogItem("Philco", "PMO23", "MICROONDAS", 5, "philco", "pmo23", "MLB-MICROWAVES"),
                         new RepairCatalogItem("Electrolux", "ME23S", "MICROONDAS", 12, "electrolux", "me23s", "MLB-MICROWAVES"),
                         new RepairCatalogItem("Mondial", "AF-30", "AIRFRYER", 8, "mondial", "af-30", "MLB-AIR_FRYERS")
-                )
+                ),
+                List.of(new MarketCategorySummary(
+                        "MLB-AIR_FRYERS", "2026-08", "Air fryer", 8L, 3L, 75.0, 88.0,
+                        299.0, 200.0, 400.0, 5.0, -3.0, 2.0, 1L, 0L, 1L))
         );
         EvidenceIndex evidence = new EvidenceIndex(new com.fasterxml.jackson.databind.ObjectMapper());
         InsightGenerationContext.State state = InsightGenerationContext.State.from(prompt, evidence);
@@ -70,11 +76,10 @@ class MarketInsightToolsTest {
         when(marketViewGateway.findStockOpportunities("2026-08")).thenReturn(List.of());
         when(marketViewGateway.findRisingProductsHighConfidence()).thenReturn(List.of());
         when(marketViewGateway.findBrandMomentum("2026-08")).thenReturn(List.of());
-        when(marketViewGateway.findCategorySummary("2026-08")).thenReturn(List.of());
         when(marketViewGateway.findPriceDispersion()).thenReturn(List.of());
         when(marketViewGateway.findUncoveredCategories("2026-08", Set.of("MLB-MICROWAVES"))).thenReturn(List.of());
 
-        InsightGrounding grounding = tools.grounding(state);
+        InsightGrounding grounding = tools.build(state);
         assertEquals(2, grounding.coberturaMatch().nivel1Exato());
         assertEquals(3, grounding.repairCatalog().size());
         assertEquals("Electrolux", grounding.repairCatalog().get(0).brand());
@@ -89,6 +94,8 @@ class MarketInsightToolsTest {
         assertEquals("Micro-ondas", grounding.marketSnapshot().topCategories().get(0).name());
         assertEquals(1, grounding.priceMovements().size());
         assertEquals(10.9, grounding.priceMovements().get(0).priceDeltaPct());
+        assertEquals("Air fryer", grounding.categorySummary().get(0).categoryName());
+        verify(marketViewGateway, never()).findCategorySummary(any());
         assertTrue(evidence.contains(12));
         assertTrue(evidence.contains(20));
         assertTrue(evidence.contains(10.9));
@@ -103,7 +110,7 @@ class MarketInsightToolsTest {
                     "Marca" + i, "M" + i, "TIPO", i, "marca" + i, "m" + i, "MLB-X"));
         }
         InsightPromptContext prompt = new InsightPromptContext(
-                "2026-08", "2026-07", MatchCoverage.empty(), Set.of(), items);
+                "2026-08", "2026-07", MatchCoverage.empty(), Set.of(), items, List.of());
         InsightGenerationContext.State state = InsightGenerationContext.State.from(
                 prompt, new EvidenceIndex(new com.fasterxml.jackson.databind.ObjectMapper()));
 
@@ -116,7 +123,7 @@ class MarketInsightToolsTest {
     @Test
     @DisplayName("does not expose ChatClient tools")
     void noChatTools() {
-        Set<String> names = Arrays.stream(MarketInsightTools.class.getDeclaredMethods())
+        Set<String> names = Arrays.stream(InsightGroundingBuilder.class.getDeclaredMethods())
                 .filter(method -> method.isAnnotationPresent(Tool.class))
                 .map(method -> method.getAnnotation(Tool.class).name())
                 .collect(Collectors.toSet());
@@ -127,7 +134,7 @@ class MarketInsightToolsTest {
     @DisplayName("caps price movements before sending them to the model")
     void capsPriceMovements() {
         InsightPromptContext prompt = new InsightPromptContext(
-                "2026-08", "2026-07", MatchCoverage.empty(), Set.of(), List.of());
+                "2026-08", "2026-07", MatchCoverage.empty(), Set.of(), List.of(), List.of());
         InsightGenerationContext.State state = InsightGenerationContext.State.from(
                 prompt, new EvidenceIndex(new com.fasterxml.jackson.databind.ObjectMapper()));
         List<MarketPriceMovement> rows = new ArrayList<>();

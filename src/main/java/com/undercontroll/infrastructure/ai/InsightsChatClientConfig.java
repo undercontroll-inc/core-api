@@ -45,7 +45,7 @@ public class InsightsChatClientConfig {
             ObjectMapper objectMapper,
             InsightPayloadValidator insightPayloadValidator,
             InsightsProperties insightsProperties,
-            MarketInsightTools marketInsightTools,
+            InsightGroundingBuilder insightGroundingBuilder,
             InsightsPayloadJsonMapper payloadMapper,
             @Value("classpath:prompts/insights-user-prompt.txt") Resource userPrompt
     ) {
@@ -55,7 +55,7 @@ public class InsightsChatClientConfig {
                 insightPayloadValidator,
                 insightsProperties,
                 userPrompt,
-                marketInsightTools,
+                insightGroundingBuilder,
                 payloadMapper
         );
     }

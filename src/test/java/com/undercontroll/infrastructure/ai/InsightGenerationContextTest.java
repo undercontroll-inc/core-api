@@ -17,7 +17,7 @@ class InsightGenerationContextTest {
     @DisplayName("builds generation state from the prompt context")
     void buildsStateFromPrompt() {
         InsightPromptContext prompt = new InsightPromptContext(
-                "2026-08", "2026-07", MatchCoverage.empty(), Set.of(), List.of());
+                "2026-08", "2026-07", MatchCoverage.empty(), Set.of(), List.of(), List.of());
         EvidenceIndex evidence = new EvidenceIndex(new com.fasterxml.jackson.databind.ObjectMapper());
 
         InsightGenerationContext.State state = InsightGenerationContext.State.from(prompt, evidence);
