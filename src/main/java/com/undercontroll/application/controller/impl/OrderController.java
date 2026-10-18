@@ -5,6 +5,7 @@ import com.undercontroll.application.dto.order.GetAllOrdersResponse;
 import com.undercontroll.application.dto.order.GetOrderByIdResponse;
 import com.undercontroll.application.dto.order.OrderEnrichedDto;
 import com.undercontroll.application.dto.order.UpdateOrderRequest;
+import com.undercontroll.application.mapper.OrderDtoMapper;
 import com.undercontroll.domain.usecase.order.*;
 import com.undercontroll.application.controller.OrderApi;
 import lombok.RequiredArgsConstructor;
@@ -24,15 +25,16 @@ public class OrderController implements OrderApi {
     private final GetOrderByIdPort getOrderByIdPort;
     private final DeleteOrderPort deleteOrderPort;
     private final ExportOrderPort exportOrderPort;
+    private final OrderDtoMapper mapper;
 
     @Override
     public ResponseEntity<OrderEnrichedDto> createOrder(CreateOrderRequest request) {
-        return ResponseEntity.status(201).body(createOrderPort.execute(request));
+        return ResponseEntity.status(201).body(mapper.toDto(createOrderPort.execute(mapper.toInput(request))));
     }
 
     @Override
     public ResponseEntity<Void> updateOrder(Integer orderId, UpdateOrderRequest request) {
-        updateOrderPort.execute(orderId, request);
+        updateOrderPort.execute(orderId, mapper.toInput(request));
         return ResponseEntity.ok().build();
     }
 
@@ -56,12 +58,13 @@ public class OrderController implements OrderApi {
             }
         }
 
-        return ResponseEntity.ok(getOrdersPort.execute(userId, page, size));
+        return ResponseEntity.ok(mapper.toResponse(getOrdersPort.execute(userId, page, size)));
     }
 
     @Override
     public ResponseEntity<GetOrderByIdResponse> getOrderById(Integer orderId) {
         return getOrderByIdPort.execute(orderId)
+                .map(order -> new GetOrderByIdResponse(mapper.toDto(order)))
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }

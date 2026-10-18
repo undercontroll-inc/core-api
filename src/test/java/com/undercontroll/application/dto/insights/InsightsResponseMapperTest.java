@@ -3,6 +3,8 @@ package com.undercontroll.application.dto.insights;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.undercontroll.domain.model.insight.InsightsPayload;
 import com.undercontroll.domain.model.market.MatchCoverage;
+import com.undercontroll.infrastructure.mapper.InsightsPayloadCodec;
+import com.undercontroll.infrastructure.mapper.InsightsPayloadJsonMapperImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -15,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class InsightsResponseMapperTest {
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final InsightsPayloadCodec codec = new InsightsPayloadCodec(new ObjectMapper(), new InsightsPayloadJsonMapperImpl());
 
     @Test
     @DisplayName("maps a full AI payload to the API response")
@@ -95,7 +97,7 @@ class InsightsResponseMapperTest {
                   "limitacoes": ["limitação"]
                 }
                 """;
-        InsightsPayload payload = objectMapper.readValue(json, InsightsPayload.class);
+        InsightsPayload payload = codec.decode(json);
         MarketInsightsResponse response = InsightsResponseMapper.from(payload, null);
 
         assertEquals("ALERTA_PRECO", response.insights().get(0).type());

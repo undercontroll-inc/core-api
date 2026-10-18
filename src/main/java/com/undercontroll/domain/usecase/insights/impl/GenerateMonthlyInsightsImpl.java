@@ -1,6 +1,5 @@
 package com.undercontroll.domain.usecase.insights.impl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.undercontroll.domain.enums.InsightGenerationStatus;
 import com.undercontroll.domain.gateway.InsightsLlmGateway;
 import com.undercontroll.domain.gateway.MarketInsightGateway;
@@ -18,7 +17,7 @@ import com.undercontroll.domain.model.market.RepairCatalogItem;
 import com.undercontroll.domain.usecase.insights.GenerateMonthlyInsightsPort;
 import com.undercontroll.domain.usecase.insights.InsightGenerationResult;
 import com.undercontroll.infrastructure.config.InsightsProperties;
-import com.undercontroll.infrastructure.logging.LogTiming;
+import com.undercontroll.domain.support.Durations;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
@@ -45,7 +44,6 @@ public class GenerateMonthlyInsightsImpl implements GenerateMonthlyInsightsPort 
     private final OrderGateway orderGateway;
     private final ObjectProvider<InsightsLlmGateway> insightsLlmGateway;
     private final InsightsProperties insightsProperties;
-    private final ObjectMapper objectMapper;
 
     @Override
     @CacheEvict(value = {"marketInsights", "marketAnalytics"}, allEntries = true)
@@ -98,7 +96,7 @@ public class GenerateMonthlyInsightsImpl implements GenerateMonthlyInsightsPort 
                         "Generated monthly insights bucketKey={} attempt={} durationMs={}",
                         bucketKey,
                         attempt,
-                        LogTiming.millisSince(attemptStarted)
+                        Durations.millisSince(attemptStarted)
                 );
                 return InsightGenerationResult.success(bucketKey);
             } catch (Exception ex) {
@@ -109,7 +107,7 @@ public class GenerateMonthlyInsightsImpl implements GenerateMonthlyInsightsPort 
                         attempt,
                         bucketKey,
                         timeout,
-                        LogTiming.millisSince(attemptStarted),
+                        Durations.millisSince(attemptStarted),
                         ex.getMessage()
                 );
                 if (timeout) {
@@ -121,7 +119,7 @@ public class GenerateMonthlyInsightsImpl implements GenerateMonthlyInsightsPort 
         log.warn(
                 "Insight generation failed bucketKey={} durationMs={} cause={}",
                 bucketKey,
-                LogTiming.millisSince(started),
+                Durations.millisSince(started),
                 lastError == null ? UNKNOWN_ERROR : lastError.getMessage()
         );
         return InsightGenerationResult.failed(
@@ -135,10 +133,10 @@ public class GenerateMonthlyInsightsImpl implements GenerateMonthlyInsightsPort 
             String bucketKey,
             String comparison,
             InsightsPayload payload
-    ) throws Exception {
+    ) {
         MarketMonthlyInsight insight = base(existing, bucketKey, comparison);
         insight.setStatus(InsightGenerationStatus.SUCCESS);
-        insight.setPayload(objectMapper.writeValueAsString(payload));
+        insight.setPayload(payload);
         insight.setErrorMessage(null);
         insight.setGeneratedAt(LocalDateTime.now(ZoneOffset.UTC));
         marketInsightGateway.save(insight);

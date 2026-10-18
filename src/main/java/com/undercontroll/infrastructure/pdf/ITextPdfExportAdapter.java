@@ -2,7 +2,7 @@ package com.undercontroll.infrastructure.pdf;
 
 import com.itextpdf.html2pdf.ConverterProperties;
 import com.itextpdf.html2pdf.HtmlConverter;
-import com.undercontroll.application.dto.order.ExportOrderRequest;
+import com.undercontroll.domain.model.ServiceOrderDocument;
 import com.undercontroll.domain.exception.PdfGenerationException;
 import com.undercontroll.domain.exception.TempFileException;
 import com.undercontroll.domain.exception.TemplateLoadException;
@@ -27,7 +27,7 @@ public class ITextPdfExportAdapter implements PdfExportGateway {
     private static final String TEMPLATE_PATH = "templates/os.html";
 
     @Override
-    public byte[] exportOS(ExportOrderRequest request) {
+    public byte[] exportOS(ServiceOrderDocument request) {
         log.info("Iniciando exportação da OS: {}", request.numeroOs());
 
         String osContent = loadTemplate();
@@ -48,7 +48,7 @@ public class ITextPdfExportAdapter implements PdfExportGateway {
         }
     }
 
-    private String processTemplate(String template, ExportOrderRequest request) {
+    private String processTemplate(String template, ServiceOrderDocument request) {
         String listaProdutos = generateProductsHtml(request.produtos());
         String tabelaPecas = generatePartsTableHtml(request.pecas());
 
@@ -126,13 +126,13 @@ public class ITextPdfExportAdapter implements PdfExportGateway {
         }
     }
 
-    private String generateProductsHtml(List<ExportOrderRequest.ProductInfo> produtos) {
+    private String generateProductsHtml(List<ServiceOrderDocument.ProductInfo> produtos) {
         if (produtos == null || produtos.isEmpty()) {
             return "<tr><td colspan=\"3\" style=\"text-align: center;\">Nenhum produto cadastrado</td></tr>";
         }
 
         StringBuilder html = new StringBuilder();
-        for (ExportOrderRequest.ProductInfo produto : produtos) {
+        for (ServiceOrderDocument.ProductInfo produto : produtos) {
             html.append("<tr>")
                 .append("<td>").append(nullSafe(produto.produto())).append("</td>")
                 .append("<td>").append(nullSafe(produto.volt())).append("</td>")
@@ -142,13 +142,13 @@ public class ITextPdfExportAdapter implements PdfExportGateway {
         return html.toString();
     }
 
-    private String generatePartsTableHtml(List<ExportOrderRequest.PartInfo> pecas) {
+    private String generatePartsTableHtml(List<ServiceOrderDocument.PartInfo> pecas) {
         if (pecas == null || pecas.isEmpty()) {
             return "<tr><td colspan=\"3\" style=\"text-align: center;\">Nenhuma peça aplicada</td></tr>";
         }
 
         StringBuilder html = new StringBuilder();
-        for (ExportOrderRequest.PartInfo peca : pecas) {
+        for (ServiceOrderDocument.PartInfo peca : pecas) {
             html.append("<tr>")
                 .append("<td>").append(peca.quantidade() != null ? peca.quantidade() : 0).append("</td>")
                 .append("<td>").append(nullSafe(peca.peca())).append("</td>")

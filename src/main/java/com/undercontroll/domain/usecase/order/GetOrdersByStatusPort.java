@@ -1,8 +1,10 @@
 package com.undercontroll.domain.usecase.order;
 
 import com.undercontroll.domain.enums.PeriodFilter;
-import com.undercontroll.application.dto.dashboard.OrdersByStatusResponse;
+import com.undercontroll.domain.model.dashboard.StatusCount;
+
+import java.util.List;
 
 public interface GetOrdersByStatusPort {
-    OrdersByStatusResponse execute(PeriodFilter period);
+    List<StatusCount> execute(PeriodFilter period);
 }

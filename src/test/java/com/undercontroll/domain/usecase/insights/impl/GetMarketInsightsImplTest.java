@@ -1,11 +1,11 @@
 package com.undercontroll.domain.usecase.insights.impl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.undercontroll.domain.enums.InsightGenerationStatus;
-import com.undercontroll.application.dto.insights.MarketInsightsResponse;
 import com.undercontroll.domain.gateway.MarketInsightGateway;
 import com.undercontroll.domain.gateway.MarketViewGateway;
 import com.undercontroll.domain.model.MarketMonthlyInsight;
+import com.undercontroll.domain.model.insight.InsightsPayload;
+import com.undercontroll.domain.usecase.insights.GetMarketInsightsPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,10 +14,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -31,82 +34,66 @@ class GetMarketInsightsImplTest {
     @Mock
     private MarketInsightGateway marketInsightGateway;
 
-    @Mock
-    private ObjectMapper objectMapper;
-
     @InjectMocks
     private GetMarketInsightsImpl getMarketInsights;
 
     @Test
-    @DisplayName("returns empty list when bucket does not exist")
+    @DisplayName("returns empty output when bucket does not exist")
     void emptyWhenNoBucket() {
         when(marketViewGateway.findCurrentBucketKey()).thenReturn(Optional.empty());
 
-        MarketInsightsResponse response = getMarketInsights.execute();
+        GetMarketInsightsPort.Output output = getMarketInsights.execute();
 
-        assertTrue(response.insights().isEmpty());
-        verify(marketInsightGateway, never()).findSuccessfulByBucketKey(org.mockito.ArgumentMatchers.any());
+        assertNull(output.payload());
+        verify(marketInsightGateway, never()).findSuccessfulByBucketKey(any());
     }
 
     @Test
-    @DisplayName("returns empty list when monthly batch was not generated yet")
+    @DisplayName("returns empty output when monthly batch was not generated yet")
     void emptyWhenNoSuccessfulBatch() {
         when(marketViewGateway.findCurrentBucketKey()).thenReturn(Optional.of("2026-08"));
         when(marketInsightGateway.findSuccessfulByBucketKey("2026-08")).thenReturn(Optional.empty());
 
-        MarketInsightsResponse response = getMarketInsights.execute();
-
-        assertTrue(response.insights().isEmpty());
+        assertEquals(GetMarketInsightsPort.Output.empty(), getMarketInsights.execute());
     }
 
     @Test
-    @DisplayName("maps stored payload when a successful batch exists")
-    void returnsStoredPayload() throws Exception {
-        String json = """
-                {
-                  "periodo": { "bucket_atual": "2026-08", "bucket_comparacao": "2026-07" },
-                  "cobertura_match": { "nivel_1_exato": 1, "nivel_2_marca_categoria": 0, "nivel_3_categoria": 0, "sem_match": 0 },
-                  "insights": [],
-                  "produtos_em_alta": [],
-                  "limitacoes": ["Os dados refletem popularidade e preço anunciado, não volume de vendas."]
-                }
-                """;
-        ObjectMapper realMapper = new ObjectMapper();
+    @DisplayName("returns the stored payload and generation time when a successful batch exists")
+    void returnsStoredPayload() {
+        InsightsPayload payload = new InsightsPayload(
+                new InsightsPayload.Periodo("2026-08", "2026-07"),
+                new InsightsPayload.CoberturaMatch(1, 0, 0, 0),
+                List.of(),
+                List.of(),
+                List.of("Os dados refletem popularidade e preço anunciado, não volume de vendas.")
+        );
         when(marketViewGateway.findCurrentBucketKey()).thenReturn(Optional.of("2026-08"));
         when(marketInsightGateway.findSuccessfulByBucketKey("2026-08")).thenReturn(Optional.of(
                 MarketMonthlyInsight.builder()
                         .bucketKey("2026-08")
                         .status(InsightGenerationStatus.SUCCESS)
-                        .payload(json)
+                        .payload(payload)
                         .generatedAt(LocalDateTime.of(2026, 8, 1, 4, 0))
                         .build()
         ));
-        when(objectMapper.readValue(json, com.undercontroll.domain.model.insight.InsightsPayload.class))
-                .thenReturn(realMapper.readValue(json, com.undercontroll.domain.model.insight.InsightsPayload.class));
 
-        MarketInsightsResponse response = getMarketInsights.execute();
+        GetMarketInsightsPort.Output output = getMarketInsights.execute();
 
-        assertEquals("2026-08", response.bucketKey());
-        assertEquals(1, response.matchCoverage().exact());
-        assertEquals(1, response.limitations().size());
+        assertSame(payload, output.payload());
+        assertEquals("2026-08-01T04:00", output.generatedAt());
     }
 
     @Test
-    @DisplayName("returns empty list when stored JSON cannot be parsed")
-    void emptyOnInvalidPayload() throws Exception {
+    @DisplayName("returns empty output when the stored payload could not be read")
+    void emptyOnUnreadablePayload() {
         when(marketViewGateway.findCurrentBucketKey()).thenReturn(Optional.of("2026-08"));
         when(marketInsightGateway.findSuccessfulByBucketKey("2026-08")).thenReturn(Optional.of(
                 MarketMonthlyInsight.builder()
                         .bucketKey("2026-08")
                         .status(InsightGenerationStatus.SUCCESS)
-                        .payload("{not-json")
                         .build()
         ));
-        when(objectMapper.readValue("{not-json", com.undercontroll.domain.model.insight.InsightsPayload.class))
-                .thenThrow(new RuntimeException("bad json"));
 
-        MarketInsightsResponse response = getMarketInsights.execute();
-
-        assertTrue(response.insights().isEmpty());
+        assertEquals(GetMarketInsightsPort.Output.empty(), getMarketInsights.execute());
     }
 }

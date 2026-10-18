@@ -1,8 +1,8 @@
-package com.undercontroll.application.dto.order;
+package com.undercontroll.domain.model;
 
 import java.util.List;
 
-public record ExportOrderRequest(
+public record ServiceOrderDocument(
         String numeroOs,
         String os,
         String nf,

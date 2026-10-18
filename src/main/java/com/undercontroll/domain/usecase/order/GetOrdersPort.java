@@ -1,7 +1,11 @@
 package com.undercontroll.domain.usecase.order;
 
-import com.undercontroll.application.dto.order.GetAllOrdersResponse;
+import java.util.List;
 
 public interface GetOrdersPort {
-    GetAllOrdersResponse execute(Integer userId, Integer page, Integer size);
+
+    Output execute(Integer userId, Integer page, Integer size);
+
+    record Output(List<OrderOutput> data, long totalElements, int totalPages, int page, int size) {
+    }
 }

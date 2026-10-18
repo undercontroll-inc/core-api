@@ -1,10 +1,10 @@
-package com.undercontroll.infrastructure.logging;
+package com.undercontroll.domain.support;
 
 import java.util.concurrent.TimeUnit;
 
-public final class LogTiming {
+public final class Durations {
 
-    private LogTiming() {
+    private Durations() {
     }
 
     public static long millisSince(long startNanos) {

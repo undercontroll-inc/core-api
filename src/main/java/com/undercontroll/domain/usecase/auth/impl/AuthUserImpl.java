@@ -1,13 +1,10 @@
 package com.undercontroll.domain.usecase.auth.impl;
 
-import com.undercontroll.application.dto.auth.AuthUserRequest;
-import com.undercontroll.application.dto.auth.AuthUserResponse;
-import com.undercontroll.application.mapper.UserDtoMapper;
-import com.undercontroll.domain.enums.AuthProvider;
 import com.undercontroll.domain.exception.InvalidAuthException;
 import com.undercontroll.domain.gateway.UserGateway;
 import com.undercontroll.domain.model.User;
 import com.undercontroll.domain.usecase.auth.AuthUserPort;
+import com.undercontroll.domain.usecase.user.UserOutput;
 import com.undercontroll.domain.gateway.GoogleAuthGateway;
 import com.undercontroll.domain.gateway.MetricsGateway;
 import com.undercontroll.domain.gateway.RefreshTokenGateway;
@@ -29,11 +26,10 @@ public class AuthUserImpl implements AuthUserPort {
     private final TokenGateway tokenGateway;
     private final RefreshTokenGateway refreshTokenGateway;
     private final MetricsGateway metricsGateway;
-    private final UserDtoMapper userDtoMapper;
     private final GoogleAuthGateway googleAuthGateway;
 
     @Override
-    public AuthUserResponse execute(AuthUserRequest request) {
+    public Output execute(Input request) {
         Optional<User> userFound = userGateway.findByEmail(request.email());
         if (userFound.isEmpty()) {
             return fail();
@@ -48,10 +44,10 @@ public class AuthUserImpl implements AuthUserPort {
         String refreshToken = refreshTokenGateway.createRefreshToken(user.getId(), user.getEmail(), user.getUserType());
         metricsGateway.incrementLoginSuccess();
         log.info("Login succeeded userId={} provider={}", user.getId(), request.provider());
-        return new AuthUserResponse(accessToken, refreshToken, userDtoMapper.toDto(user));
+        return new Output(accessToken, refreshToken, UserOutput.from(user));
     }
 
-    private boolean isAuthenticated(AuthUserRequest request, User user) {
+    private boolean isAuthenticated(Input request, User user) {
         return switch (request.provider()) {
             case PASSWORD -> request.password() != null
                     && !request.password().isBlank()
@@ -62,7 +58,7 @@ public class AuthUserImpl implements AuthUserPort {
         };
     }
 
-    private AuthUserResponse fail() {
+    private Output fail() {
         metricsGateway.incrementLoginFailed();
         log.warn("Login failed");
         throw new InvalidAuthException("Email or password is invalid");

@@ -1,7 +1,6 @@
 package com.undercontroll.infrastructure.web.controller;
 
 import com.undercontroll.application.controller.impl.MarketInsightsController;
-import com.undercontroll.application.dto.insights.MarketInsightsResponse;
 import com.undercontroll.domain.usecase.insights.GenerateMonthlyInsightsPort;
 import com.undercontroll.domain.usecase.insights.GetMarketInsightsPort;
 import com.undercontroll.domain.usecase.insights.InsightGenerationResult;
@@ -51,7 +50,7 @@ class MarketInsightsControllerTest {
     @WithMockUser(roles = "ADMINISTRATOR")
     @DisplayName("GET /v1/api/insights returns 200 with empty lists when the monthly batch is missing")
     void emptyInsights() throws Exception {
-        when(getMarketInsightsPort.execute()).thenReturn(MarketInsightsResponse.empty());
+        when(getMarketInsightsPort.execute()).thenReturn(GetMarketInsightsPort.Output.empty());
 
         mockMvc.perform(get("/v1/api/insights"))
                 .andExpect(status().isOk())

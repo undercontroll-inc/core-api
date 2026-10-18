@@ -22,7 +22,7 @@ public class ChatController implements ChatApi {
 
     @Override
     public ResponseEntity<SendChatMessageResponse> sendMessage(SendChatMessageRequest message) {
-        return ResponseEntity.ok(sendChatMessagePort.execute(message));
+        return ResponseEntity.ok(new SendChatMessageResponse(sendChatMessagePort.execute(message.content())));
     }
 
     @Override
@@ -32,11 +32,11 @@ public class ChatController implements ChatApi {
 
     @Override
     public ResponseEntity<ChatSuggestionsResponse> getSuggestions() {
-        return ResponseEntity.ok(getChatSuggestionsPort.execute(false));
+        return ResponseEntity.ok(new ChatSuggestionsResponse(getChatSuggestionsPort.execute(false)));
     }
 
     @Override
     public ResponseEntity<ChatSuggestionsResponse> refreshSuggestions() {
-        return ResponseEntity.ok(getChatSuggestionsPort.execute(true));
+        return ResponseEntity.ok(new ChatSuggestionsResponse(getChatSuggestionsPort.execute(true)));
     }
 }

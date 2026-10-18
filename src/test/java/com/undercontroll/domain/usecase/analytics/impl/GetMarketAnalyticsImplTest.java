@@ -1,9 +1,9 @@
 package com.undercontroll.domain.usecase.analytics.impl;
 
-import com.undercontroll.application.dto.analytics.MarketAnalyticsResponse;
 import com.undercontroll.domain.gateway.MarketViewGateway;
 import com.undercontroll.domain.model.market.MarketBrandSummary;
 import com.undercontroll.domain.model.market.MarketCategorySummary;
+import com.undercontroll.domain.usecase.analytics.GetMarketAnalyticsPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,7 +33,7 @@ class GetMarketAnalyticsImplTest {
     void emptyWhenNoBucket() {
         when(marketViewGateway.findCurrentBucketKey()).thenReturn(Optional.empty());
 
-        MarketAnalyticsResponse response = getMarketAnalytics.execute();
+        GetMarketAnalyticsPort.Output response = getMarketAnalytics.execute();
 
         assertNull(response.bucketKey());
         assertEquals(0L, response.totalProducts());
@@ -56,7 +56,7 @@ class GetMarketAnalyticsImplTest {
                         77.1, 90.0, 599.0, 500.0, 700.0, 10.0, 11.1, 5.0, 2L, 0L, 4L)
         ));
 
-        MarketAnalyticsResponse response = getMarketAnalytics.execute();
+        GetMarketAnalyticsPort.Output response = getMarketAnalytics.execute();
 
         assertEquals("2026-08", response.bucketKey());
         assertEquals(20L, response.totalProducts());

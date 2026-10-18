@@ -1,6 +1,5 @@
 package com.undercontroll.domain.usecase.analytics.impl;
 
-import com.undercontroll.application.dto.analytics.MarketAnalyticsResponse;
 import com.undercontroll.domain.gateway.MarketViewGateway;
 import com.undercontroll.domain.usecase.analytics.GetMarketAnalyticsPort;
 import lombok.RequiredArgsConstructor;
@@ -19,16 +18,16 @@ public class GetMarketAnalyticsImpl implements GetMarketAnalyticsPort {
 
     @Override
     @Cacheable(value = "marketAnalytics", key = "'current'")
-    public MarketAnalyticsResponse execute() {
+    public Output execute() {
         return marketViewGateway.findCurrentBucketKey()
                 .map(this::build)
-                .orElseGet(MarketAnalyticsResponse::empty);
+                .orElseGet(Output::empty);
     }
 
-    private MarketAnalyticsResponse build(String bucketKey) {
-        List<MarketAnalyticsResponse.BrandHighlight> brands = marketViewGateway.findTopBrands(bucketKey, TOP_N)
+    private Output build(String bucketKey) {
+        List<BrandHighlight> brands = marketViewGateway.findTopBrands(bucketKey, TOP_N)
                 .stream()
-                .map(row -> new MarketAnalyticsResponse.BrandHighlight(
+                .map(row -> new BrandHighlight(
                         row.brandName(),
                         row.brandSlug(),
                         row.productCount() == null ? 0L : row.productCount(),
@@ -36,9 +35,9 @@ public class GetMarketAnalyticsImpl implements GetMarketAnalyticsPort {
                         row.avgScore()
                 ))
                 .toList();
-        List<MarketAnalyticsResponse.CategoryHighlight> categories = marketViewGateway.findTopCategories(bucketKey, TOP_N)
+        List<CategoryHighlight> categories = marketViewGateway.findTopCategories(bucketKey, TOP_N)
                 .stream()
-                .map(row -> new MarketAnalyticsResponse.CategoryHighlight(
+                .map(row -> new CategoryHighlight(
                         row.domainId(),
                         row.categoryName(),
                         row.productCount() == null ? 0L : row.productCount(),
@@ -46,7 +45,7 @@ public class GetMarketAnalyticsImpl implements GetMarketAnalyticsPort {
                         row.risingCount()
                 ))
                 .toList();
-        return new MarketAnalyticsResponse(
+        return new Output(
                 bucketKey,
                 marketViewGateway.countCurrentProducts(),
                 marketViewGateway.countDistinctBrands(),

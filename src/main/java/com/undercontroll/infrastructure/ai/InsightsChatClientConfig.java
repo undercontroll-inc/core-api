@@ -3,6 +3,7 @@ package com.undercontroll.infrastructure.ai;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.undercontroll.domain.gateway.InsightsLlmGateway;
 import com.undercontroll.infrastructure.config.InsightsProperties;
+import com.undercontroll.infrastructure.mapper.InsightsPayloadJsonMapper;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.template.st.StTemplateRenderer;
@@ -45,6 +46,7 @@ public class InsightsChatClientConfig {
             InsightPayloadValidator insightPayloadValidator,
             InsightsProperties insightsProperties,
             MarketInsightTools marketInsightTools,
+            InsightsPayloadJsonMapper payloadMapper,
             @Value("classpath:prompts/insights-user-prompt.txt") Resource userPrompt
     ) {
         return new SpringAiInsightsLlmAdapter(
@@ -53,7 +55,8 @@ public class InsightsChatClientConfig {
                 insightPayloadValidator,
                 insightsProperties,
                 userPrompt,
-                marketInsightTools
+                marketInsightTools,
+                payloadMapper
         );
     }
 

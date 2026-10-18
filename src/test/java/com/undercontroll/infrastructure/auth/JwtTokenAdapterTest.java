@@ -32,8 +32,8 @@ class JwtTokenAdapterTest {
     void roundTrip() {
         String token = adapter.generateToken("42", UserType.CUSTOMER);
 
-        assertThat(adapter.validateToken(token).getSubject()).isEqualTo("42");
-        assertThat(adapter.extractUsername(token)).isEqualTo("42");
+        assertThat(adapter.validateToken(token).subject()).isEqualTo("42");
+        assertThat(adapter.validateToken(token).role()).isEqualTo("CUSTOMER");
     }
 
     @Test

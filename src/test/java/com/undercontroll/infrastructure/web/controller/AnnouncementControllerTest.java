@@ -1,14 +1,10 @@
 package com.undercontroll.infrastructure.web.controller;
 
-import com.auth0.jwt.interfaces.Claim;
-import com.auth0.jwt.interfaces.DecodedJWT;
+import com.undercontroll.domain.model.PresignedUpload;
+import com.undercontroll.domain.model.AccessTokenClaims;
+import com.undercontroll.application.mapper.AnnouncementDtoMapperImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.undercontroll.application.dto.announcement.AnnouncementDto;
 import com.undercontroll.application.dto.announcement.AnnouncementImageUploadDto;
-import com.undercontroll.application.dto.announcement.CreateAnnouncementResponse;
-import com.undercontroll.application.dto.announcement.GenerateUploadUrlResponse;
-import com.undercontroll.application.dto.announcement.GetPaginatedAnnouncementResponse;
-import com.undercontroll.application.dto.announcement.UpdateAnnouncementResponse;
 import com.undercontroll.domain.exception.InvalidAnnouncementException;
 import com.undercontroll.domain.enums.AnnouncementType;
 import com.undercontroll.domain.gateway.TokenGateway;
@@ -38,7 +34,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@Import({SecurityConfig.class, RateLimitProperties.class})
+@Import({SecurityConfig.class, RateLimitProperties.class, AnnouncementDtoMapperImpl.class})
 @AutoConfigureMockMvc(addFilters = true)
 @WebMvcTest(AnnouncementController.class)
 class AnnouncementControllerTest {
@@ -68,12 +64,7 @@ class AnnouncementControllerTest {
     private TokenGateway tokenGateway;
 
     private void mockTokenPortWithRole(String role) {
-        Claim claim = mock(Claim.class);
-        when(claim.asString()).thenReturn(role);
-        DecodedJWT decoded = mock(DecodedJWT.class);
-        when(decoded.getSubject()).thenReturn("user@example.com");
-        when(decoded.getClaim("roles")).thenReturn(claim);
-        when(tokenGateway.validateToken(anyString())).thenReturn(decoded);
+        when(tokenGateway.validateToken(anyString())).thenReturn(new AccessTokenClaims("user@example.com", role));
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -89,12 +80,12 @@ class AnnouncementControllerTest {
                 "New Feature", "We have a new feature available!", null, AnnouncementType.HOLIDAY
         );
 
-        CreateAnnouncementResponse response = new CreateAnnouncementResponse(
+        CreateAnnouncementPort.Output response = new CreateAnnouncementPort.Output(
                 1, "New Feature", "We have a new feature available!", null, AnnouncementType.HOLIDAY,
                 LocalDateTime.now(), LocalDateTime.now()
         );
 
-        when(createAnnouncement.execute(any(CreateAnnouncementRequest.class), anyString())).thenReturn(response);
+        when(createAnnouncement.execute(any(CreateAnnouncementPort.Input.class), anyString())).thenReturn(response);
 
         mockMvc.perform(post("/v1/api/announcements")
                         .header("Authorization", "Bearer admin-token")
@@ -105,7 +96,7 @@ class AnnouncementControllerTest {
                 .andExpect(jsonPath("$.title").value("New Feature"))
                 .andExpect(jsonPath("$.type").value("HOLIDAY"));
 
-        verify(createAnnouncement, times(1)).execute(any(CreateAnnouncementRequest.class), anyString());
+        verify(createAnnouncement, times(1)).execute(any(CreateAnnouncementPort.Input.class), anyString());
     }
 
     @Test
@@ -114,7 +105,7 @@ class AnnouncementControllerTest {
         mockTokenPortWithRole("ADMINISTRATOR");
 
         AnnouncementImageUploadDto imageUpload = new AnnouncementImageUploadDto("cover.png", "image/png", 1024L);
-        GenerateUploadUrlResponse uploadResponse = new GenerateUploadUrlResponse(
+        PresignedUpload uploadResponse = new PresignedUpload(
                 "https://s3.example/upload",
                 "announcements/1/cover.png",
                 123L
@@ -123,12 +114,12 @@ class AnnouncementControllerTest {
                 "New Feature", "We have a new feature available!", imageUpload, AnnouncementType.HOLIDAY
         );
 
-        CreateAnnouncementResponse response = new CreateAnnouncementResponse(
+        CreateAnnouncementPort.Output response = new CreateAnnouncementPort.Output(
                 1, "New Feature", "We have a new feature available!", uploadResponse, AnnouncementType.HOLIDAY,
                 LocalDateTime.now(), LocalDateTime.now()
         );
 
-        when(createAnnouncement.execute(any(CreateAnnouncementRequest.class), anyString())).thenReturn(response);
+        when(createAnnouncement.execute(any(CreateAnnouncementPort.Input.class), anyString())).thenReturn(response);
 
         mockMvc.perform(post("/v1/api/announcements")
                         .header("Authorization", "Bearer admin-token")
@@ -161,7 +152,7 @@ class AnnouncementControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden());
 
-        verify(createAnnouncement, never()).execute(any(CreateAnnouncementRequest.class), anyString());
+        verify(createAnnouncement, never()).execute(any(CreateAnnouncementPort.Input.class), anyString());
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -171,15 +162,15 @@ class AnnouncementControllerTest {
     @Test
     @DisplayName("GET /v1/api/announcements - should return 200 with paginated response")
     void administratorShouldGetAnnouncementsPaginatedSuccessfully() throws Exception {
-        AnnouncementDto announcement1 = new AnnouncementDto(
+        AnnouncementOutput announcement1 = new AnnouncementOutput(
                 1, "Title 1", "Content 1", "https://s3.example/read-1", AnnouncementType.HOLIDAY, LocalDateTime.now(), LocalDateTime.now()
         );
-        AnnouncementDto announcement2 = new AnnouncementDto(
+        AnnouncementOutput announcement2 = new AnnouncementOutput(
                 2, "Title 2", "Content 2", null, AnnouncementType.UPDATES, LocalDateTime.now(), LocalDateTime.now()
         );
 
         when(getAnnouncements.execute(any(), any(), any()))
-                .thenReturn(new GetPaginatedAnnouncementResponse(List.of(announcement1, announcement2), 2L, 1, 0, 10));
+                .thenReturn(new GetAnnouncementsPort.Output(List.of(announcement1, announcement2), 2L, 1, 0, 10));
 
         mockMvc.perform(get("/v1/api/announcements")
                         .with(user("admin@example.com").roles("ADMINISTRATOR"))
@@ -202,7 +193,7 @@ class AnnouncementControllerTest {
     @DisplayName("GET /v1/api/announcements - should return 200 with empty list when no announcements found")
     void shouldReturn200WithEmptyListWhenNoAnnouncementsFound() throws Exception {
         when(getAnnouncements.execute(any(), any(), any()))
-                .thenReturn(new GetPaginatedAnnouncementResponse(List.of(), 0L, 0, 0, 10));
+                .thenReturn(new GetAnnouncementsPort.Output(List.of(), 0L, 0, 0, 10));
 
         mockMvc.perform(get("/v1/api/announcements")
                         .with(user("admin@example.com").roles("ADMINISTRATOR"))
@@ -221,7 +212,7 @@ class AnnouncementControllerTest {
     @DisplayName("GET /v1/api/announcements - should use default pagination values when params not provided")
     void shouldUseDefaultPaginationWhenParamsNotProvided() throws Exception {
         when(getAnnouncements.execute(any(), any(), any()))
-                .thenReturn(new GetPaginatedAnnouncementResponse(List.of(), 0L, 0, 0, 10));
+                .thenReturn(new GetAnnouncementsPort.Output(List.of(), 0L, 0, 0, 10));
 
         mockMvc.perform(get("/v1/api/announcements")
                         .with(user("admin@example.com").roles("ADMINISTRATOR")))
@@ -235,12 +226,12 @@ class AnnouncementControllerTest {
     @Test
     @DisplayName("GET /v1/api/announcements - should filter by type when type param is provided")
     void shouldFilterByTypeWhenTypeParamIsProvided() throws Exception {
-        AnnouncementDto announcement = new AnnouncementDto(
+        AnnouncementOutput announcement = new AnnouncementOutput(
                 1, "Promoção", "50% off", null, AnnouncementType.PROMOTIONS, LocalDateTime.now(), LocalDateTime.now()
         );
 
         when(getAnnouncements.execute(any(), any(), any()))
-                .thenReturn(new GetPaginatedAnnouncementResponse(List.of(announcement), 1L, 1, 0, 10));
+                .thenReturn(new GetAnnouncementsPort.Output(List.of(announcement), 1L, 1, 0, 10));
 
         mockMvc.perform(get("/v1/api/announcements")
                         .with(user("admin@example.com").roles("ADMINISTRATOR"))
@@ -260,7 +251,7 @@ class AnnouncementControllerTest {
     @DisplayName("GET /v1/api/announcements - should pass null type when type param is not provided")
     void shouldPassNullTypeWhenTypeParamNotProvided() throws Exception {
         when(getAnnouncements.execute(any(), any(), any()))
-                .thenReturn(new GetPaginatedAnnouncementResponse(List.of(), 0L, 0, 0, 10));
+                .thenReturn(new GetAnnouncementsPort.Output(List.of(), 0L, 0, 0, 10));
 
         mockMvc.perform(get("/v1/api/announcements")
                         .with(user("admin@example.com").roles("ADMINISTRATOR")))
@@ -272,12 +263,12 @@ class AnnouncementControllerTest {
     @Test
     @DisplayName("GET /v1/api/announcements - CUSTOMER should be able to get announcements and return 200")
     void customerShouldGetAnnouncementsPaginatedSuccessfully() throws Exception {
-        AnnouncementDto announcement = new AnnouncementDto(
+        AnnouncementOutput announcement = new AnnouncementOutput(
                 1, "Title 1", "Content 1", null, AnnouncementType.HOLIDAY, LocalDateTime.now(), LocalDateTime.now()
         );
 
         when(getAnnouncements.execute(any(), any(), any()))
-                .thenReturn(new GetPaginatedAnnouncementResponse(List.of(announcement), 1L, 1, 0, 10));
+                .thenReturn(new GetAnnouncementsPort.Output(List.of(announcement), 1L, 1, 0, 10));
 
         mockMvc.perform(get("/v1/api/announcements")
                         .with(user("customer@example.com").roles("SCOPE_CUSTOMER"))
@@ -294,14 +285,14 @@ class AnnouncementControllerTest {
     @Test
     @DisplayName("GET /v1/api/announcements - should return correct totalPages for multi-page result")
     void shouldReturnCorrectTotalPagesForMultiPageResult() throws Exception {
-        List<AnnouncementDto> pageContent = List.of(
-                new AnnouncementDto(1, "T1", "C1", null, AnnouncementType.HOLIDAY, LocalDateTime.now(), LocalDateTime.now()),
-                new AnnouncementDto(2, "T2", "C2", null, AnnouncementType.HOLIDAY, LocalDateTime.now(), LocalDateTime.now()),
-                new AnnouncementDto(3, "T3", "C3", null, AnnouncementType.HOLIDAY, LocalDateTime.now(), LocalDateTime.now())
+        List<AnnouncementOutput> pageContent = List.of(
+                new AnnouncementOutput(1, "T1", "C1", null, AnnouncementType.HOLIDAY, LocalDateTime.now(), LocalDateTime.now()),
+                new AnnouncementOutput(2, "T2", "C2", null, AnnouncementType.HOLIDAY, LocalDateTime.now(), LocalDateTime.now()),
+                new AnnouncementOutput(3, "T3", "C3", null, AnnouncementType.HOLIDAY, LocalDateTime.now(), LocalDateTime.now())
         );
 
         when(getAnnouncements.execute(any(), any(), any()))
-                .thenReturn(new GetPaginatedAnnouncementResponse(pageContent, 9L, 3, 0, 3));
+                .thenReturn(new GetAnnouncementsPort.Output(pageContent, 9L, 3, 0, 3));
 
         mockMvc.perform(get("/v1/api/announcements")
                         .with(user("admin@example.com").roles("ADMINISTRATOR"))
@@ -327,12 +318,12 @@ class AnnouncementControllerTest {
                 "Updated Title", "Updated Content", null, false, AnnouncementType.HOLIDAY
         );
 
-        UpdateAnnouncementResponse response = new UpdateAnnouncementResponse(
+        UpdateAnnouncementPort.Output response = new UpdateAnnouncementPort.Output(
                 1, "Updated Title", "Updated Content", null, null, AnnouncementType.HOLIDAY,
                 LocalDateTime.now(), LocalDateTime.now()
         );
 
-        when(updateAnnouncement.execute(anyInt(), any(UpdateAnnouncementRequest.class))).thenReturn(response);
+        when(updateAnnouncement.execute(anyInt(), any(UpdateAnnouncementPort.Input.class))).thenReturn(response);
 
         mockMvc.perform(put("/v1/api/announcements/1")
                         .with(user("admin@example.com").roles("ADMINISTRATOR"))
@@ -343,7 +334,7 @@ class AnnouncementControllerTest {
                 .andExpect(jsonPath("$.content").value("Updated Content"))
                 .andExpect(jsonPath("$.type").value("HOLIDAY"));
 
-        verify(updateAnnouncement, times(1)).execute(anyInt(), any(UpdateAnnouncementRequest.class));
+        verify(updateAnnouncement, times(1)).execute(anyInt(), any(UpdateAnnouncementPort.Input.class));
     }
 
     @Test
@@ -353,13 +344,13 @@ class AnnouncementControllerTest {
         UpdateAnnouncementRequest request = new UpdateAnnouncementRequest(
                 "Updated Title", "Updated Content", imageUpload, false, AnnouncementType.HOLIDAY
         );
-        GenerateUploadUrlResponse uploadResponse = new GenerateUploadUrlResponse(
+        PresignedUpload uploadResponse = new PresignedUpload(
                 "https://s3.example/update",
                 "announcements/1/new-cover.webp",
                 456L
         );
 
-        UpdateAnnouncementResponse response = new UpdateAnnouncementResponse(
+        UpdateAnnouncementPort.Output response = new UpdateAnnouncementPort.Output(
                 1,
                 "Updated Title",
                 "Updated Content",
@@ -370,7 +361,7 @@ class AnnouncementControllerTest {
                 LocalDateTime.now()
         );
 
-        when(updateAnnouncement.execute(anyInt(), any(UpdateAnnouncementRequest.class))).thenReturn(response);
+        when(updateAnnouncement.execute(anyInt(), any(UpdateAnnouncementPort.Input.class))).thenReturn(response);
 
         mockMvc.perform(put("/v1/api/announcements/1")
                         .with(user("admin@example.com").roles("ADMINISTRATOR"))
@@ -395,7 +386,7 @@ class AnnouncementControllerTest {
                 "Updated Title", "Updated Content", null, true, AnnouncementType.HOLIDAY
         );
 
-        UpdateAnnouncementResponse response = new UpdateAnnouncementResponse(
+        UpdateAnnouncementPort.Output response = new UpdateAnnouncementPort.Output(
                 1,
                 "Updated Title",
                 "Updated Content",
@@ -406,7 +397,7 @@ class AnnouncementControllerTest {
                 LocalDateTime.now()
         );
 
-        when(updateAnnouncement.execute(anyInt(), any(UpdateAnnouncementRequest.class))).thenReturn(response);
+        when(updateAnnouncement.execute(anyInt(), any(UpdateAnnouncementPort.Input.class))).thenReturn(response);
 
         mockMvc.perform(put("/v1/api/announcements/1")
                         .with(user("admin@example.com").roles("ADMINISTRATOR"))
@@ -429,7 +420,7 @@ class AnnouncementControllerTest {
                 "Updated Title", "Updated Content", imageUpload, true, AnnouncementType.HOLIDAY
         );
 
-        when(updateAnnouncement.execute(anyInt(), any(UpdateAnnouncementRequest.class)))
+        when(updateAnnouncement.execute(anyInt(), any(UpdateAnnouncementPort.Input.class)))
                 .thenThrow(new InvalidAnnouncementException("Cannot upload and remove an image at the same time"));
 
         mockMvc.perform(put("/v1/api/announcements/1")
@@ -438,7 +429,7 @@ class AnnouncementControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
 
-        verify(updateAnnouncement, times(1)).execute(anyInt(), any(UpdateAnnouncementRequest.class));
+        verify(updateAnnouncement, times(1)).execute(anyInt(), any(UpdateAnnouncementPort.Input.class));
     }
 
     @Test
@@ -454,7 +445,7 @@ class AnnouncementControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden());
 
-        verify(updateAnnouncement, never()).execute(anyInt(), any(UpdateAnnouncementRequest.class));
+        verify(updateAnnouncement, never()).execute(anyInt(), any(UpdateAnnouncementPort.Input.class));
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -490,7 +481,7 @@ class AnnouncementControllerTest {
     @Test
     @DisplayName("GET /v1/api/announcements/latest - should return 200 with latest announcement")
     void shouldReturnLastAnnouncementSuccessfully() throws Exception {
-        AnnouncementDto last = new AnnouncementDto(
+        AnnouncementOutput last = new AnnouncementOutput(
                 5, "Last", "Last content", "https://s3.example/last", AnnouncementType.UPDATES, LocalDateTime.now(), LocalDateTime.now()
         );
 

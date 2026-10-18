@@ -1,10 +1,10 @@
 package com.undercontroll.domain.usecase.dashboard.impl;
 
-import com.undercontroll.application.dto.dashboard.CustomerTypeResponse;
 import com.undercontroll.domain.enums.OrderStatus;
 import com.undercontroll.domain.enums.PeriodFilter;
 import com.undercontroll.domain.enums.StatusFilter;
 import com.undercontroll.domain.gateway.OrderGateway;
+import com.undercontroll.domain.model.dashboard.CustomerTypePoint;
 import com.undercontroll.domain.usecase.dashboard.DashboardDateFilter;
 import com.undercontroll.domain.usecase.dashboard.GetCustomerTypeEvolutionPort;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +21,7 @@ public class GetCustomerTypeEvolutionImpl implements GetCustomerTypeEvolutionPor
     private final OrderGateway orderGateway;
 
     @Override
-    public CustomerTypeResponse execute(PeriodFilter period, StatusFilter status) {
+    public List<CustomerTypePoint> execute(PeriodFilter period, StatusFilter status) {
         LocalDate startDate = DashboardDateFilter.from(period);
         List<String> statuses = status.getStatuses().stream()
                 .map(OrderStatus::name)
@@ -29,15 +29,13 @@ public class GetCustomerTypeEvolutionImpl implements GetCustomerTypeEvolutionPor
 
         List<Object[]> rows = orderGateway.getCustomerTypeEvolution(startDate, statuses);
 
-        List<CustomerTypeResponse.DataPoint> dataPoints = rows.stream()
-                .map(row -> new CustomerTypeResponse.DataPoint(
+        return rows.stream()
+                .map(row -> new CustomerTypePoint(
                         toLocalDate(row[0]),
                         toLong(row[1]),
                         toLong(row[2])
                 ))
                 .toList();
-
-        return new CustomerTypeResponse(dataPoints);
     }
 
     private LocalDate toLocalDate(Object value) {

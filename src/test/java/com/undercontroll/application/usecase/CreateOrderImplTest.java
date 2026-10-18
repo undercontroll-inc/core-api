@@ -1,12 +1,9 @@
 package com.undercontroll.application.usecase;
 
-import com.undercontroll.application.dto.demand.CreateDemandRequest;
-import com.undercontroll.application.dto.demand.DemandDto;
-import com.undercontroll.application.dto.order.CreateOrderRequest;
-import com.undercontroll.application.dto.order.OrderEnrichedDto;
-import com.undercontroll.application.dto.orderitem.OrderItemCreateOrderRequest;
-import com.undercontroll.application.dto.order.PartDto;
-import com.undercontroll.application.mapper.OrderDtoMapper;
+import com.undercontroll.domain.usecase.demand.DemandOutput;
+import com.undercontroll.domain.usecase.order.CreateOrderPort;
+import com.undercontroll.domain.usecase.order.OrderOutput;
+import com.undercontroll.domain.usecase.order.OrderPartInput;
 import com.undercontroll.domain.usecase.order.impl.CreateOrderImpl;
 import com.undercontroll.domain.exception.InsuficientComponentException;
 import com.undercontroll.domain.gateway.CurrentUserAdminPort;
@@ -33,7 +30,6 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -55,9 +51,6 @@ class CreateOrderImplTest {
 
     @Mock
     private MetricsGateway metricsGateway;
-
-    @Mock
-    private OrderDtoMapper orderDtoMapper;
 
     @Mock
     private CurrentUserAdminPort currentUserAdminPort;
@@ -92,22 +85,20 @@ class CreateOrderImplTest {
 
     private void mockFinalOrderFetchAndMapping() {
         when(orderGateway.findById(1)).thenReturn(Optional.of(savedOrder));
-        when(orderDtoMapper.toEnrichedDto(eq(savedOrder), anyBoolean())).thenReturn(
-                new OrderEnrichedDto(1, null, null, null, null, null, null, null, null, null, null, false, null, null, OrderStatus.PENDING, null));
     }
 
-    private static OrderItemCreateOrderRequest appliance() {
-        return new OrderItemCreateOrderRequest("TV", "Brand", "Model", "220V", "SN123", 50.0);
+    private static CreateOrderPort.Appliance appliance() {
+        return new CreateOrderPort.Appliance("TV", "Brand", "Model", "220V", "SN123", 50.0);
     }
 
-    private static CreateOrderRequest createRequest(
-            List<OrderItemCreateOrderRequest> appliances,
-            List<PartDto> parts,
+    private static CreateOrderPort.Input createRequest(
+            List<CreateOrderPort.Appliance> appliances,
+            List<OrderPartInput> parts,
             Double discount,
             String customerDescription,
             String technicalDescription
     ) {
-        return new CreateOrderRequest(
+        return new CreateOrderPort.Input(
                 1, appliances, parts, discount,
                 "20/11/2025", "25/11/2025", customerDescription, technicalDescription,
                 "PENDING", true, false, "NF123"
@@ -117,20 +108,20 @@ class CreateOrderImplTest {
     @Test
     @DisplayName("Should create order successfully with one part and one appliance")
     void testCreateOrder_ShouldCreateSuccessfully() {
-        PartDto part = new PartDto(1, 10);
+        OrderPartInput part = new OrderPartInput(1, 10);
 
         when(stockManagementGateway.findComponentById(1)).thenReturn(Optional.of(component));
         doNothing().when(stockManagementGateway).validateStockAvailability(any(ComponentPart.class), anyInt());
         when(userGateway.findById(1)).thenReturn(Optional.of(user));
         when(orderGateway.save(any(Order.class))).thenReturn(savedOrder);
-        when(createDemandPort.execute(anyInt(), any(CreateDemandRequest.class)))
-                .thenReturn(new DemandDto(1, 1, 1, 10L));
+        when(createDemandPort.execute(anyInt(), any(CreateDemandPort.Input.class)))
+                .thenReturn(new DemandOutput(1, 1, 1, 10L));
         doNothing().when(stockManagementGateway).decreaseStock(anyInt(), anyInt());
         doNothing().when(metricsGateway).incrementOrderCreated();
         doNothing().when(metricsGateway).recordOrderProcessingTime(anyLong());
         mockFinalOrderFetchAndMapping();
 
-        OrderEnrichedDto output = createOrderImpl.execute(
+        OrderOutput output = createOrderImpl.execute(
                 createRequest(List.of(appliance()), List.of(part), 0.0, "Não gela", null)
         );
 
@@ -142,7 +133,7 @@ class CreateOrderImplTest {
         verify(stockManagementGateway, times(1)).validateStockAvailability(any(ComponentPart.class), eq(10));
         verify(userGateway, times(1)).findById(1);
         verify(orderGateway, times(1)).save(any(Order.class));
-        verify(createDemandPort, times(1)).execute(anyInt(), any(CreateDemandRequest.class));
+        verify(createDemandPort, times(1)).execute(anyInt(), any(CreateDemandPort.Input.class));
         verify(stockManagementGateway, times(1)).decreaseStock(1, 10);
         verify(metricsGateway, times(1)).incrementOrderCreated();
     }
@@ -150,7 +141,7 @@ class CreateOrderImplTest {
     @Test
     @DisplayName("Should throw exception when stock is insufficient")
     void testCreateOrder_ShouldThrowException_WhenInsufficientStock() {
-        PartDto part = new PartDto(1, 200);
+        OrderPartInput part = new OrderPartInput(1, 200);
 
         when(stockManagementGateway.findComponentById(1)).thenReturn(Optional.of(component));
         doThrow(new InsuficientComponentException("Insufficient stock"))
@@ -167,14 +158,14 @@ class CreateOrderImplTest {
     @Test
     @DisplayName("Should calculate total correctly: partsTotal + laborTotal - discount")
     void testCreateOrder_ShouldCalculateTotalCorrectly() {
-        PartDto part = new PartDto(1, 4);
+        OrderPartInput part = new OrderPartInput(1, 4);
 
         when(stockManagementGateway.findComponentById(1)).thenReturn(Optional.of(component));
         doNothing().when(stockManagementGateway).validateStockAvailability(any(ComponentPart.class), anyInt());
         when(userGateway.findById(1)).thenReturn(Optional.of(user));
         when(orderGateway.save(any(Order.class))).thenReturn(savedOrder);
-        when(createDemandPort.execute(anyInt(), any(CreateDemandRequest.class)))
-                .thenReturn(new DemandDto(1, 1, 1, 4L));
+        when(createDemandPort.execute(anyInt(), any(CreateDemandPort.Input.class)))
+                .thenReturn(new DemandOutput(1, 1, 1, 4L));
         doNothing().when(stockManagementGateway).decreaseStock(anyInt(), anyInt());
         doNothing().when(metricsGateway).incrementOrderCreated();
         doNothing().when(metricsGateway).recordOrderProcessingTime(anyLong());
@@ -196,7 +187,7 @@ class CreateOrderImplTest {
         doNothing().when(metricsGateway).recordOrderProcessingTime(anyLong());
         mockFinalOrderFetchAndMapping();
 
-        OrderEnrichedDto output = createOrderImpl.execute(
+        OrderOutput output = createOrderImpl.execute(
                 createRequest(List.of(), List.of(), 0.0, "Não gela", null)
         );
 
@@ -222,7 +213,6 @@ class CreateOrderImplTest {
         verify(orderGateway).save(orderCaptor.capture());
         assertEquals("Não gela", orderCaptor.getValue().getCustomerDescription());
         assertEquals("Compressor queimado", orderCaptor.getValue().getTechnicalDescription());
-        verify(orderDtoMapper).toEnrichedDto(savedOrder, true);
     }
 
     @Test
@@ -241,6 +231,5 @@ class CreateOrderImplTest {
         verify(orderGateway).save(orderCaptor.capture());
         assertEquals("Não gela", orderCaptor.getValue().getCustomerDescription());
         assertNull(orderCaptor.getValue().getTechnicalDescription());
-        verify(orderDtoMapper).toEnrichedDto(savedOrder, false);
     }
 }

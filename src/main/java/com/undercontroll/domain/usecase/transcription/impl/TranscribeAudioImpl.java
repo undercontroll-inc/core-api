@@ -1,19 +1,15 @@
 package com.undercontroll.domain.usecase.transcription.impl;
 
-import com.undercontroll.application.dto.transcription.TranscribeAudioRequest;
-import com.undercontroll.application.dto.transcription.TranscribeAudioResponse;
-import com.undercontroll.application.mapper.TranscriptionDtoMapper;
 import com.undercontroll.domain.exception.InvalidTranscriptionException;
 import com.undercontroll.domain.exception.TranscriptionUnavailableException;
 import com.undercontroll.domain.gateway.AudioTranscriptionGateway;
+import com.undercontroll.domain.model.AudioClip;
+import com.undercontroll.domain.support.Durations;
 import com.undercontroll.domain.usecase.transcription.TranscribeAudioPort;
-import com.undercontroll.infrastructure.logging.LogTiming;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 import java.util.Locale;
 import java.util.Set;
@@ -43,30 +39,29 @@ public class TranscribeAudioImpl implements TranscribeAudioPort {
     );
 
     private final ObjectProvider<AudioTranscriptionGateway> audioTranscriptionGateway;
-    private final TranscriptionDtoMapper transcriptionDtoMapper;
 
     @Override
-    public TranscribeAudioResponse execute(TranscribeAudioRequest request) {
-        validate(request);
+    public String execute(AudioClip audio) {
+        validate(audio);
         long started = System.nanoTime();
-        log.info("Transcription requested mime={} byteSize={}", request.contentType(), request.size());
+        log.info("Transcription requested mime={} byteSize={}", audio.contentType(), audio.size());
         AudioTranscriptionGateway gateway = audioTranscriptionGateway.getIfAvailable();
         if (gateway == null) {
             log.warn("Transcription gateway is not available");
             throw new TranscriptionUnavailableException();
         }
         try {
-            String text = gateway.transcribe(request.audio(), request.contentType(), request.filename());
-            if (!StringUtils.hasText(text)) {
+            String text = gateway.transcribe(audio);
+            if (isBlank(text)) {
                 throw new TranscriptionUnavailableException();
             }
             String trimmed = text.trim();
             log.info(
                     "Transcription finished chars={} durationMs={}",
                     trimmed.length(),
-                    LogTiming.millisSince(started)
+                    Durations.millisSince(started)
             );
-            return transcriptionDtoMapper.toResponse(trimmed);
+            return trimmed;
         } catch (TranscriptionUnavailableException | InvalidTranscriptionException ex) {
             throw ex;
         } catch (RuntimeException ex) {
@@ -74,18 +69,17 @@ public class TranscribeAudioImpl implements TranscribeAudioPort {
         }
     }
 
-    private static void validate(TranscribeAudioRequest request) {
-        Resource audio = request == null ? null : request.audio();
-        if (audio == null) {
+    private static void validate(AudioClip audio) {
+        if (audio == null || audio.content() == null) {
             throw new InvalidTranscriptionException("Audio file is required");
         }
-        if (request.size() <= 0) {
+        if (audio.size() <= 0) {
             throw new InvalidTranscriptionException("Audio file is empty");
         }
-        if (request.size() > MAX_BYTES) {
+        if (audio.size() > MAX_BYTES) {
             throw new InvalidTranscriptionException("Audio file exceeds 8MB");
         }
-        if (!allowed(request.contentType(), request.filename())) {
+        if (!allowed(audio.contentType(), audio.filename())) {
             throw new InvalidTranscriptionException("Unsupported audio type");
         }
     }
@@ -100,7 +94,7 @@ public class TranscribeAudioImpl implements TranscribeAudioPort {
     }
 
     private static String mediaType(String contentType) {
-        if (!StringUtils.hasText(contentType)) {
+        if (isBlank(contentType)) {
             return null;
         }
         String type = contentType.split(";", 2)[0].trim().toLowerCase(Locale.ROOT);
@@ -108,7 +102,7 @@ public class TranscribeAudioImpl implements TranscribeAudioPort {
     }
 
     private static String extension(String filename) {
-        if (!StringUtils.hasText(filename)) {
+        if (isBlank(filename)) {
             return null;
         }
         int dot = filename.lastIndexOf('.');
@@ -116,5 +110,9 @@ public class TranscribeAudioImpl implements TranscribeAudioPort {
             return null;
         }
         return filename.substring(dot + 1).toLowerCase(Locale.ROOT);
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }

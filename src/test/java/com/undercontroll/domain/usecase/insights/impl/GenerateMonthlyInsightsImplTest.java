@@ -1,6 +1,5 @@
 package com.undercontroll.domain.usecase.insights.impl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.undercontroll.domain.enums.InsightGenerationStatus;
 import com.undercontroll.domain.gateway.InsightsLlmGateway;
 import com.undercontroll.domain.gateway.MarketInsightGateway;
@@ -53,7 +52,6 @@ class GenerateMonthlyInsightsImplTest {
     private InsightsLlmGateway llmGateway;
 
     private final InsightsProperties insightsProperties = new InsightsProperties();
-    private final ObjectMapper objectMapper = new ObjectMapper();
     private GenerateMonthlyInsightsImpl generateMonthlyInsights;
 
     @BeforeEach
@@ -66,8 +64,7 @@ class GenerateMonthlyInsightsImplTest {
                 marketInsightGateway,
                 orderGateway,
                 insightsLlmGateway,
-                insightsProperties,
-                objectMapper
+                insightsProperties
         );
     }
 

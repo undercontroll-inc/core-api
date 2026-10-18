@@ -4,6 +4,7 @@ import com.undercontroll.domain.exception.AnaUnavailableException;
 import com.undercontroll.domain.gateway.AnaChatGateway;
 import com.undercontroll.domain.gateway.CurrentUserIdPort;
 import com.undercontroll.domain.gateway.OrderGateway;
+import com.undercontroll.domain.gateway.ShopSnapshotLoader;
 import com.undercontroll.domain.model.Order;
 import com.undercontroll.domain.model.chat.ShopSuggestionComposer;
 import com.undercontroll.domain.usecase.chat.StreamChatSession;

@@ -24,6 +24,7 @@ import java.time.Duration;
 public class RedisConfig {
 
     private static final int TTL_MINUTES = 10;
+    private static final String CACHE_KEY_VERSION = "v2:";
 
 
     @Bean
@@ -54,6 +55,7 @@ public class RedisConfig {
     public RedisCacheConfiguration cacheConfiguration() {
         return RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofMinutes(TTL_MINUTES))
+                .prefixCacheNameWith(CACHE_KEY_VERSION)
                 .disableCachingNullValues()
                 .serializeKeysWith(
                         RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer())

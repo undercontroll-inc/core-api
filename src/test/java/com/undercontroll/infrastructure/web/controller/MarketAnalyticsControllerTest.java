@@ -1,7 +1,7 @@
 package com.undercontroll.infrastructure.web.controller;
 
+import com.undercontroll.application.mapper.MarketAnalyticsDtoMapperImpl;
 import com.undercontroll.application.controller.impl.MarketAnalyticsController;
-import com.undercontroll.application.dto.analytics.MarketAnalyticsResponse;
 import com.undercontroll.domain.usecase.analytics.GetMarketAnalyticsPort;
 import com.undercontroll.infrastructure.config.RateLimitProperties;
 import com.undercontroll.infrastructure.config.SecurityConfig;
@@ -23,7 +23,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@Import({SecurityConfig.class, RateLimitProperties.class})
+@Import({SecurityConfig.class, RateLimitProperties.class, MarketAnalyticsDtoMapperImpl.class})
 @AutoConfigureMockMvc
 @WebMvcTest(MarketAnalyticsController.class)
 class MarketAnalyticsControllerTest {
@@ -41,7 +41,7 @@ class MarketAnalyticsControllerTest {
     @WithMockUser(roles = "ADMINISTRATOR")
     @DisplayName("GET /v1/api/analytics returns 200 with empty lists when there is no bucket")
     void emptyAnalytics() throws Exception {
-        when(getMarketAnalyticsPort.execute()).thenReturn(MarketAnalyticsResponse.empty());
+        when(getMarketAnalyticsPort.execute()).thenReturn(GetMarketAnalyticsPort.Output.empty());
 
         mockMvc.perform(get("/v1/api/analytics"))
                 .andExpect(status().isOk())
@@ -55,12 +55,12 @@ class MarketAnalyticsControllerTest {
     @DisplayName("GET /v1/api/analytics returns ranking highlights for the current bucket")
     void analyticsOk() throws Exception {
         when(getMarketAnalyticsPort.execute()).thenReturn(
-                new MarketAnalyticsResponse(
+                new GetMarketAnalyticsPort.Output(
                         "2026-08",
                         20L,
                         8L,
-                        List.of(new MarketAnalyticsResponse.BrandHighlight("Mondial", "mondial", 2L, 1, 81.3)),
-                        List.of(new MarketAnalyticsResponse.CategoryHighlight("MLB-MICROWAVES", "Micro-ondas", 5L, 77.1, 2L))
+                        List.of(new GetMarketAnalyticsPort.BrandHighlight("Mondial", "mondial", 2L, 1, 81.3)),
+                        List.of(new GetMarketAnalyticsPort.CategoryHighlight("MLB-MICROWAVES", "Micro-ondas", 5L, 77.1, 2L))
                 )
         );
 

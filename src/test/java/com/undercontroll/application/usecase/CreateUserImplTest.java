@@ -1,16 +1,14 @@
 package com.undercontroll.application.usecase;
 
-import com.undercontroll.application.dto.auth.CreatePasswordEventRequest;
-import com.undercontroll.application.dto.user.CreateUserRequest;
-import com.undercontroll.application.dto.user.CreateUserResponse;
-import com.undercontroll.application.mapper.UserDtoMapper;
 import com.undercontroll.domain.gateway.MetricsGateway;
 import com.undercontroll.domain.gateway.NotificationGateway;
+import com.undercontroll.domain.exception.InvalidUserException;
 import com.undercontroll.domain.usecase.auth.CreatePasswordEventPort;
+import com.undercontroll.domain.usecase.user.CreateUserPort;
 import com.undercontroll.domain.usecase.user.impl.CreateUserImpl;
 import com.undercontroll.domain.enums.PasswordEventType;
 import com.undercontroll.domain.enums.UserType;
-import com.undercontroll.infrastructure.events.UserCreatedEvent;
+import com.undercontroll.domain.event.UserCreatedEvent;
 import com.undercontroll.domain.model.PasswordEvent;
 import com.undercontroll.domain.model.User;
 import com.undercontroll.domain.gateway.UserGateway;
@@ -26,6 +24,7 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -47,15 +46,12 @@ class CreateUserImplTest {
     @Mock
     private NotificationGateway notificationGateway;
 
-    @Mock
-    private UserDtoMapper userDtoMapper;
-
     @InjectMocks
     private CreateUserImpl useCase;
 
     @Test
     void execute_shouldPublishUserCreatedEvent_whenUserTypeIsCustomer() {
-        CreateUserRequest request = new CreateUserRequest(
+        CreateUserPort.Input request = new CreateUserPort.Input(
                 "Maria",
                 "maria@teste.com",
                 "11999999999",
@@ -74,7 +70,7 @@ class CreateUserImplTest {
         when(userGateway.findByEmail(request.email())).thenReturn(Optional.empty());
         when(userGateway.findByPhone(request.phone())).thenReturn(Optional.empty());
         when(userGateway.findByCpf(request.cpf())).thenReturn(Optional.empty());
-        when(createPasswordEventPort.execute(any(CreatePasswordEventRequest.class)))
+        when(createPasswordEventPort.execute(any(CreatePasswordEventPort.Input.class)))
                 .thenReturn(PasswordEvent.builder()
                         .type(PasswordEventType.CREATE)
                         .value("generated-pass")
@@ -90,11 +86,11 @@ class CreateUserImplTest {
                 .createdAt(createdAt)
                 .build();
         when(userGateway.save(any(User.class))).thenReturn(savedUser);
-        when(userDtoMapper.toCreateUserResponse(savedUser)).thenReturn(new CreateUserResponse(
-                savedUser.getName(), savedUser.getEmail(), null, null, null, null, null, null, UserType.CUSTOMER
-        ));
 
-        useCase.execute(request);
+        CreateUserPort.Output output = useCase.execute(request);
+
+        assertThat(output.name()).isEqualTo("Maria");
+        assertThat(output.userType()).isEqualTo(UserType.CUSTOMER);
 
         ArgumentCaptor<UserCreatedEvent> eventCaptor = ArgumentCaptor.forClass(UserCreatedEvent.class);
         verify(notificationGateway).handleUserCreated(eventCaptor.capture());
@@ -107,7 +103,7 @@ class CreateUserImplTest {
 
     @Test
     void execute_shouldNotPublishUserCreatedEvent_whenUserTypeIsAdministrator() {
-        CreateUserRequest request = new CreateUserRequest(
+        CreateUserPort.Input request = new CreateUserPort.Input(
                 "Admin",
                 "admin@teste.com",
                 "11888888888",
@@ -134,12 +130,38 @@ class CreateUserImplTest {
                 .createdAt(LocalDateTime.now())
                 .build();
         when(userGateway.save(any(User.class))).thenReturn(savedUser);
-        when(userDtoMapper.toCreateUserResponse(savedUser)).thenReturn(new CreateUserResponse(
-                savedUser.getName(), savedUser.getEmail(), null, null, null, null, null, null, UserType.ADMINISTRATOR
-        ));
-
         useCase.execute(request);
 
         verify(notificationGateway, never()).handleUserCreated(any(UserCreatedEvent.class));
+    }
+
+    @Test
+    void execute_shouldRejectDuplicatedEmailAndCountFailure() {
+        CreateUserPort.Input request = validInput();
+        when(userGateway.findByEmail(request.email())).thenReturn(Optional.of(new User()));
+
+        assertThrows(InvalidUserException.class, () -> useCase.execute(request));
+
+        verify(metricsGateway).incrementAccountCreationFailed();
+        verify(userGateway, never()).save(any());
+    }
+
+    @Test
+    void execute_shouldRejectMissingRequiredFields() {
+        CreateUserPort.Input request = new CreateUserPort.Input(
+                " ", "x@teste.com", "1199", "Silva", "pass", "Rua", "123", null,
+                UserType.CUSTOMER, false, false, false, "03143000"
+        );
+
+        assertThrows(InvalidUserException.class, () -> useCase.execute(request));
+
+        verify(userGateway, never()).findByEmail(any());
+    }
+
+    private static CreateUserPort.Input validInput() {
+        return new CreateUserPort.Input(
+                "Maria", "maria@teste.com", "11999999999", "Silva", "any-pass", "Rua A",
+                "12345678901", null, UserType.CUSTOMER, true, false, true, "03143000"
+        );
     }
 }

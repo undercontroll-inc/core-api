@@ -1,10 +1,8 @@
 package com.undercontroll.domain.usecase.order.impl;
 
-import com.undercontroll.application.dto.order.CreateOrderRequest;
-import com.undercontroll.application.dto.demand.CreateDemandRequest;
-import com.undercontroll.application.dto.order.OrderEnrichedDto;
-import com.undercontroll.application.mapper.OrderDtoMapper;
 import com.undercontroll.domain.usecase.order.CreateOrderPort;
+import com.undercontroll.domain.usecase.order.OrderOutput;
+import com.undercontroll.domain.usecase.order.OrderPartInput;
 import com.undercontroll.domain.usecase.demand.CreateDemandPort;
 import com.undercontroll.domain.model.Order;
 import com.undercontroll.domain.model.OrderItem;
@@ -16,7 +14,6 @@ import com.undercontroll.domain.gateway.UserGateway;
 import com.undercontroll.domain.gateway.StockManagementGateway;
 import com.undercontroll.domain.gateway.CurrentUserAdminPort;
 import com.undercontroll.domain.gateway.MetricsGateway;
-import com.undercontroll.application.dto.order.PartDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -40,13 +37,12 @@ public class CreateOrderImpl implements CreateOrderPort {
     private final StockManagementGateway stockManagementGateway;
     private final CreateDemandPort createDemandPort;
     private final MetricsGateway metricsGateway;
-    private final OrderDtoMapper orderDtoMapper;
     private final CurrentUserAdminPort currentUserAdminPort;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     @CacheEvict(value = {"orders", "ordersByUser", "order", "orderParts", "dashboardMetrics"}, allEntries = true)
-    public OrderEnrichedDto execute(CreateOrderRequest request) {
+    public OrderOutput execute(Input request) {
         long startTime = System.currentTimeMillis();
         log.info("Creating new order for user {}", request.userId());
 
@@ -56,7 +52,7 @@ public class CreateOrderImpl implements CreateOrderPort {
         Map<Integer, ComponentPart> validatedComponents = new HashMap<>();
         double partsTotal = 0.0;
 
-        for (PartDto part : request.parts()) {
+        for (OrderPartInput part : request.parts()) {
             ComponentPart component = stockManagementGateway.findComponentById(part.componentId())
                     .orElseThrow(() -> new RuntimeException("Component not found"));
             stockManagementGateway.validateStockAvailability(component, part.quantity());
@@ -107,10 +103,10 @@ public class CreateOrderImpl implements CreateOrderPort {
 
         log.info("Order {} created successfully", savedOrder.getId());
 
-        for (PartDto part : request.parts()) {
+        for (OrderPartInput part : request.parts()) {
             ComponentPart component = validatedComponents.get(part.componentId());
 
-            createDemandPort.execute(savedOrder.getId(), new CreateDemandRequest(
+            createDemandPort.execute(savedOrder.getId(), new CreateDemandPort.Input(
                     component.getId(),
                     Long.valueOf(part.quantity())
             ));
@@ -124,7 +120,7 @@ public class CreateOrderImpl implements CreateOrderPort {
         log.info("Order {} created with {} demands", savedOrder.getId(), request.parts().size());
 
         Order finalOrder = orderGateway.findById(savedOrder.getId()).orElse(savedOrder);
-        return orderDtoMapper.toEnrichedDto(finalOrder, currentUserAdminPort.isAdministrator());
+        return OrderOutput.from(finalOrder, currentUserAdminPort.isAdministrator());
     }
 
     private LocalDate formatOrderDate(String dateStr) {

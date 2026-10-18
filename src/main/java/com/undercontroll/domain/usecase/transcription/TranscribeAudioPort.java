@@ -1,9 +1,8 @@
 package com.undercontroll.domain.usecase.transcription;
 
-import com.undercontroll.application.dto.transcription.TranscribeAudioRequest;
-import com.undercontroll.application.dto.transcription.TranscribeAudioResponse;
+import com.undercontroll.domain.model.AudioClip;
 
 public interface TranscribeAudioPort {
 
-    TranscribeAudioResponse execute(TranscribeAudioRequest request);
+    String execute(AudioClip audio);
 }

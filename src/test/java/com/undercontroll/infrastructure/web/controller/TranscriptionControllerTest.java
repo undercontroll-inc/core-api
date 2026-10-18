@@ -1,7 +1,6 @@
 package com.undercontroll.infrastructure.web.controller;
 
 import com.undercontroll.application.controller.impl.TranscriptionController;
-import com.undercontroll.application.dto.transcription.TranscribeAudioResponse;
 import com.undercontroll.application.mapper.TranscriptionDtoMapper;
 import com.undercontroll.domain.exception.InvalidTranscriptionException;
 import com.undercontroll.domain.exception.TranscriptionUnavailableException;
@@ -57,7 +56,7 @@ class TranscriptionControllerTest {
     @WithMockUser(username = "12", roles = "ADMINISTRATOR")
     @DisplayName("POST /v1/api/transcriptions returns transcribed text")
     void administratorTranscribes() throws Exception {
-        when(transcribeAudioPort.execute(any())).thenReturn(new TranscribeAudioResponse("Geladeira não gela"));
+        when(transcribeAudioPort.execute(any())).thenReturn("Geladeira não gela");
 
         mockMvc.perform(multipart("/v1/api/transcriptions").file(audio()))
                 .andExpect(status().isOk())

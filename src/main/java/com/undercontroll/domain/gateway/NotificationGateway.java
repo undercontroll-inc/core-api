@@ -1,7 +1,7 @@
 package com.undercontroll.domain.gateway;
 
-import com.undercontroll.infrastructure.events.AnnouncementCreatedEvent;
-import com.undercontroll.infrastructure.events.UserCreatedEvent;
+import com.undercontroll.domain.event.AnnouncementCreatedEvent;
+import com.undercontroll.domain.event.UserCreatedEvent;
 
 public interface NotificationGateway {
 

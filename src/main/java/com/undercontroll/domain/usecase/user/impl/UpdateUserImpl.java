@@ -1,6 +1,5 @@
 package com.undercontroll.domain.usecase.user.impl;
 
-import com.undercontroll.application.dto.user.UpdateUserRequest;
 import com.undercontroll.domain.usecase.user.UpdateUserPort;
 import com.undercontroll.domain.model.User;
 import com.undercontroll.domain.exception.UserNotFoundException;
@@ -19,7 +18,7 @@ public class UpdateUserImpl implements UpdateUserPort {
 
     @Override
     @CacheEvict(value = {"users", "customers", "user"}, allEntries = true)
-    public void execute(Integer userId, UpdateUserRequest request) {
+    public void execute(Integer userId, Input request) {
         Optional<User> user = userGateway.findById(userId);
 
         if (user.isEmpty()) {

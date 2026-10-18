@@ -1,7 +1,9 @@
 package com.undercontroll.domain.usecase.auth;
 
-import com.undercontroll.application.dto.auth.ResetPasswordRequest;
-
 public interface ResetPasswordPort {
-    void execute(Integer userId, ResetPasswordRequest request, String token);
+
+    void execute(Integer userId, Input input, String token);
+
+    record Input(String newPassword, boolean inFirstLogin) {
+    }
 }

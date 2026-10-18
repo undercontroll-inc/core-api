@@ -1,9 +1,7 @@
 package com.undercontroll.domain.usecase.component.impl;
 
-import com.undercontroll.application.dto.component.ComponentDto;
-import com.undercontroll.application.dto.component.RegisterComponentRequest;
-import com.undercontroll.application.mapper.ComponentPartDtoMapper;
 import com.undercontroll.domain.usecase.component.RegisterComponentPort;
+import com.undercontroll.domain.usecase.component.ComponentOutput;
 import com.undercontroll.domain.model.ComponentPart;
 import com.undercontroll.domain.exception.InvalidComponentCreationException;
 import com.undercontroll.domain.gateway.ComponentGateway;
@@ -20,11 +18,10 @@ public class RegisterComponentImpl implements RegisterComponentPort {
 
     private final ComponentGateway componentGateway;
     private final MetricsGateway metricsGateway;
-    private final ComponentPartDtoMapper componentPartDtoMapper;
 
     @Override
     @CacheEvict(value = {"components", "componentsByCategory", "componentsByName", "component"}, allEntries = true)
-    public ComponentDto execute(RegisterComponentRequest request) {
+    public ComponentOutput execute(Input request) {
         validateCreate(request);
 
         ComponentPart component = ComponentPart.builder()
@@ -40,10 +37,10 @@ public class RegisterComponentImpl implements RegisterComponentPort {
         ComponentPart savedComponent = componentGateway.save(component);
         metricsGateway.incrementComponentCreated();
         log.info("Component created id={} name={}", savedComponent.getId(), savedComponent.getName());
-        return componentPartDtoMapper.toDto(savedComponent);
+        return ComponentOutput.from(savedComponent);
     }
 
-    private void validateCreate(RegisterComponentRequest request) {
+    private void validateCreate(Input request) {
         if (request.item() == null || request.item().isEmpty() ||
             request.description() == null || request.description().isEmpty() ||
             request.brand() == null || request.brand().isEmpty() ||

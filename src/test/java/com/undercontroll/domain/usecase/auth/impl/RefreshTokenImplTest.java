@@ -1,7 +1,6 @@
 package com.undercontroll.domain.usecase.auth.impl;
 
-import com.undercontroll.application.dto.auth.RefreshTokenRequest;
-import com.undercontroll.application.dto.auth.RefreshTokenResponse;
+import com.undercontroll.domain.usecase.auth.RefreshTokenPort;
 import com.undercontroll.domain.enums.UserType;
 import com.undercontroll.domain.gateway.RefreshTokenGateway;
 import com.undercontroll.domain.gateway.RefreshTokenGateway.RefreshTokenData;
@@ -48,7 +47,7 @@ class RefreshTokenImplTest {
                 .thenReturn("new-refresh");
         when(tokenGateway.generateToken("42", UserType.CUSTOMER)).thenReturn("new-access");
 
-        RefreshTokenResponse response = useCase.execute(new RefreshTokenRequest("old-refresh"));
+        RefreshTokenPort.Output response = useCase.execute("old-refresh");
 
         assertThat(response.accessToken()).isEqualTo("new-access");
         assertThat(response.refreshToken()).isEqualTo("new-refresh");

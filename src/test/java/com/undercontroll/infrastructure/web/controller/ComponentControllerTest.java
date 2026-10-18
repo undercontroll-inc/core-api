@@ -1,7 +1,7 @@
 package com.undercontroll.infrastructure.web.controller;
 
+import com.undercontroll.application.mapper.ComponentPartDtoMapperImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.undercontroll.application.dto.component.ComponentDto;
 import com.undercontroll.domain.gateway.TokenGateway;
 import com.undercontroll.domain.usecase.component.*;
 import com.undercontroll.infrastructure.config.SecurityConfig;
@@ -29,7 +29,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@Import({SecurityConfig.class, RateLimitProperties.class})
+@Import({SecurityConfig.class, RateLimitProperties.class, ComponentPartDtoMapperImpl.class})
 @AutoConfigureMockMvc
 @WebMvcTest(ComponentController.class)
 class ComponentControllerTest {
@@ -67,9 +67,9 @@ class ComponentControllerTest {
                 "Resistor", "10k Ohm resistor", "Brand A", "Electronics", 100, 1.50, "Supplier X"
         );
 
-        ComponentDto response = new ComponentDto(1, "Resistor", "10k Ohm resistor", "Brand A", 1.50, 100L, "Supplier X", "Electronics");
+        ComponentOutput response = new ComponentOutput(1, "Resistor", "10k Ohm resistor", "Brand A", 1.50, 100L, "Supplier X", "Electronics");
 
-        when(registerComponentPort.execute(any(RegisterComponentRequest.class))).thenReturn(response);
+        when(registerComponentPort.execute(any(RegisterComponentPort.Input.class))).thenReturn(response);
 
         mockMvc.perform(post("/v1/api/components")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -79,7 +79,7 @@ class ComponentControllerTest {
                 .andExpect(jsonPath("$.price").value(1.50))
                 .andExpect(jsonPath("$.category").value("Electronics"));
 
-        verify(registerComponentPort, times(1)).execute(any(RegisterComponentRequest.class));
+        verify(registerComponentPort, times(1)).execute(any(RegisterComponentPort.Input.class));
     }
 
     @Test
@@ -95,15 +95,15 @@ class ComponentControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden());
 
-        verify(registerComponentPort, never()).execute(any(RegisterComponentRequest.class));
+        verify(registerComponentPort, never()).execute(any(RegisterComponentPort.Input.class));
     }
 
     @Test
     @WithMockUser(roles = "ADMINISTRATOR")
     @DisplayName("GET /v1/api/components - ADMINISTRATOR should get all components and return 200")
     void administratorShouldGetAllComponentsSuccessfully() throws Exception {
-        ComponentDto component1 = new ComponentDto(1, "Resistor", "10k Ohm", "Brand A", 1.50, 100L, "Supplier X", "Electronics");
-        ComponentDto component2 = new ComponentDto(2, "Capacitor", "100uF", "Brand B", 2.00, 50L, "Supplier Y", "Electronics");
+        ComponentOutput component1 = new ComponentOutput(1, "Resistor", "10k Ohm", "Brand A", 1.50, 100L, "Supplier X", "Electronics");
+        ComponentOutput component2 = new ComponentOutput(2, "Capacitor", "100uF", "Brand B", 2.00, 50L, "Supplier Y", "Electronics");
 
         when(getComponentsPort.execute(null, null)).thenReturn(List.of(component1, component2));
 
@@ -143,7 +143,7 @@ class ComponentControllerTest {
     @WithMockUser(roles = "ADMINISTRATOR")
     @DisplayName("GET /v1/api/components/{componentId} - Should get component by id and return 200")
     void shouldGetComponentByIdSuccessfully() throws Exception {
-        ComponentDto component = new ComponentDto(1, "Resistor", "10k Ohm", "Brand A", 1.50, 100L, "Supplier X", "Electronics");
+        ComponentOutput component = new ComponentOutput(1, "Resistor", "10k Ohm", "Brand A", 1.50, 100L, "Supplier X", "Electronics");
 
         when(getComponentByIdPort.execute(any(Integer.class)))
                 .thenReturn(Optional.of(component));
@@ -160,8 +160,8 @@ class ComponentControllerTest {
     @WithMockUser(roles = "ADMINISTRATOR")
     @DisplayName("GET /v1/api/components?category=Electronics - Should get components by category and return 200")
     void shouldGetComponentsByCategorySuccessfully() throws Exception {
-        ComponentDto component1 = new ComponentDto(1, "Resistor", "10k Ohm", "Brand A", 1.50, 100L, "Supplier X", "Electronics");
-        ComponentDto component2 = new ComponentDto(2, "Capacitor", "100uF", "Brand B", 2.00, 50L, "Supplier Y", "Electronics");
+        ComponentOutput component1 = new ComponentOutput(1, "Resistor", "10k Ohm", "Brand A", 1.50, 100L, "Supplier X", "Electronics");
+        ComponentOutput component2 = new ComponentOutput(2, "Capacitor", "100uF", "Brand B", 2.00, 50L, "Supplier Y", "Electronics");
 
         when(getComponentsPort.execute(eq("Electronics"), isNull()))
                 .thenReturn(List.of(component1, component2));
@@ -197,11 +197,11 @@ class ComponentControllerTest {
                 "Resistor Updated", "20k Ohm resistor", "Brand A", 1.75, "Supplier X", "Electronics"
         );
 
-        ComponentDto response = new ComponentDto(
+        ComponentOutput response = new ComponentOutput(
                 1, "Resistor Updated", "20k Ohm resistor", "Brand A", 1.75, 100L, "Supplier X", "Electronics"
         );
 
-        when(updateComponentPort.execute(anyInt(), any(UpdateComponentRequest.class))).thenReturn(response);
+        when(updateComponentPort.execute(anyInt(), any(UpdateComponentPort.Input.class))).thenReturn(response);
 
         mockMvc.perform(put("/v1/api/components/1")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -210,7 +210,7 @@ class ComponentControllerTest {
                 .andExpect(jsonPath("$.item").value("Resistor Updated"))
                 .andExpect(jsonPath("$.price").value(1.75));
 
-        verify(updateComponentPort, times(1)).execute(anyInt(), any(UpdateComponentRequest.class));
+        verify(updateComponentPort, times(1)).execute(anyInt(), any(UpdateComponentPort.Input.class));
     }
 
     @Test
@@ -226,7 +226,7 @@ class ComponentControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden());
 
-        verify(updateComponentPort, never()).execute(anyInt(), any(UpdateComponentRequest.class));
+        verify(updateComponentPort, never()).execute(anyInt(), any(UpdateComponentPort.Input.class));
     }
 
     @Test

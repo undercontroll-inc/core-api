@@ -1,33 +1,28 @@
 package com.undercontroll.domain.model.insight;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.undercontroll.domain.model.market.MatchCoverage;
 
 import java.util.List;
 import java.util.Map;
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 public record InsightsPayload(
-        @JsonProperty("periodo") Periodo periodo,
-        @JsonProperty("cobertura_match") CoberturaMatch coberturaMatch,
-        @JsonProperty("insights") List<InsightItem> insights,
-        @JsonProperty("produtos_em_alta") List<ProdutoEmAlta> produtosEmAlta,
-        @JsonProperty("limitacoes") List<String> limitacoes
+        Periodo periodo,
+        CoberturaMatch coberturaMatch,
+        List<InsightItem> insights,
+        List<ProdutoEmAlta> produtosEmAlta,
+        List<String> limitacoes
 ) {
-    @JsonIgnoreProperties(ignoreUnknown = true)
     public record Periodo(
-            @JsonProperty("bucket_atual") String bucketAtual,
-            @JsonProperty("bucket_comparacao") String bucketComparacao
+            String bucketAtual,
+            String bucketComparacao
     ) {
     }
 
-    @JsonIgnoreProperties(ignoreUnknown = true)
     public record CoberturaMatch(
-            @JsonProperty("nivel_1_exato") int nivel1Exato,
-            @JsonProperty("nivel_2_marca_categoria") int nivel2MarcaCategoria,
-            @JsonProperty("nivel_3_categoria") int nivel3Categoria,
-            @JsonProperty("sem_match") int semMatch
+            int nivel1Exato,
+            int nivel2MarcaCategoria,
+            int nivel3Categoria,
+            int semMatch
     ) {
         public static CoberturaMatch from(MatchCoverage coverage) {
             if (coverage == null) {
@@ -42,40 +37,37 @@ public record InsightsPayload(
         }
     }
 
-    @JsonIgnoreProperties(ignoreUnknown = true)
     public record InsightItem(
-            @JsonProperty("texto") String texto,
-            @JsonProperty("tipo") String tipo,
-            @JsonProperty("categoria") String categoria,
-            @JsonProperty("categoria_nome") String categoriaNome,
-            @JsonProperty("evidencia") Evidencia evidencia,
-            @JsonProperty("confianca") String confianca,
-            @JsonProperty("relacao_com_consertos") String relacaoComConsertos,
-            @JsonProperty("acao_sugerida") String acaoSugerida
+            String texto,
+            String tipo,
+            String categoria,
+            String categoriaNome,
+            Evidencia evidencia,
+            String confianca,
+            String relacaoComConsertos,
+            String acaoSugerida
     ) {
     }
 
-    @JsonIgnoreProperties(ignoreUnknown = true)
     public record Evidencia(
-            @JsonProperty("view") String view,
-            @JsonProperty("campos") Map<String, Object> campos
+            String view,
+            Map<String, Object> campos
     ) {
     }
 
-    @JsonIgnoreProperties(ignoreUnknown = true)
     public record ProdutoEmAlta(
-            @JsonProperty("nome") String nome,
-            @JsonProperty("marca") String marca,
-            @JsonProperty("modelo") String modelo,
-            @JsonProperty("categoria") String categoria,
-            @JsonProperty("rank") Integer rank,
-            @JsonProperty("variacao_posicao") Integer variacaoPosicao,
-            @JsonProperty("score") Double score,
-            @JsonProperty("preco_mediano") Double precoMediano,
-            @JsonProperty("variacao_preco_pct") Double variacaoPrecoPct,
-            @JsonProperty("ofertas") Integer ofertas,
-            @JsonProperty("confianca") String confianca,
-            @JsonProperty("atendido_pelo_cliente") Boolean atendidoPeloCliente
+            String nome,
+            String marca,
+            String modelo,
+            String categoria,
+            Integer rank,
+            Integer variacaoPosicao,
+            Double score,
+            Double precoMediano,
+            Double variacaoPrecoPct,
+            Integer ofertas,
+            String confianca,
+            Boolean atendidoPeloCliente
     ) {
     }
 }

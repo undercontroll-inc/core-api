@@ -1,9 +1,8 @@
 package com.undercontroll.domain.usecase.order_item.impl;
 
-import com.undercontroll.application.dto.orderitem.OrderItemDto;
-import com.undercontroll.application.mapper.OrderItemDtoMapper;
 import com.undercontroll.domain.usecase.order_item.GetOrderItemsPort;
 import com.undercontroll.domain.model.Order;
+import com.undercontroll.domain.usecase.order_item.OrderItemOutput;
 import com.undercontroll.domain.exception.OrderNotFoundException;
 import com.undercontroll.domain.gateway.OrderGateway;
 import lombok.RequiredArgsConstructor;
@@ -16,15 +15,14 @@ import java.util.List;
 public class GetOrderItemsImpl implements GetOrderItemsPort {
 
     private final OrderGateway orderGateway;
-    private final OrderItemDtoMapper orderItemDtoMapper;
 
     @Override
-    public List<OrderItemDto> execute(Integer orderId) {
+    public List<OrderItemOutput> execute(Integer orderId) {
         Order order = orderGateway.findDetailById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException("Order not found with id: " + orderId));
 
         return order.getOrderItems() == null
                 ? List.of()
-                : order.getOrderItems().stream().map(orderItemDtoMapper::toDto).toList();
+                : order.getOrderItems().stream().map(OrderItemOutput::from).toList();
     }
 }

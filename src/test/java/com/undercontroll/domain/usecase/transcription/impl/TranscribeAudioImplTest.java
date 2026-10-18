@@ -1,20 +1,16 @@
 package com.undercontroll.domain.usecase.transcription.impl;
 
-import com.undercontroll.application.dto.transcription.TranscribeAudioRequest;
-import com.undercontroll.application.dto.transcription.TranscribeAudioResponse;
-import com.undercontroll.application.mapper.TranscriptionDtoMapper;
 import com.undercontroll.domain.exception.InvalidTranscriptionException;
 import com.undercontroll.domain.exception.TranscriptionUnavailableException;
 import com.undercontroll.domain.gateway.AudioTranscriptionGateway;
+import com.undercontroll.domain.model.AudioClip;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.core.io.ByteArrayResource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -30,90 +26,89 @@ class TranscribeAudioImplTest {
     @Mock
     private AudioTranscriptionGateway gateway;
 
-    @Spy
-    private TranscriptionDtoMapper transcriptionDtoMapper = new TranscriptionDtoMapper();
-
     @InjectMocks
     private TranscribeAudioImpl useCase;
 
     @Test
     @DisplayName("returns trimmed text from the gateway")
     void transcribes() {
-        ByteArrayResource audio = audio("note.webm");
+        AudioClip audio = clip("audio/webm", "note.webm");
         when(audioTranscriptionGateway.getIfAvailable()).thenReturn(gateway);
-        when(gateway.transcribe(audio, "audio/webm", "note.webm"))
-                .thenReturn("  Geladeira não gela  ");
+        when(gateway.transcribe(audio)).thenReturn("  Geladeira não gela  ");
 
-        TranscribeAudioResponse response = useCase.execute(new TranscribeAudioRequest(
-                audio, "audio/webm", "note.webm", 12
-        ));
-
-        assertEquals("Geladeira não gela", response.text());
+        assertEquals("Geladeira não gela", useCase.execute(audio));
     }
 
     @Test
     @DisplayName("returns 503 when no transcription gateway is configured")
     void unavailableWithoutGateway() {
         when(audioTranscriptionGateway.getIfAvailable()).thenReturn(null);
-        TranscribeAudioRequest request = new TranscribeAudioRequest(
-                audio("note.webm"), "audio/webm", "note.webm", 12
-        );
+        AudioClip audio = clip("audio/webm", "note.webm");
 
-        assertThrows(TranscriptionUnavailableException.class, () -> useCase.execute(request));
+        assertThrows(TranscriptionUnavailableException.class, () -> useCase.execute(audio));
+    }
+
+    @Test
+    @DisplayName("treats a blank transcription as unavailable")
+    void blankTranscription() {
+        AudioClip audio = clip("audio/webm", "note.webm");
+        when(audioTranscriptionGateway.getIfAvailable()).thenReturn(gateway);
+        when(gateway.transcribe(audio)).thenReturn("  ");
+
+        assertThrows(TranscriptionUnavailableException.class, () -> useCase.execute(audio));
+    }
+
+    @Test
+    @DisplayName("requires an audio clip")
+    void requiresAudio() {
+        assertThrows(InvalidTranscriptionException.class, () -> useCase.execute(null));
     }
 
     @Test
     @DisplayName("rejects an empty file")
     void rejectsEmptyFile() {
-        TranscribeAudioRequest request = new TranscribeAudioRequest(
-                audio("note.webm"), "audio/webm", "note.webm", 0
-        );
+        AudioClip audio = new AudioClip(new byte[0], "audio/webm", "note.webm");
 
-        assertThrows(InvalidTranscriptionException.class, () -> useCase.execute(request));
+        assertThrows(InvalidTranscriptionException.class, () -> useCase.execute(audio));
+    }
+
+    @Test
+    @DisplayName("rejects files above 8MB")
+    void rejectsOversizedFile() {
+        AudioClip audio = new AudioClip(new byte[(int) TranscribeAudioImpl.MAX_BYTES + 1], "audio/webm", "note.webm");
+
+        assertThrows(InvalidTranscriptionException.class, () -> useCase.execute(audio));
     }
 
     @Test
     @DisplayName("rejects an unsupported type")
     void rejectsUnsupportedType() {
-        TranscribeAudioRequest request = new TranscribeAudioRequest(
-                audio("note.txt"), "text/plain", "note.txt", 12
-        );
+        AudioClip audio = clip("text/plain", "note.txt");
 
-        assertThrows(InvalidTranscriptionException.class, () -> useCase.execute(request));
+        assertThrows(InvalidTranscriptionException.class, () -> useCase.execute(audio));
     }
 
     @Test
     @DisplayName("accepts octet-stream when the filename extension is audio")
     void acceptsOctetStreamWithAudioExtension() {
-        ByteArrayResource audio = audio("note.m4a");
+        AudioClip audio = clip("application/octet-stream", "note.m4a");
         when(audioTranscriptionGateway.getIfAvailable()).thenReturn(gateway);
-        when(gateway.transcribe(any(), any(), any())).thenReturn("ok");
+        when(gateway.transcribe(any())).thenReturn("ok");
 
-        TranscribeAudioResponse response = useCase.execute(new TranscribeAudioRequest(
-                audio, "application/octet-stream", "note.m4a", 12
-        ));
-
-        assertEquals("ok", response.text());
+        assertEquals("ok", useCase.execute(audio));
     }
 
     @Test
     @DisplayName("wraps provider failures as unavailable")
     void wrapsProviderFailure() {
         when(audioTranscriptionGateway.getIfAvailable()).thenReturn(gateway);
-        when(gateway.transcribe(any(), any(), any())).thenThrow(new IllegalStateException("timeout"));
-        TranscribeAudioRequest request = new TranscribeAudioRequest(
-                audio("note.webm"), "audio/webm", "note.webm", 12
-        );
+        when(gateway.transcribe(any())).thenThrow(new IllegalStateException("timeout"));
+        AudioClip audio = clip("audio/webm", "note.webm");
 
-        assertThrows(TranscriptionUnavailableException.class, () -> useCase.execute(request));
+        assertThrows(TranscriptionUnavailableException.class, () -> useCase.execute(audio));
     }
 
-    private static ByteArrayResource audio(String filename) {
-        return new ByteArrayResource("audio-bytes".getBytes()) {
-            @Override
-            public String getFilename() {
-                return filename;
-            }
-        };
+    private static AudioClip clip(String contentType, String filename) {
+        return new AudioClip("audio-bytes".getBytes(), contentType, filename);
     }
 }

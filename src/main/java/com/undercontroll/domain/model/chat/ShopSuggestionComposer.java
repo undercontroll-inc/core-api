@@ -7,11 +7,11 @@ import com.undercontroll.domain.model.Demand;
 import com.undercontroll.domain.model.Order;
 import com.undercontroll.domain.model.OrderItem;
 import com.undercontroll.domain.model.User;
+import com.undercontroll.domain.support.Texts;
 import com.undercontroll.domain.model.chat.ShopSnapshot.DemandFact;
 import com.undercontroll.domain.model.chat.ShopSnapshot.RepairFact;
 import com.undercontroll.domain.model.chat.ShopSnapshot.StockFact;
 
-import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -44,7 +44,6 @@ public final class ShopSuggestionComposer {
     private static final int MAX_QUESTION_LENGTH = 90;
     private static final int MENTIONED_ORDER_LIMIT = 3;
     private static final int ORDER_DETAIL_LIMIT = 8;
-    private static final Pattern NON_LETTERS = Pattern.compile("[^a-z0-9\\s]");
     private static final Pattern MENTIONED_ORDER = Pattern.compile("\\bpedidos?\\s+(\\d+)\\b");
     private static final String LOOKED_AT_SUFFIX = " já foi olhado?";
     private static final String PART_PREFIX = "A peça ";
@@ -161,8 +160,7 @@ public final class ShopSuggestionComposer {
         if (text == null || text.isBlank()) {
             return List.of();
         }
-        String normalized = Normalizer.normalize(text.toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
-                .replaceAll("\\p{M}+", "");
+        String normalized = Texts.stripAccents(text.toLowerCase(Locale.ROOT));
         Matcher matcher = MENTIONED_ORDER.matcher(normalized);
         LinkedHashSet<Integer> ids = new LinkedHashSet<>();
         while (matcher.find() && ids.size() < MENTIONED_ORDER_LIMIT) {
@@ -547,9 +545,9 @@ public final class ShopSuggestionComposer {
     }
 
     private static boolean mentionsFact(String question, ShopSnapshot snapshot) {
-        String normalized = normalize(question);
+        String normalized = Texts.normalize(question);
         for (String token : factTokens(snapshot)) {
-            if (normalized.contains(normalize(token))) {
+            if (normalized.contains(Texts.normalize(token))) {
                 return true;
             }
         }
@@ -590,7 +588,7 @@ public final class ShopSuggestionComposer {
             return;
         }
         for (String part : value.toLowerCase(Locale.ROOT).split("\\s+")) {
-            String cleaned = NON_LETTERS.matcher(stripAccents(part)).replaceAll("");
+            String cleaned = Texts.alphanumeric(part);
             if (cleaned.length() >= 3 || cleaned.chars().allMatch(Character::isDigit)) {
                 tokens.add(cleaned);
             }
@@ -607,8 +605,8 @@ public final class ShopSuggestionComposer {
     }
 
     static boolean similar(String left, String right) {
-        String a = normalize(left);
-        String b = normalize(right);
+        String a = Texts.normalize(left);
+        String b = Texts.normalize(right);
         if (a.equals(b) || a.contains(b) || b.contains(a)) {
             return true;
         }
@@ -648,18 +646,6 @@ public final class ShopSuggestionComposer {
             return trimmed;
         }
         return trimmed;
-    }
-
-    private static String normalize(String value) {
-        if (value == null) {
-            return "";
-        }
-        return NON_LETTERS.matcher(stripAccents(value.toLowerCase(Locale.ROOT))).replaceAll(" ").strip()
-                .replaceAll("\\s+", " ");
-    }
-
-    private static String stripAccents(String value) {
-        return Normalizer.normalize(value, Normalizer.Form.NFD).replaceAll("\\p{M}+", "");
     }
 
     private static String firstName(String customer) {

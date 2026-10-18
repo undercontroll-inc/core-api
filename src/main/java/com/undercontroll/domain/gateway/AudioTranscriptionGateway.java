@@ -1,8 +1,8 @@
 package com.undercontroll.domain.gateway;
 
-import org.springframework.core.io.Resource;
+import com.undercontroll.domain.model.AudioClip;
 
 public interface AudioTranscriptionGateway {
 
-    String transcribe(Resource audio, String contentType, String filename);
+    String transcribe(AudioClip audio);
 }

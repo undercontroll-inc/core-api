@@ -1,12 +1,13 @@
 package com.undercontroll.infrastructure.web.controller;
 
+import com.undercontroll.application.mapper.OrderDtoMapperImpl;
+import com.undercontroll.application.mapper.UserDtoMapperImpl;
+import com.undercontroll.application.mapper.OrderItemDtoMapperImpl;
+import com.undercontroll.application.mapper.ComponentPartDtoMapperImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.undercontroll.application.dto.order.CreateOrderRequest;
-import com.undercontroll.application.dto.order.GetAllOrdersResponse;
-import com.undercontroll.application.dto.order.GetOrderByIdResponse;
-import com.undercontroll.application.dto.order.OrderEnrichedDto;
 import com.undercontroll.application.dto.order.UpdateOrderRequest;
-import com.undercontroll.application.dto.user.UserDto;
+import com.undercontroll.domain.usecase.user.UserOutput;
 import com.undercontroll.domain.enums.OrderStatus;
 import com.undercontroll.domain.enums.UserType;
 import com.undercontroll.domain.gateway.TokenGateway;
@@ -34,7 +35,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@Import({SecurityConfig.class, RateLimitProperties.class})
+@Import({SecurityConfig.class, RateLimitProperties.class, OrderDtoMapperImpl.class, UserDtoMapperImpl.class, OrderItemDtoMapperImpl.class, ComponentPartDtoMapperImpl.class})
 @AutoConfigureMockMvc(addFilters = true)
 @WebMvcTest(OrderController.class)
 class OrderControllerTest {
@@ -75,13 +76,13 @@ class OrderControllerTest {
                 "Não gela", "Compressor queimado", "PENDING", false, true, "NF123"
         );
 
-        OrderEnrichedDto response = new OrderEnrichedDto(
+        OrderOutput response = new OrderOutput(
                 1, null, List.of(), List.of(), 0.0, 0.0, 0.0, 0.0,
                 "20/11/2025", "25/11/2025", "NF123", false, "Não gela",
                 "Compressor queimado", OrderStatus.PENDING, null
         );
 
-        when(createOrderPort.execute(any(CreateOrderRequest.class))).thenReturn(response);
+        when(createOrderPort.execute(any(CreateOrderPort.Input.class))).thenReturn(response);
 
         mockMvc.perform(post("/v1/api/orders")
                         .with(user("admin@example.com").roles("ADMINISTRATOR"))
@@ -89,7 +90,7 @@ class OrderControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated());
 
-        verify(createOrderPort, times(1)).execute(any(CreateOrderRequest.class));
+        verify(createOrderPort, times(1)).execute(any(CreateOrderPort.Input.class));
     }
 
     @Test
@@ -100,13 +101,13 @@ class OrderControllerTest {
                 "Não gela", "Compressor queimado", "PENDING", false, true, "NF123"
         );
 
-        OrderEnrichedDto response = new OrderEnrichedDto(
+        OrderOutput response = new OrderOutput(
                 1, null, List.of(), List.of(), 0.0, 0.0, 0.0, 0.0,
                 "20/11/2025", "25/11/2025", "NF123", false, "Não gela",
                 "Compressor queimado", OrderStatus.PENDING, null
         );
 
-        when(createOrderPort.execute(any(CreateOrderRequest.class))).thenReturn(response);
+        when(createOrderPort.execute(any(CreateOrderPort.Input.class))).thenReturn(response);
 
         mockMvc.perform(post("/v1/api/orders")
                         .with(user("customer@example.com").roles("CUSTOMER"))
@@ -114,7 +115,7 @@ class OrderControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated());
 
-        verify(createOrderPort, times(1)).execute(any(CreateOrderRequest.class));
+        verify(createOrderPort, times(1)).execute(any(CreateOrderPort.Input.class));
     }
 
     @Test
@@ -130,7 +131,7 @@ class OrderControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
 
-        verify(updateOrderPort, times(1)).execute(eq(1), any(UpdateOrderRequest.class));
+        verify(updateOrderPort, times(1)).execute(eq(1), any(UpdateOrderPort.Input.class));
     }
 
     @Test
@@ -152,18 +153,18 @@ class OrderControllerTest {
     @Test
     @DisplayName("GET /v1/api/orders - ADMINISTRATOR should get all orders and return 200")
     void administratorShouldGetAllOrdersSuccessfully() throws Exception {
-        UserDto userDto = new UserDto(1, "John", "john@example.com", "Doe",
+        UserOutput userDto = new UserOutput(1, "John", "john@example.com", "Doe",
                 "Street 123", "12345678900", "12345-678", "11999999999",
                 null, false, false, true, UserType.CUSTOMER);
 
-        OrderEnrichedDto order = new OrderEnrichedDto(
+        OrderOutput order = new OrderOutput(
                 1, userDto, List.of(), List.of(), 100.0, 50.0, 10.0, 140.0,
                 "20/11/2025", "25/11/2025", "NF123", true, "Não gela",
                 "Compressor queimado", OrderStatus.PENDING, "20/11/2025"
         );
 
         when(getOrdersPort.execute(isNull(), anyInt(), anyInt()))
-                .thenReturn(new GetAllOrdersResponse(List.of(order), 1L, 1, 0, 10));
+                .thenReturn(new GetOrdersPort.Output(List.of(order), 1L, 1, 0, 10));
 
         mockMvc.perform(get("/v1/api/orders")
                         .with(user("admin@example.com").roles("ADMINISTRATOR"))
@@ -193,19 +194,17 @@ class OrderControllerTest {
     @Test
     @DisplayName("GET /v1/api/orders/{orderId} - CUSTOMER should get order by id and return 200")
     void customerShouldGetOrderByIdSuccessfully() throws Exception {
-        UserDto userDto = new UserDto(1, "John", "john@example.com", "Doe",
+        UserOutput userDto = new UserOutput(1, "John", "john@example.com", "Doe",
                 "Street 123", "12345678900", "12345-678", "11999999999",
                 null, false, false, true, UserType.CUSTOMER);
 
-        OrderEnrichedDto enrichedDto = new OrderEnrichedDto(
+        OrderOutput enrichedDto = new OrderOutput(
                 1, userDto, List.of(), List.of(), 100.0, 50.0, 10.0, 140.0,
                 "20/11/2025", "25/11/2025", "NF123", true, "Não gela",
                 null, OrderStatus.PENDING, "20/11/2025"
         );
 
-        GetOrderByIdResponse response = new GetOrderByIdResponse(enrichedDto);
-
-        when(getOrderByIdPort.execute(1)).thenReturn(Optional.of(response));
+        when(getOrderByIdPort.execute(1)).thenReturn(Optional.of(enrichedDto));
 
         mockMvc.perform(get("/v1/api/orders/1")
                         .with(user("customer@example.com").roles("CUSTOMER")))
@@ -241,18 +240,18 @@ class OrderControllerTest {
     @Test
     @DisplayName("GET /v1/api/orders?userId=X - CUSTOMER should get their own orders and return 200")
     void customerShouldGetOrdersByUserIdSuccessfully() throws Exception {
-        UserDto userDto = new UserDto(1, "John", "john@example.com", "Doe",
+        UserOutput userDto = new UserOutput(1, "John", "john@example.com", "Doe",
                 "Street 123", "12345678900", "12345-678", "11999999999",
                 null, false, false, true, UserType.CUSTOMER);
 
-        OrderEnrichedDto order = new OrderEnrichedDto(
+        OrderOutput order = new OrderOutput(
                 1, userDto, List.of(), List.of(), 100.0, 50.0, 10.0, 140.0,
                 "20/11/2025", "25/11/2025", "NF123", true, "Não gela",
                 null, OrderStatus.PENDING, "20/11/2025"
         );
 
         when(getOrdersPort.execute(eq(1), anyInt(), anyInt()))
-                .thenReturn(new GetAllOrdersResponse(List.of(order), 1L, 1, 0, 1));
+                .thenReturn(new GetOrdersPort.Output(List.of(order), 1L, 1, 0, 1));
 
         mockMvc.perform(get("/v1/api/orders")
                         .with(user("1").roles("CUSTOMER"))
@@ -278,18 +277,18 @@ class OrderControllerTest {
     @Test
     @DisplayName("GET /v1/api/orders?userId=X - ADMINISTRATOR should get orders by userId and return 200")
     void administratorShouldGetOrdersByUserIdSuccessfully() throws Exception {
-        UserDto userDto = new UserDto(1, "John", "john@example.com", "Doe",
+        UserOutput userDto = new UserOutput(1, "John", "john@example.com", "Doe",
                 "Street 123", "12345678900", "12345-678", "11999999999",
                 null, false, false, true, UserType.CUSTOMER);
 
-        OrderEnrichedDto order = new OrderEnrichedDto(
+        OrderOutput order = new OrderOutput(
                 1, userDto, List.of(), List.of(), 100.0, 50.0, 10.0, 140.0,
                 "20/11/2025", "25/11/2025", "NF123", true, "Não gela",
                 null, OrderStatus.PENDING, "20/11/2025"
         );
 
         when(getOrdersPort.execute(eq(1), anyInt(), anyInt()))
-                .thenReturn(new GetAllOrdersResponse(List.of(order), 1L, 1, 0, 1));
+                .thenReturn(new GetOrdersPort.Output(List.of(order), 1L, 1, 0, 1));
 
         mockMvc.perform(get("/v1/api/orders")
                         .with(user("admin@example.com").roles("ADMINISTRATOR"))

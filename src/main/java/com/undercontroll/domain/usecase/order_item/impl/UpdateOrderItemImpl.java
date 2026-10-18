@@ -1,6 +1,5 @@
 package com.undercontroll.domain.usecase.order_item.impl;
 
-import com.undercontroll.application.dto.orderitem.UpdateOrderItemRequest;
 import com.undercontroll.domain.usecase.order_item.UpdateOrderItemPort;
 import com.undercontroll.domain.model.Order;
 import com.undercontroll.domain.model.OrderItem;
@@ -21,7 +20,7 @@ public class UpdateOrderItemImpl implements UpdateOrderItemPort {
     private final OrderGateway orderGateway;
 
     @Override
-    public void execute(Integer orderId, Integer orderItemId, UpdateOrderItemRequest request) {
+    public void execute(Integer orderId, Integer orderItemId, Input request) {
         if (orderItemId == null) {
             throw new InvalidOrderItemException("Order item ID cannot be null for update");
         }

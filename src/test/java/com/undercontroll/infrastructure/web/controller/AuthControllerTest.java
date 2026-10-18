@@ -1,12 +1,12 @@
 package com.undercontroll.infrastructure.web.controller;
 
+import com.undercontroll.domain.usecase.user.UserOutput;
+import com.undercontroll.application.mapper.AuthDtoMapperImpl;
+import com.undercontroll.application.mapper.UserDtoMapperImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.undercontroll.application.controller.impl.AuthController;
 import com.undercontroll.application.dto.auth.AuthUserRequest;
-import com.undercontroll.application.dto.auth.AuthUserResponse;
 import com.undercontroll.application.dto.auth.RefreshTokenRequest;
-import com.undercontroll.application.dto.auth.RefreshTokenResponse;
-import com.undercontroll.application.dto.user.UserDto;
 import com.undercontroll.domain.enums.AuthProvider;
 import com.undercontroll.domain.enums.UserType;
 import com.undercontroll.domain.exception.InvalidTokenException;
@@ -26,6 +26,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -35,7 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AuthController.class)
-@Import({SecurityConfig.class, RateLimitProperties.class, GlobalExceptionHandler.class})
+@Import({SecurityConfig.class, RateLimitProperties.class, GlobalExceptionHandler.class, AuthDtoMapperImpl.class, UserDtoMapperImpl.class})
 class AuthControllerTest {
 
     @Autowired
@@ -59,12 +60,12 @@ class AuthControllerTest {
         AuthUserRequest request = new AuthUserRequest(
                 AuthProvider.PASSWORD, "john@example.com", "password123", null);
 
-        UserDto userDto = new UserDto(1, "John", "john@example.com", "Doe",
+        UserOutput userDto = new UserOutput(1, "John", "john@example.com", "Doe",
                 "Street 123", "12345678900", "12345-678", "11999999999",
                 null, false, false, true, UserType.CUSTOMER);
 
-        when(authUserPort.execute(any(AuthUserRequest.class)))
-                .thenReturn(new AuthUserResponse("jwt-token-here", "refresh-token-here", userDto));
+        when(authUserPort.execute(any(AuthUserPort.Input.class)))
+                .thenReturn(new AuthUserPort.Output("jwt-token-here", "refresh-token-here", userDto));
 
         mockMvc.perform(post("/v1/api/auth")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -74,7 +75,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.refreshToken").value("refresh-token-here"))
                 .andExpect(jsonPath("$.user.email").value("john@example.com"));
 
-        verify(authUserPort, times(1)).execute(any(AuthUserRequest.class));
+        verify(authUserPort, times(1)).execute(any(AuthUserPort.Input.class));
     }
 
     @Test
@@ -83,12 +84,12 @@ class AuthControllerTest {
         AuthUserRequest request = new AuthUserRequest(
                 AuthProvider.GOOGLE, "john@example.com", null, "google-token");
 
-        UserDto userDto = new UserDto(1, "John", "john@example.com", "Doe",
+        UserOutput userDto = new UserOutput(1, "John", "john@example.com", "Doe",
                 "Street 123", "12345678900", "12345-678", "11999999999",
                 null, false, false, true, UserType.CUSTOMER);
 
-        when(authUserPort.execute(any(AuthUserRequest.class)))
-                .thenReturn(new AuthUserResponse("jwt-token-here", "refresh-token-here", userDto));
+        when(authUserPort.execute(any(AuthUserPort.Input.class)))
+                .thenReturn(new AuthUserPort.Output("jwt-token-here", "refresh-token-here", userDto));
 
         mockMvc.perform(post("/v1/api/auth")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -98,7 +99,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.refreshToken").value("refresh-token-here"))
                 .andExpect(jsonPath("$.user.email").value("john@example.com"));
 
-        verify(authUserPort, times(1)).execute(any(AuthUserRequest.class));
+        verify(authUserPort, times(1)).execute(any(AuthUserPort.Input.class));
     }
 
     @Test
@@ -106,8 +107,8 @@ class AuthControllerTest {
     void shouldRefreshTokenSuccessfully() throws Exception {
         RefreshTokenRequest request = new RefreshTokenRequest("old-refresh-token");
 
-        when(refreshTokenPort.execute(any(RefreshTokenRequest.class)))
-                .thenReturn(new RefreshTokenResponse("new-access-token", "new-refresh-token"));
+        when(refreshTokenPort.execute(anyString()))
+                .thenReturn(new RefreshTokenPort.Output("new-access-token", "new-refresh-token"));
 
         mockMvc.perform(post("/v1/api/auth/refresh")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -116,7 +117,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.accessToken").value("new-access-token"))
                 .andExpect(jsonPath("$.refreshToken").value("new-refresh-token"));
 
-        verify(refreshTokenPort, times(1)).execute(any(RefreshTokenRequest.class));
+        verify(refreshTokenPort, times(1)).execute("old-refresh-token");
     }
 
     @Test
@@ -126,8 +127,8 @@ class AuthControllerTest {
 
         when(tokenGateway.validateToken(any()))
                 .thenThrow(new InvalidTokenException("Access token has expired", InvalidTokenException.TOKEN_EXPIRED));
-        when(refreshTokenPort.execute(any(RefreshTokenRequest.class)))
-                .thenReturn(new RefreshTokenResponse("new-access-token", "new-refresh-token"));
+        when(refreshTokenPort.execute(anyString()))
+                .thenReturn(new RefreshTokenPort.Output("new-access-token", "new-refresh-token"));
 
         mockMvc.perform(post("/v1/api/auth/refresh")
                         .header("Authorization", "Bearer expired-access-token")
@@ -137,7 +138,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.accessToken").value("new-access-token"))
                 .andExpect(jsonPath("$.refreshToken").value("new-refresh-token"));
 
-        verify(refreshTokenPort, times(1)).execute(any(RefreshTokenRequest.class));
+        verify(refreshTokenPort, times(1)).execute("old-refresh-token");
     }
 
     @Test

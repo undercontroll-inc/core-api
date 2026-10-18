@@ -1,6 +1,7 @@
 package com.undercontroll.domain.model;
 
 import com.undercontroll.domain.enums.InsightGenerationStatus;
+import com.undercontroll.domain.model.insight.InsightsPayload;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,7 +19,7 @@ public class MarketMonthlyInsight {
     private String bucketKey;
     private String comparisonBucketKey;
     private InsightGenerationStatus status;
-    private String payload;
+    private InsightsPayload payload;
     private String provider;
     private String model;
     private String promptVersion;

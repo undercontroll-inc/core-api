@@ -18,11 +18,4 @@ class GoogleGenAiClientConfigTest {
         assertEquals(GoogleGenAiClientConfig.HTTP_TIMEOUT_MS, options.timeout().orElseThrow());
         assertEquals(1, retry.attempts().orElseThrow());
     }
-
-    @Test
-    @DisplayName("prefers Gemini API key over empty Spring placeholders")
-    void firstNonBlankSkipsEmpty() {
-        assertEquals("AQ.key", GoogleGenAiClientConfig.firstNonBlank("", "  ", "AQ.key"));
-        assertEquals("from-env", GoogleGenAiClientConfig.firstNonBlank(null, "from-env"));
-    }
 }

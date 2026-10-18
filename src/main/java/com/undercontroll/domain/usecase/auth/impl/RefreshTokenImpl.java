@@ -1,7 +1,5 @@
 package com.undercontroll.domain.usecase.auth.impl;
 
-import com.undercontroll.application.dto.auth.RefreshTokenRequest;
-import com.undercontroll.application.dto.auth.RefreshTokenResponse;
 import com.undercontroll.domain.usecase.auth.RefreshTokenPort;
 import com.undercontroll.domain.enums.UserType;
 import com.undercontroll.domain.gateway.RefreshTokenGateway;
@@ -22,8 +20,8 @@ public class RefreshTokenImpl implements RefreshTokenPort {
 
     @Override
     @Transactional
-    public RefreshTokenResponse execute(RefreshTokenRequest request) {
-        RefreshTokenData data = refreshTokenGateway.consumeRefreshToken(request.refreshToken());
+    public Output execute(String refreshToken) {
+        RefreshTokenData data = refreshTokenGateway.consumeRefreshToken(refreshToken);
 
         UserType userType = UserType.valueOf(data.userRole());
 
@@ -33,6 +31,6 @@ public class RefreshTokenImpl implements RefreshTokenPort {
 
         String newAccessToken = tokenGateway.generateToken(String.valueOf(data.userId()), userType);
         log.info("Refresh token rotated userId={}", data.userId());
-        return new RefreshTokenResponse(newAccessToken, newRefreshToken);
+        return new Output(newAccessToken, newRefreshToken);
     }
 }

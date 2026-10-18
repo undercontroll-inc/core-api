@@ -1,8 +1,6 @@
 package com.undercontroll.application.usecase;
 
-import com.undercontroll.application.dto.order.GetOrderByIdResponse;
-import com.undercontroll.application.dto.order.OrderEnrichedDto;
-import com.undercontroll.application.mapper.OrderDtoMapper;
+import com.undercontroll.domain.usecase.order.OrderOutput;
 import com.undercontroll.domain.gateway.CurrentUserAdminPort;
 import com.undercontroll.domain.usecase.order.impl.GetOrderByIdImpl;
 import com.undercontroll.domain.model.Order;
@@ -26,9 +24,6 @@ class GetOrderByIdImplTest {
 
     @Mock
     private OrderGateway orderGateway;
-
-    @Mock
-    private OrderDtoMapper orderMapper;
 
     @Mock
     private CurrentUserAdminPort currentUserAdminPort;
@@ -56,20 +51,16 @@ class GetOrderByIdImplTest {
     @DisplayName("Should return order when it exists")
     void testGetOrderById_ShouldReturnOrder_WhenExists() {
         when(orderGateway.findById(1)).thenReturn(Optional.of(order));
-        when(orderMapper.toEnrichedDto(order, false)).thenReturn(
-                new OrderEnrichedDto(1, null, null, null, null, null, null, null, null, null, null, false, "Não gela", null, OrderStatus.PENDING, null));
 
-        Optional<GetOrderByIdResponse> output = getOrderByIdImpl.execute(1);
+        Optional<OrderOutput> output = getOrderByIdImpl.execute(1);
 
         assertTrue(output.isPresent());
-        assertNotNull(output.get().data());
-        assertEquals(1, output.get().data().id());
-        assertEquals(OrderStatus.PENDING, output.get().data().status());
-        assertEquals("Não gela", output.get().data().customerDescription());
-        assertNull(output.get().data().technicalDescription());
+        assertEquals(1, output.get().id());
+        assertEquals(OrderStatus.PENDING, output.get().status());
+        assertEquals("Não gela", output.get().customerDescription());
+        assertNull(output.get().technicalDescription());
 
         verify(orderGateway, times(1)).findById(1);
-        verify(orderMapper).toEnrichedDto(order, false);
     }
 
     @Test
@@ -77,14 +68,11 @@ class GetOrderByIdImplTest {
     void administratorMapsWithTechnicalDescription() {
         when(currentUserAdminPort.isAdministrator()).thenReturn(true);
         when(orderGateway.findById(1)).thenReturn(Optional.of(order));
-        when(orderMapper.toEnrichedDto(order, true)).thenReturn(
-                new OrderEnrichedDto(1, null, null, null, null, null, null, null, null, null, null, false, "Não gela", "Compressor queimado", OrderStatus.PENDING, null));
 
-        Optional<GetOrderByIdResponse> output = getOrderByIdImpl.execute(1);
+        Optional<OrderOutput> output = getOrderByIdImpl.execute(1);
 
         assertTrue(output.isPresent());
-        assertEquals("Compressor queimado", output.get().data().technicalDescription());
-        verify(orderMapper).toEnrichedDto(order, true);
+        assertEquals("Compressor queimado", output.get().technicalDescription());
     }
 
     @Test
@@ -92,7 +80,7 @@ class GetOrderByIdImplTest {
     void testGetOrderById_ShouldReturnNullOrder_WhenNotFound() {
         when(orderGateway.findById(999)).thenReturn(Optional.empty());
 
-        Optional<GetOrderByIdResponse> output = getOrderByIdImpl.execute(999);
+        Optional<OrderOutput> output = getOrderByIdImpl.execute(999);
 
         assertTrue(output.isEmpty());
 

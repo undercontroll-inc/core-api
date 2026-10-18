@@ -5,12 +5,12 @@ import com.google.genai.types.Content;
 import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
 import com.undercontroll.domain.exception.TranscriptionUnavailableException;
+import com.undercontroll.domain.model.AudioClip;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.core.io.ByteArrayResource;
 import org.springframework.util.MimeType;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -36,7 +36,7 @@ class GeminiAudioTranscriptionAdapterTest {
         when(response.text()).thenReturn("  Compressor ruindo ");
 
         String text = new GeminiAudioTranscriptionAdapter(models, "gemini-3.5-flash-lite")
-                .transcribe(new ByteArrayResource("bytes".getBytes()), "audio/webm", "note.webm");
+                .transcribe(new AudioClip("bytes".getBytes(), "audio/webm", "note.webm"));
 
         assertEquals("Compressor ruindo", text);
     }
@@ -48,10 +48,10 @@ class GeminiAudioTranscriptionAdapterTest {
                 .thenReturn(response);
         when(response.text()).thenReturn(" ");
         GeminiAudioTranscriptionAdapter adapter = new GeminiAudioTranscriptionAdapter(models, "gemini-3.5-flash-lite");
-        ByteArrayResource audio = new ByteArrayResource("bytes".getBytes());
+        AudioClip audio = new AudioClip("bytes".getBytes(), "audio/webm", "note.webm");
 
         assertThrows(TranscriptionUnavailableException.class, () ->
-                adapter.transcribe(audio, "audio/webm", "note.webm"));
+                adapter.transcribe(audio));
     }
 
     @Test

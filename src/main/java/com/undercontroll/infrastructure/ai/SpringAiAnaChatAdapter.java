@@ -3,7 +3,7 @@ package com.undercontroll.infrastructure.ai;
 import com.undercontroll.domain.exception.AnaUnavailableException;
 import com.undercontroll.domain.gateway.AnaChatGateway;
 import com.undercontroll.domain.gateway.ChatStreamSink;
-import com.undercontroll.infrastructure.logging.LogTiming;
+import com.undercontroll.domain.support.Durations;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -50,21 +50,21 @@ public class SpringAiAnaChatAdapter implements AnaChatGateway {
                     "Ana chat finished conversationId={} tools={} durationMs={}",
                     conversationId,
                     toolsLabel(webSearch),
-                    LogTiming.millisSince(started)
+                    Durations.millisSince(started)
             );
             return content;
         } catch (AnaUnavailableException ex) {
             log.warn(
                     "Ana chat unavailable conversationId={} durationMs={}",
                     conversationId,
-                    LogTiming.millisSince(started)
+                    Durations.millisSince(started)
             );
             throw ex;
         } catch (RuntimeException ex) {
             log.warn(
                     "Ana chat failed conversationId={} durationMs={} cause={}",
                     conversationId,
-                    LogTiming.millisSince(started),
+                    Durations.millisSince(started),
                     ex.toString()
             );
             throw new AnaUnavailableException(ex);
@@ -94,7 +94,7 @@ public class SpringAiAnaChatAdapter implements AnaChatGateway {
                         log.warn(
                                 "Ana chat stream recovered conversationId={} durationMs={} cause={}",
                                 conversationId,
-                                LogTiming.millisSince(started),
+                                Durations.millisSince(started),
                                 error.toString()
                         );
                         return Flux.empty();
@@ -122,7 +122,7 @@ public class SpringAiAnaChatAdapter implements AnaChatGateway {
                         log.warn(
                                 "Ana chat stream failed conversationId={} durationMs={} cause={}",
                                 conversationId,
-                                LogTiming.millisSince(started),
+                                Durations.millisSince(started),
                                 error.toString()
                         );
                         sink.error(AnaUnavailableException.CODE, AnaUnavailableException.MESSAGE);
@@ -136,7 +136,7 @@ public class SpringAiAnaChatAdapter implements AnaChatGateway {
                             log.warn(
                                     "Ana chat stream unavailable conversationId={} durationMs={}",
                                     conversationId,
-                                    LogTiming.millisSince(started)
+                                    Durations.millisSince(started)
                             );
                             sink.error(AnaUnavailableException.CODE, AnaUnavailableException.MESSAGE);
                             return;
@@ -145,7 +145,7 @@ public class SpringAiAnaChatAdapter implements AnaChatGateway {
                                 "Ana chat stream finished conversationId={} tools={} durationMs={}",
                                 conversationId,
                                 toolsLabel(webSearch),
-                                LogTiming.millisSince(started)
+                                Durations.millisSince(started)
                         );
                         sink.complete(content);
                     }
@@ -154,7 +154,7 @@ public class SpringAiAnaChatAdapter implements AnaChatGateway {
             log.warn(
                     "Ana chat stream failed conversationId={} durationMs={} cause={}",
                     conversationId,
-                    LogTiming.millisSince(started),
+                    Durations.millisSince(started),
                     ex.toString()
             );
             sink.error(AnaUnavailableException.CODE, AnaUnavailableException.MESSAGE);

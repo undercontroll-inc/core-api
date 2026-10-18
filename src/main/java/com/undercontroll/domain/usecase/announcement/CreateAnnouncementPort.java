@@ -1,8 +1,25 @@
 package com.undercontroll.domain.usecase.announcement;
 
-import com.undercontroll.application.dto.announcement.CreateAnnouncementRequest;
-import com.undercontroll.application.dto.announcement.CreateAnnouncementResponse;
+import com.undercontroll.domain.enums.AnnouncementType;
+import com.undercontroll.domain.model.PresignedUpload;
+
+import java.time.LocalDateTime;
 
 public interface CreateAnnouncementPort {
-    CreateAnnouncementResponse execute(CreateAnnouncementRequest request, String token);
+
+    Output execute(Input input, String token);
+
+    record Input(String title, String description, AnnouncementImageUpload imageUpload, AnnouncementType type) {
+    }
+
+    record Output(
+            Integer id,
+            String title,
+            String content,
+            PresignedUpload imageUpload,
+            AnnouncementType type,
+            LocalDateTime publishedAt,
+            LocalDateTime updatedAt
+    ) {
+    }
 }

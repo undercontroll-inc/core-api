@@ -1,8 +1,6 @@
 package com.undercontroll.infrastructure.web.controller;
 
 import com.undercontroll.application.controller.impl.ChatController;
-import com.undercontroll.application.dto.chat.ChatSuggestionsResponse;
-import com.undercontroll.application.dto.chat.SendChatMessageResponse;
 import com.undercontroll.domain.exception.AnaUnavailableException;
 import com.undercontroll.domain.gateway.ChatStreamSink;
 import com.undercontroll.domain.usecase.chat.GetChatSuggestionsPort;
@@ -81,7 +79,7 @@ class ChatControllerTest {
     @WithMockUser(username = "12", roles = "ADMINISTRATOR")
     @DisplayName("POST /v1/api/chats/messages returns the assistant reply")
     void sendMessage() throws Exception {
-        when(sendChatMessagePort.execute(any())).thenReturn(new SendChatMessageResponse("Tem 2 consertos abertos."));
+        when(sendChatMessagePort.execute(any())).thenReturn("Tem 2 consertos abertos.");
 
         mockMvc.perform(post("/v1/api/chats/messages")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -180,7 +178,7 @@ class ChatControllerTest {
     @DisplayName("GET /v1/api/chats/suggestions returns stored questions")
     void getSuggestions() throws Exception {
         when(getChatSuggestionsPort.execute(anyBoolean()))
-                .thenReturn(new ChatSuggestionsResponse(List.of("Pergunta 1", "Pergunta 2")));
+                .thenReturn(List.of("Pergunta 1", "Pergunta 2"));
 
         mockMvc.perform(get("/v1/api/chats/suggestions"))
                 .andExpect(status().isOk())
@@ -192,7 +190,7 @@ class ChatControllerTest {
     @DisplayName("POST /v1/api/chats/suggestions refreshes questions")
     void refreshSuggestions() throws Exception {
         when(getChatSuggestionsPort.execute(anyBoolean()))
-                .thenReturn(new ChatSuggestionsResponse(List.of("Nova")));
+                .thenReturn(List.of("Nova"));
 
         mockMvc.perform(post("/v1/api/chats/suggestions"))
                 .andExpect(status().isOk())

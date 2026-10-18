@@ -1,9 +1,10 @@
-package com.undercontroll.domain.usecase.chat.impl;
+package com.undercontroll.infrastructure.gateway;
 
 import com.undercontroll.domain.gateway.AnnouncementGateway;
 import com.undercontroll.domain.gateway.ComponentGateway;
 import com.undercontroll.domain.gateway.DemandGateway;
 import com.undercontroll.domain.gateway.OrderGateway;
+import com.undercontroll.domain.gateway.ShopSnapshotLoader;
 import com.undercontroll.domain.model.Order;
 import com.undercontroll.domain.model.chat.ShopSnapshot;
 import com.undercontroll.domain.model.chat.ShopSuggestionComposer;
@@ -16,13 +17,14 @@ import java.util.List;
 
 @Component
 @RequiredArgsConstructor
-public class ShopSnapshotLoader {
+public class ShopSnapshotLoaderImpl implements ShopSnapshotLoader {
 
     private final OrderGateway orderGateway;
     private final ComponentGateway componentGateway;
     private final DemandGateway demandGateway;
     private final AnnouncementGateway announcementGateway;
 
+    @Override
     @Cacheable(value = "anaShopSnapshot", key = "'current'")
     public ShopSnapshot load() {
         List<Order> orders = new ArrayList<>();

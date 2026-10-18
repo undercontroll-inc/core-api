@@ -10,13 +10,12 @@ import com.google.genai.types.ThinkingConfig;
 import com.google.genai.types.ThinkingLevel;
 import com.undercontroll.domain.exception.TranscriptionUnavailableException;
 import com.undercontroll.domain.gateway.AudioTranscriptionGateway;
-import com.undercontroll.infrastructure.logging.LogTiming;
+import com.undercontroll.domain.model.AudioClip;
+import com.undercontroll.domain.support.Durations;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.io.Resource;
 import org.springframework.util.MimeType;
 import org.springframework.util.StringUtils;
 
-import java.io.IOException;
 import java.util.Locale;
 
 @Slf4j
@@ -38,11 +37,11 @@ public class GeminiAudioTranscriptionAdapter implements AudioTranscriptionGatewa
     }
 
     @Override
-    public String transcribe(Resource audio, String contentType, String filename) {
+    public String transcribe(AudioClip audio) {
         long started = System.nanoTime();
         try {
-            MimeType mimeType = mimeType(contentType, filename);
-            byte[] bytes = audio.getContentAsByteArray();
+            MimeType mimeType = mimeType(audio.contentType(), audio.filename());
+            byte[] bytes = audio.content();
             log.info(
                     "Gemini transcription started model={} mime={} byteSize={}",
                     model,
@@ -62,7 +61,7 @@ public class GeminiAudioTranscriptionAdapter implements AudioTranscriptionGatewa
                         model,
                         mimeType,
                         bytes.length,
-                        LogTiming.millisSince(started)
+                        Durations.millisSince(started)
                 );
                 throw new TranscriptionUnavailableException();
             }
@@ -72,16 +71,16 @@ public class GeminiAudioTranscriptionAdapter implements AudioTranscriptionGatewa
                     mimeType,
                     bytes.length,
                     text.trim().length(),
-                    LogTiming.millisSince(started)
+                    Durations.millisSince(started)
             );
             return text.trim();
         } catch (TranscriptionUnavailableException ex) {
             throw ex;
-        } catch (IOException | RuntimeException ex) {
+        } catch (RuntimeException ex) {
             log.warn(
                     "Gemini transcription failed model={} durationMs={} cause={}",
                     model,
-                    LogTiming.millisSince(started),
+                    Durations.millisSince(started),
                     ex.toString()
             );
             throw new TranscriptionUnavailableException(ex);

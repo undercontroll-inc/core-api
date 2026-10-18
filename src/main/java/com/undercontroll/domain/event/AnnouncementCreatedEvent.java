@@ -1,4 +1,4 @@
-package com.undercontroll.infrastructure.events;
+package com.undercontroll.domain.event;
 
 import com.undercontroll.domain.model.Announcement;
 

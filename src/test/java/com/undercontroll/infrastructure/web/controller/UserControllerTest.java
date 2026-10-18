@@ -1,13 +1,11 @@
 package com.undercontroll.infrastructure.web.controller;
 
-import com.auth0.jwt.interfaces.Claim;
-import com.auth0.jwt.interfaces.DecodedJWT;
+import com.undercontroll.domain.model.AccessTokenClaims;
+import com.undercontroll.application.mapper.UserDtoMapperImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.undercontroll.application.dto.user.CreateUserRequest;
-import com.undercontroll.application.dto.user.CreateUserResponse;
 import com.undercontroll.application.dto.auth.ResetPasswordRequest;
 import com.undercontroll.application.dto.user.UpdateUserRequest;
-import com.undercontroll.application.dto.user.UserDto;
 import com.undercontroll.domain.usecase.auth.ResetPasswordPort;
 import com.undercontroll.domain.enums.UserType;
 import com.undercontroll.domain.exception.InvalidTokenException;
@@ -35,7 +33,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(UserController.class)
-@Import({SecurityConfig.class, RateLimitProperties.class})
+@Import({SecurityConfig.class, RateLimitProperties.class, UserDtoMapperImpl.class})
 class UserControllerTest {
 
     @Autowired
@@ -67,12 +65,7 @@ class UserControllerTest {
     private TokenGateway tokenGateway;
 
     private void mockTokenPortWithRole(String role) {
-        Claim claim = mock(Claim.class);
-        when(claim.asString()).thenReturn(role);
-        DecodedJWT decoded = mock(DecodedJWT.class);
-        when(decoded.getSubject()).thenReturn("user@example.com");
-        when(decoded.getClaim("roles")).thenReturn(claim);
-        when(tokenGateway.validateToken(anyString())).thenReturn(decoded);
+        when(tokenGateway.validateToken(anyString())).thenReturn(new AccessTokenClaims("user@example.com", role));
     }
 
     @Test
@@ -84,12 +77,12 @@ class UserControllerTest {
                 false, false, true, "12345-678"
         );
 
-        CreateUserResponse response = new CreateUserResponse(
+        CreateUserPort.Output response = new CreateUserPort.Output(
                 "John", "john@example.com", "Doe", "Street 123",
                 "12345678900", "12345-678", "11999999999", null, UserType.CUSTOMER
         );
 
-        when(createUserPort.execute(any(CreateUserRequest.class))).thenReturn(response);
+        when(createUserPort.execute(any(CreateUserPort.Input.class))).thenReturn(response);
 
         mockMvc.perform(post("/v1/api/users")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -99,7 +92,7 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.email").value("john@example.com"))
                 .andExpect(jsonPath("$.userType").value("CUSTOMER"));
 
-        verify(createUserPort, times(1)).execute(any(CreateUserRequest.class));
+        verify(createUserPort, times(1)).execute(any(CreateUserPort.Input.class));
     }
 
     @Test
@@ -116,17 +109,17 @@ class UserControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
 
-        verify(updateUserPort, times(1)).execute(eq(1), any(UpdateUserRequest.class));
+        verify(updateUserPort, times(1)).execute(eq(1), any(UpdateUserPort.Input.class));
     }
 
     @Test
     @DisplayName("GET /v1/api/users - ADMINISTRATOR should get all users and return 200")
     void administratorShouldGetAllUsersSuccessfully() throws Exception {
-        UserDto user1 = new UserDto(1, "John", "john@example.com", "Doe",
+        UserOutput user1 = new UserOutput(1, "John", "john@example.com", "Doe",
                 "Street 123", "12345678900", "12345-678", "11999999999",
                 null, false, false, true, UserType.CUSTOMER);
 
-        UserDto user2 = new UserDto(2, "Jane", "jane@example.com", "Doe",
+        UserOutput user2 = new UserOutput(2, "Jane", "jane@example.com", "Doe",
                 "Street 456", "98765432100", "54321-987", "11988888888",
                 null, false, false, true, UserType.ADMINISTRATOR);
 
@@ -155,7 +148,7 @@ class UserControllerTest {
     @Test
     @DisplayName("GET /v1/api/users?type=CUSTOMER - ADMINISTRATOR should get customers and return 200")
     void administratorShouldGetCustomersSuccessfully() throws Exception {
-        UserDto customer = new UserDto(1, "John", "john@example.com", "Doe",
+        UserOutput customer = new UserOutput(1, "John", "john@example.com", "Doe",
                 "Street 123", "12345678900", "12345-678", "11999999999",
                 null, false, false, true, UserType.CUSTOMER);
 
@@ -185,7 +178,7 @@ class UserControllerTest {
     @Test
     @DisplayName("GET /v1/api/users?type=CUSTOMER&hasEmail=true - ADMINISTRATOR should get customers with email and return 200")
     void administratorShouldGetCustomersWithEmailSuccessfully() throws Exception {
-        UserDto customer = new UserDto(1, "John", "john@example.com", "Doe",
+        UserOutput customer = new UserOutput(1, "John", "john@example.com", "Doe",
                 "Street 123", "12345678900", "12345-678", "11999999999",
                 null, false, false, true, UserType.CUSTOMER);
 
@@ -202,7 +195,7 @@ class UserControllerTest {
     @Test
     @DisplayName("GET /v1/api/users/{userId} - Should get user by id and return 200 (also covers former customer-by-id lookup)")
     void shouldGetUserByIdSuccessfully() throws Exception {
-        UserDto userDto = new UserDto(1, "John", "john@example.com", "Doe",
+        UserOutput userDto = new UserOutput(1, "John", "john@example.com", "Doe",
                 null, null, null, null, null, null, null, null, UserType.CUSTOMER);
 
         when(getUserPort.execute(1)).thenReturn(Optional.of(userDto));
@@ -249,7 +242,7 @@ class UserControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
 
-        verify(resetPasswordPort, times(1)).execute(eq(1), any(ResetPasswordRequest.class), eq("mock-customer-token"));
+        verify(resetPasswordPort, times(1)).execute(eq(1), any(ResetPasswordPort.Input.class), eq("mock-customer-token"));
     }
 
     @Test
@@ -265,7 +258,7 @@ class UserControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
 
-        verify(resetPasswordPort, times(1)).execute(eq(2), any(ResetPasswordRequest.class), eq("mock-admin-token"));
+        verify(resetPasswordPort, times(1)).execute(eq(2), any(ResetPasswordPort.Input.class), eq("mock-admin-token"));
     }
 
     @Test

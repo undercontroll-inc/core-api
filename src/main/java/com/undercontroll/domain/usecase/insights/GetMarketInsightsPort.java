@@ -1,7 +1,15 @@
 package com.undercontroll.domain.usecase.insights;
 
-import com.undercontroll.application.dto.insights.MarketInsightsResponse;
+import com.undercontroll.domain.model.insight.InsightsPayload;
 
 public interface GetMarketInsightsPort {
-    MarketInsightsResponse execute();
+
+    Output execute();
+
+    record Output(InsightsPayload payload, String generatedAt) {
+
+        public static Output empty() {
+            return new Output(null, null);
+        }
+    }
 }

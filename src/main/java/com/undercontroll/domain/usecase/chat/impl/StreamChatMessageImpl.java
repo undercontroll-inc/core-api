@@ -1,10 +1,10 @@
 package com.undercontroll.domain.usecase.chat.impl;
 
-import com.undercontroll.application.dto.chat.SendChatMessageRequest;
 import com.undercontroll.domain.exception.AnaUnavailableException;
 import com.undercontroll.domain.gateway.AnaChatGateway;
 import com.undercontroll.domain.gateway.ChatStreamSink;
 import com.undercontroll.domain.gateway.CurrentUserIdPort;
+import com.undercontroll.domain.gateway.ShopSnapshotLoader;
 import com.undercontroll.domain.gateway.OrderGateway;
 import com.undercontroll.domain.usecase.chat.StreamChatMessagePort;
 import com.undercontroll.domain.usecase.chat.StreamChatSession;
@@ -26,20 +26,20 @@ public class StreamChatMessageImpl implements StreamChatMessagePort {
     private final OrderGateway orderGateway;
 
     @Override
-    public StreamChatSession prepare(SendChatMessageRequest request) {
+    public StreamChatSession prepare(String message) {
         AnaConversationPrep.Prepared prepared = AnaConversationPrep.prepare(
                 anaChatGateway,
                 currentUserIdPort,
                 shopSnapshotLoader,
                 orderGateway,
-                request.content()
+                message
         );
         log.info(
                 "Ana chat stream requested userId={} conversationId={}",
                 prepared.userId(),
                 prepared.conversationId()
         );
-        return prepared.toSession(request.content());
+        return prepared.toSession(message);
     }
 
     @Override

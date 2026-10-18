@@ -1,14 +1,10 @@
 package com.undercontroll.domain.usecase.user.impl;
 
-import com.undercontroll.application.dto.auth.CreatePasswordEventRequest;
-import com.undercontroll.application.dto.user.CreateUserRequest;
-import com.undercontroll.application.dto.user.CreateUserResponse;
-import com.undercontroll.application.mapper.UserDtoMapper;
 import com.undercontroll.domain.usecase.user.CreateUserPort;
 import com.undercontroll.domain.enums.PasswordEventType;
 import com.undercontroll.domain.usecase.auth.CreatePasswordEventPort;
 import com.undercontroll.domain.gateway.NotificationGateway;
-import com.undercontroll.infrastructure.events.UserCreatedEvent;
+import com.undercontroll.domain.event.UserCreatedEvent;
 import com.undercontroll.domain.model.User;
 import com.undercontroll.domain.enums.UserType;
 import com.undercontroll.domain.exception.InvalidUserException;
@@ -31,10 +27,9 @@ public class CreateUserImpl implements CreateUserPort {
     private final PasswordEncoder passwordEncoder;
     private final MetricsGateway metricsGateway;
     private final NotificationGateway notificationGateway;
-    private final UserDtoMapper userDtoMapper;
 
     @Override
-    public CreateUserResponse execute(CreateUserRequest request) {
+    public Output execute(Input request) {
         try {
             validateCreateUserRequest(request);
 
@@ -57,7 +52,7 @@ public class CreateUserImpl implements CreateUserPort {
                     request.userType().equals(UserType.ADMINISTRATOR)
                             ? request.password()
                             : createPasswordEventPort.execute(
-                                    new CreatePasswordEventRequest(
+                                    new CreatePasswordEventPort.Input(
                                             PasswordEventType.CREATE,
                                             null,
                                             request.phone(),
@@ -94,14 +89,24 @@ public class CreateUserImpl implements CreateUserPort {
 
             metricsGateway.incrementAccountCreated();
             log.info("User created userId={} type={}", createdUser.getId(), createdUser.getUserType());
-            return userDtoMapper.toCreateUserResponse(createdUser);
+            return new Output(
+                    createdUser.getName(),
+                    createdUser.getEmail(),
+                    createdUser.getLastName(),
+                    createdUser.getAddress(),
+                    createdUser.getCpf(),
+                    createdUser.getCEP(),
+                    createdUser.getPhone(),
+                    createdUser.getAvatarUrl(),
+                    createdUser.getUserType()
+            );
         } catch (InvalidUserException e) {
             metricsGateway.incrementAccountCreationFailed();
             throw e;
         }
     }
 
-    private void validateCreateUserRequest(CreateUserRequest request) {
+    private void validateCreateUserRequest(Input request) {
         if (request.name() == null || request.name().trim().isEmpty()) {
             throw new InvalidUserException("User name cannot be empty");
         }

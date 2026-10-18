@@ -1,10 +1,5 @@
 package com.undercontroll.domain.usecase.order.impl;
 
-import com.undercontroll.application.dto.demand.CreateDemandRequest;
-import com.undercontroll.application.dto.order.PartDto;
-import com.undercontroll.application.dto.order.UpdateOrderRequest;
-import com.undercontroll.application.dto.orderitem.UpdateOrderItemDto;
-import com.undercontroll.application.dto.orderitem.UpdateOrderItemRequest;
 import com.undercontroll.domain.model.Demand;
 import com.undercontroll.domain.model.Order;
 import com.undercontroll.domain.model.OrderItem;
@@ -14,6 +9,7 @@ import com.undercontroll.domain.exception.InvalidUpdateOrderException;
 import com.undercontroll.domain.gateway.DemandGateway;
 import com.undercontroll.domain.gateway.OrderGateway;
 import com.undercontroll.domain.usecase.demand.CreateDemandPort;
+import com.undercontroll.domain.usecase.order.OrderPartInput;
 import com.undercontroll.domain.usecase.order.UpdateOrderPort;
 import com.undercontroll.domain.usecase.order_item.UpdateOrderItemPort;
 import com.undercontroll.domain.gateway.MetricsGateway;
@@ -40,7 +36,7 @@ public class UpdateOrderImpl implements UpdateOrderPort {
     @Override
     @Transactional(rollbackFor = Exception.class)
     @CacheEvict(value = {"orders", "ordersByUser", "order", "orderParts", "dashboardMetrics"}, allEntries = true)
-    public void execute(Integer orderId, UpdateOrderRequest request) {
+    public void execute(Integer orderId, Input request) {
         try {
             log.info("Updating order {}", orderId);
 
@@ -78,13 +74,13 @@ public class UpdateOrderImpl implements UpdateOrderPort {
         }
     }
 
-    private void applyAppliances(Order order, Integer orderId, List<UpdateOrderItemDto> appliances) {
+    private void applyAppliances(Order order, Integer orderId, List<Appliance> appliances) {
         if (appliances == null) {
             return;
         }
-        for (UpdateOrderItemDto dto : appliances) {
+        for (Appliance dto : appliances) {
             if (dto.id() != null) {
-                updateOrderItemPort.execute(orderId, dto.id(), new UpdateOrderItemRequest(
+                updateOrderItemPort.execute(orderId, dto.id(), new UpdateOrderItemPort.Input(
                         null,
                         dto.laborValue(),
                         dto.volt(),
@@ -107,11 +103,11 @@ public class UpdateOrderImpl implements UpdateOrderPort {
         }
     }
 
-    private void applyParts(Order order, List<PartDto> parts) {
+    private void applyParts(Order order, List<OrderPartInput> parts) {
         if (parts == null) {
             return;
         }
-        for (PartDto part : parts) {
+        for (OrderPartInput part : parts) {
             if (part.componentId() == null) {
                 continue;
             }
@@ -124,7 +120,7 @@ public class UpdateOrderImpl implements UpdateOrderPort {
             } else if (existing.isPresent()) {
                 demandGateway.deleteById(existing.get().getId());
             } else if (keep) {
-                createDemandPort.execute(order.getId(), new CreateDemandRequest(
+                createDemandPort.execute(order.getId(), new CreateDemandPort.Input(
                         part.componentId(),
                         part.quantity().longValue()
                 ));

@@ -1,9 +1,9 @@
 package com.undercontroll.domain.gateway;
 
-import com.undercontroll.application.dto.order.ExportOrderRequest;
+import com.undercontroll.domain.model.ServiceOrderDocument;
 
 public interface PdfExportGateway {
 
-    byte[] exportOS(ExportOrderRequest request);
+    byte[] exportOS(ServiceOrderDocument document);
 
 }

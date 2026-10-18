@@ -1,10 +1,10 @@
 package com.undercontroll.domain.usecase.dashboard.impl;
 
-import com.undercontroll.application.dto.dashboard.RevenueEvolutionResponse;
 import com.undercontroll.domain.enums.OrderStatus;
 import com.undercontroll.domain.enums.PeriodFilter;
 import com.undercontroll.domain.enums.StatusFilter;
 import com.undercontroll.domain.gateway.OrderGateway;
+import com.undercontroll.domain.model.dashboard.RevenuePoint;
 import com.undercontroll.domain.usecase.dashboard.DashboardDateFilter;
 import com.undercontroll.domain.usecase.dashboard.GetRevenueEvolutionPort;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +22,7 @@ public class GetRevenueEvolutionImpl implements GetRevenueEvolutionPort {
     private final OrderGateway orderGateway;
 
     @Override
-    public RevenueEvolutionResponse execute(PeriodFilter period, StatusFilter status) {
+    public List<RevenuePoint> execute(PeriodFilter period, StatusFilter status) {
         LocalDate startDate = DashboardDateFilter.from(period);
         List<String> statuses = status.getStatuses().stream()
                 .map(OrderStatus::name)
@@ -30,16 +30,14 @@ public class GetRevenueEvolutionImpl implements GetRevenueEvolutionPort {
 
         List<Object[]> rows = orderGateway.getRevenueEvolution(startDate, statuses);
 
-        List<RevenueEvolutionResponse.DataPoint> dataPoints = rows.stream()
-                .map(row -> new RevenueEvolutionResponse.DataPoint(
+        return rows.stream()
+                .map(row -> new RevenuePoint(
                         toLocalDate(row[0]),
                         toDouble(row[1]),
                         toDouble(row[2]),
                         toLong(row[3])
                 ))
                 .toList();
-
-        return new RevenueEvolutionResponse(dataPoints);
     }
 
     private LocalDate toLocalDate(Object value) {

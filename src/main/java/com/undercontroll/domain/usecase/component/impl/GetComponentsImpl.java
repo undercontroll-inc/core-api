@@ -1,8 +1,7 @@
 package com.undercontroll.domain.usecase.component.impl;
 
-import com.undercontroll.application.dto.component.ComponentDto;
-import com.undercontroll.application.mapper.ComponentPartDtoMapper;
 import com.undercontroll.domain.usecase.component.GetComponentsPort;
+import com.undercontroll.domain.usecase.component.ComponentOutput;
 import com.undercontroll.domain.model.ComponentPart;
 import com.undercontroll.domain.gateway.ComponentGateway;
 import lombok.RequiredArgsConstructor;
@@ -16,11 +15,10 @@ import java.util.List;
 public class GetComponentsImpl implements GetComponentsPort {
 
     private final ComponentGateway componentGateway;
-    private final ComponentPartDtoMapper componentPartDtoMapper;
 
     @Override
     @Cacheable(value = "components", key = "#category + '-' + #name")
-    public List<ComponentDto> execute(String category, String name) {
+    public List<ComponentOutput> execute(String category, String name) {
         List<ComponentPart> components;
 
         if (category != null && !category.isBlank()) {
@@ -38,7 +36,7 @@ public class GetComponentsImpl implements GetComponentsPort {
         }
 
         return components.stream()
-                .map(componentPartDtoMapper::toDto)
+                .map(ComponentOutput::from)
                 .toList();
     }
 }

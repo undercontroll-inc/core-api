@@ -1,7 +1,6 @@
 package com.undercontroll.domain.usecase.chat.impl;
 
-import com.undercontroll.application.dto.chat.SendChatMessageRequest;
-import com.undercontroll.application.dto.chat.SendChatMessageResponse;
+import com.undercontroll.domain.gateway.ShopSnapshotLoader;
 import com.undercontroll.domain.enums.OrderStatus;
 import com.undercontroll.domain.exception.AnaUnavailableException;
 import com.undercontroll.domain.gateway.AnaChatGateway;
@@ -90,10 +89,10 @@ class SendChatMessageImplTest {
         when(gateway.reply(eq("7"), eq("Quais consertos estão abertos?"), briefing.capture()))
                 .thenReturn("Tem 3 em andamento.");
 
-        SendChatMessageResponse response = useCase.execute(
-                new SendChatMessageRequest("Quais consertos estão abertos?"));
+        String response = useCase.execute(
+                "Quais consertos estão abertos?");
 
-        assertEquals("Tem 3 em andamento.", response.content());
+        assertEquals("Tem 3 em andamento.", response);
         assertTrue(briefing.getValue().contains("Maria"));
         assertTrue(briefing.getValue().contains("liquidificador"));
         assertTrue(briefing.getValue().contains("João"));
@@ -107,7 +106,7 @@ class SendChatMessageImplTest {
     void missingLlm() {
         when(anaChatGateway.getIfAvailable()).thenReturn(null);
 
-        SendChatMessageRequest request = new SendChatMessageRequest("Oi");
+        String request = "Oi";
         assertThrows(AnaUnavailableException.class, () -> useCase.execute(request));
     }
 
@@ -129,7 +128,7 @@ class SendChatMessageImplTest {
         when(gateway.reply(eq("7"), eq("Me fala do pedido 12"), briefing.capture()))
                 .thenReturn("O liquidificador da Maria ainda não foi olhado.");
 
-        useCase.execute(new SendChatMessageRequest("Me fala do pedido 12"));
+        useCase.execute("Me fala do pedido 12");
 
         assertTrue(briefing.getValue().contains("pedido 12"));
         assertTrue(briefing.getValue().contains("Maria"));
@@ -155,7 +154,7 @@ class SendChatMessageImplTest {
         when(gateway.reply(eq("7"), eq("Quanto custa?"), briefing.capture()))
                 .thenReturn("O conserto da Maria ainda não tem valor.");
 
-        useCase.execute(new SendChatMessageRequest("Quanto custa?"));
+        useCase.execute("Quanto custa?");
 
         assertTrue(briefing.getValue().contains("pedido 12"));
         assertTrue(briefing.getValue().contains("Maria"));

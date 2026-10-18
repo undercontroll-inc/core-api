@@ -32,7 +32,7 @@ public class AnaChatSseSupport {
     }
 
     public ResponseEntity<SseEmitter> open(SendChatMessageRequest request) {
-        StreamChatSession session = streamChatMessagePort.prepare(request);
+        StreamChatSession session = streamChatMessagePort.prepare(request.content());
         SseEmitter emitter = new SseEmitter(SseChatStreamSink.TIMEOUT_MS);
         SseChatStreamSink sink = sinks.getObject().bind(emitter);
         taskExecutor.execute(new DelegatingSecurityContextRunnable(

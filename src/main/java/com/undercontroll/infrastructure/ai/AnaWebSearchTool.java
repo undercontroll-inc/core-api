@@ -1,6 +1,6 @@
 package com.undercontroll.infrastructure.ai;
 
-import com.undercontroll.infrastructure.logging.LogTiming;
+import com.undercontroll.domain.support.Durations;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
@@ -56,7 +56,7 @@ public class AnaWebSearchTool {
                 log.warn(
                         "Web search returned empty body queryChars={} durationMs={}",
                         queryChars,
-                        LogTiming.millisSince(started)
+                        Durations.millisSince(started)
                 );
                 return "Nenhum resultado.";
             }
@@ -66,14 +66,14 @@ public class AnaWebSearchTool {
                     "Web search failed queryChars={} status={} durationMs={}",
                     queryChars,
                     ex.getStatusCode().value(),
-                    LogTiming.millisSince(started)
+                    Durations.millisSince(started)
             );
             return "Busca indisponível no momento.";
         } catch (RuntimeException ex) {
             log.warn(
                     "Web search failed queryChars={} durationMs={} cause={}",
                     queryChars,
-                    LogTiming.millisSince(started),
+                    Durations.millisSince(started),
                     ex.getClass().getSimpleName()
             );
             return "Busca indisponível no momento.";

@@ -7,7 +7,8 @@ import com.undercontroll.domain.model.insight.InsightMonthLabel;
 import com.undercontroll.domain.model.insight.InsightPromptContext;
 import com.undercontroll.domain.model.insight.InsightsPayload;
 import com.undercontroll.infrastructure.config.InsightsProperties;
-import com.undercontroll.infrastructure.logging.LogTiming;
+import com.undercontroll.infrastructure.mapper.InsightsPayloadJsonMapper;
+import com.undercontroll.domain.support.Durations;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.core.io.Resource;
@@ -23,6 +24,7 @@ public class SpringAiInsightsLlmAdapter implements InsightsLlmGateway {
     private final InsightsProperties insightsProperties;
     private final Resource userPrompt;
     private final MarketInsightTools marketInsightTools;
+    private final InsightsPayloadJsonMapper payloadMapper;
 
     public SpringAiInsightsLlmAdapter(
             ChatClient insightsChatClient,
@@ -30,7 +32,8 @@ public class SpringAiInsightsLlmAdapter implements InsightsLlmGateway {
             InsightPayloadValidator insightPayloadValidator,
             InsightsProperties insightsProperties,
             Resource userPrompt,
-            MarketInsightTools marketInsightTools
+            MarketInsightTools marketInsightTools,
+            InsightsPayloadJsonMapper payloadMapper
     ) {
         this.insightsChatClient = insightsChatClient;
         this.objectMapper = objectMapper;
@@ -38,6 +41,7 @@ public class SpringAiInsightsLlmAdapter implements InsightsLlmGateway {
         this.insightsProperties = insightsProperties;
         this.userPrompt = userPrompt;
         this.marketInsightTools = marketInsightTools;
+        this.payloadMapper = payloadMapper;
     }
 
     @Override
@@ -54,7 +58,7 @@ public class SpringAiInsightsLlmAdapter implements InsightsLlmGateway {
         try {
             EvidenceIndex evidence = new EvidenceIndex(objectMapper);
             InsightGenerationContext.State state = InsightGenerationContext.State.from(context, evidence);
-            InsightsPayload payload = insightsChatClient.prompt()
+            InsightsPayloadJson json = insightsChatClient.prompt()
                     .user(user -> user.text(userPrompt, StandardCharsets.UTF_8)
                             .param("mesAtual", InsightMonthLabel.of(context.bucketKey()))
                             .param("mesComparacao", InsightMonthLabel.of(context.comparisonBucketKey()))
@@ -63,18 +67,19 @@ public class SpringAiInsightsLlmAdapter implements InsightsLlmGateway {
                             .param("maxInsights", insightsProperties.getMaxInsights())
                             .param("grounding", groundingJson(state)))
                     .call()
-                    .entity(InsightsPayload.class);
-            if (payload == null) {
+                    .entity(InsightsPayloadJson.class);
+            if (json == null) {
                 throw new IllegalStateException("LLM returned an empty insights payload");
             }
+            InsightsPayload payload = payloadMapper.toDomain(json);
             insightPayloadValidator.validate(payload, context, evidence);
-            log.info("Generated insights bucketKey={} durationMs={}", bucketKey, LogTiming.millisSince(started));
+            log.info("Generated insights bucketKey={} durationMs={}", bucketKey, Durations.millisSince(started));
             return payload;
         } catch (RuntimeException ex) {
             log.warn(
                     "Insight generation failed bucketKey={} durationMs={} cause={}",
                     bucketKey,
-                    LogTiming.millisSince(started),
+                    Durations.millisSince(started),
                     ex.toString()
             );
             throw ex;

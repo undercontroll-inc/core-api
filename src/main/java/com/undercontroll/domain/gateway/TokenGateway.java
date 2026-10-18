@@ -1,11 +1,11 @@
 package com.undercontroll.domain.gateway;
 
-import com.auth0.jwt.interfaces.DecodedJWT;
 import com.undercontroll.domain.enums.UserType;
+import com.undercontroll.domain.model.AccessTokenClaims;
 
 public interface TokenGateway {
 
-    String generateToken(String username, UserType userType);
-    DecodedJWT validateToken(String token);
-    String extractUsername(String token);
+    String generateToken(String userId, UserType userType);
+
+    AccessTokenClaims validateToken(String token);
 }

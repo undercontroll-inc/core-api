@@ -3,7 +3,7 @@ package com.undercontroll.infrastructure.scheduling;
 import com.undercontroll.domain.usecase.insights.GenerateMonthlyInsightsPort;
 import com.undercontroll.domain.usecase.insights.InsightGenerationResult;
 import com.undercontroll.infrastructure.config.InsightsProperties;
-import com.undercontroll.infrastructure.logging.LogTiming;
+import com.undercontroll.domain.support.Durations;
 import com.undercontroll.infrastructure.logging.MdcKeys;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +32,7 @@ public class MonthlyInsightsScheduler {
                     "Monthly insights job finished status={} bucketKey={} durationMs={}",
                     result.status(),
                     result.bucketKey(),
-                    LogTiming.millisSince(started)
+                    Durations.millisSince(started)
             );
         } finally {
             MDC.clear();

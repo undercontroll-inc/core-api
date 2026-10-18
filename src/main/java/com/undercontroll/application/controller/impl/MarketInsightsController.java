@@ -1,6 +1,7 @@
 package com.undercontroll.application.controller.impl;
 
 import com.undercontroll.application.controller.MarketInsightsApi;
+import com.undercontroll.application.dto.insights.InsightsResponseMapper;
 import com.undercontroll.application.dto.insights.MarketInsightsResponse;
 import com.undercontroll.domain.usecase.insights.GenerateMonthlyInsightsPort;
 import com.undercontroll.domain.usecase.insights.GetMarketInsightsPort;
@@ -21,7 +22,8 @@ public class MarketInsightsController implements MarketInsightsApi {
 
     @Override
     public ResponseEntity<MarketInsightsResponse> getInsights() {
-        return ResponseEntity.ok(getMarketInsightsPort.execute());
+        GetMarketInsightsPort.Output output = getMarketInsightsPort.execute();
+        return ResponseEntity.ok(InsightsResponseMapper.from(output.payload(), output.generatedAt()));
     }
 
     @Override

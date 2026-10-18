@@ -3,6 +3,7 @@ package com.undercontroll.infrastructure.ai;
 import com.google.genai.Client;
 import com.google.genai.types.HttpOptions;
 import com.google.genai.types.HttpRetryOptions;
+import com.undercontroll.domain.support.Texts;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -22,7 +23,7 @@ public class GoogleGenAiClientConfig {
     @ConditionalOnMissingBean
     Client googleGenAiClient(Environment environment) {
         Client.Builder clientBuilder = Client.builder().httpOptions(httpOptions());
-        String apiKey = firstNonBlank(
+        String apiKey = Texts.firstNonBlank(
                 environment.getProperty("spring.ai.google.genai.api-key"),
                 environment.getProperty("GEMINI_API_KEY"),
                 environment.getProperty("GOOGLE_API_KEY")
@@ -44,14 +45,5 @@ public class GoogleGenAiClientConfig {
                 .timeout(HTTP_TIMEOUT_MS)
                 .retryOptions(HttpRetryOptions.builder().attempts(1).build())
                 .build();
-    }
-
-    static String firstNonBlank(String... values) {
-        for (String value : values) {
-            if (StringUtils.hasText(value)) {
-                return value;
-            }
-        }
-        return null;
     }
 }

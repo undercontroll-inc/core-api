@@ -56,5 +56,6 @@ Depois de **qualquer** mudança de contrato HTTP (path, método, status, query, 
 
 - README e `.env.example` ainda citam H2/MySQL; o default real é Postgres (`application-dev.yml`).
 - App real precisa de Redis (cache, memória da Ana, sugestões) e RabbitMQ (notificações).
-- `JwtTokenAdapter.generateToken(String username, ...)` recebe o **id** do usuário; o parâmetro está mal nomeado.
-- Algumas use cases em `domain` ainda importam `infrastructure.*` (legado). Código novo da Ana: porta/gateway no domain, adapter no infrastructure; sem comentários.
+- `TokenGateway.generateToken(userId, ...)` recebe o **id** do usuário (vira o `sub` do JWT).
+- `domain` não importa `application`, `infrastructure`, Jackson nem `Resource` (exceção temporária: `GenerateMonthlyInsightsImpl` ainda lê `InsightsProperties`). Porta/gateway no domain, adapter no infrastructure; controllers mapeiam DTO ↔ `Input`/`Output` com MapStruct; sem comentários.
+- Chaves do cache Redis têm prefixo de versão (`v2:`); ao mudar o tipo de um valor cacheado, subir a versão em `RedisConfig`.

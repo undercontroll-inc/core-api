@@ -1,10 +1,10 @@
 package com.undercontroll.domain.usecase.dashboard.impl;
 
-import com.undercontroll.application.dto.dashboard.TopComponentsResponse;
 import com.undercontroll.domain.enums.OrderStatus;
 import com.undercontroll.domain.enums.PeriodFilter;
 import com.undercontroll.domain.enums.StatusFilter;
 import com.undercontroll.domain.gateway.OrderGateway;
+import com.undercontroll.domain.model.dashboard.ComponentUsage;
 import com.undercontroll.domain.usecase.dashboard.DashboardDateFilter;
 import com.undercontroll.domain.usecase.dashboard.GetTopComponentsPort;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +21,7 @@ public class GetTopComponentsImpl implements GetTopComponentsPort {
     private final OrderGateway orderGateway;
 
     @Override
-    public TopComponentsResponse execute(PeriodFilter period, StatusFilter status) {
+    public List<ComponentUsage> execute(PeriodFilter period, StatusFilter status) {
         LocalDate startDate = DashboardDateFilter.from(period);
         List<String> statuses = status.getStatuses().stream()
                 .map(OrderStatus::name)
@@ -29,8 +29,8 @@ public class GetTopComponentsImpl implements GetTopComponentsPort {
 
         List<Object[]> rows = orderGateway.getTopComponents(startDate, statuses);
 
-        List<TopComponentsResponse.ComponentUsage> components = rows.stream()
-                .map(row -> new TopComponentsResponse.ComponentUsage(
+        return rows.stream()
+                .map(row -> new ComponentUsage(
                         toInteger(row[0]),
                         (String) row[1],
                         (String) row[2],
@@ -38,8 +38,6 @@ public class GetTopComponentsImpl implements GetTopComponentsPort {
                         toLong(row[4])
                 ))
                 .toList();
-
-        return new TopComponentsResponse(components);
     }
 
     private Integer toInteger(Object value) {

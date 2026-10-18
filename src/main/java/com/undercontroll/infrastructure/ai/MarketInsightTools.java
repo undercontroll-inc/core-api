@@ -1,7 +1,6 @@
 package com.undercontroll.infrastructure.ai;
 
 import com.undercontroll.domain.gateway.MarketViewGateway;
-import com.undercontroll.domain.model.insight.InsightsPayload;
 import com.undercontroll.domain.model.market.MarketBrandSummary;
 import com.undercontroll.domain.model.market.MarketCategorySummary;
 import com.undercontroll.domain.model.market.MarketPriceMovement;
@@ -51,8 +50,8 @@ public class MarketInsightTools {
         );
     }
 
-    InsightsPayload.CoberturaMatch matchCoverage(InsightGenerationContext.State state) {
-        InsightsPayload.CoberturaMatch coverage = InsightsPayload.CoberturaMatch.from(state.coverage());
+    InsightsPayloadJson.CoberturaMatch matchCoverage(InsightGenerationContext.State state) {
+        InsightsPayloadJson.CoberturaMatch coverage = InsightsPayloadJson.CoberturaMatch.from(state.coverage());
         state.evidence().ingest(coverage);
         return coverage;
     }

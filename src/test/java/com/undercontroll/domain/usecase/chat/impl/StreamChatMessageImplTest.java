@@ -1,6 +1,6 @@
 package com.undercontroll.domain.usecase.chat.impl;
 
-import com.undercontroll.application.dto.chat.SendChatMessageRequest;
+import com.undercontroll.domain.gateway.ShopSnapshotLoader;
 import com.undercontroll.domain.enums.OrderStatus;
 import com.undercontroll.domain.exception.AnaUnavailableException;
 import com.undercontroll.domain.gateway.AnaChatGateway;
@@ -75,7 +75,7 @@ class StreamChatMessageImplTest {
                 null
         ));
 
-        StreamChatSession session = useCase.prepare(new SendChatMessageRequest("Quais consertos estão abertos?"));
+        StreamChatSession session = useCase.prepare("Quais consertos estão abertos?");
 
         assertEquals("7", session.conversationId());
         assertEquals("Quais consertos estão abertos?", session.message());
@@ -88,7 +88,7 @@ class StreamChatMessageImplTest {
     void missingLlm() {
         when(anaChatGateway.getIfAvailable()).thenReturn(null);
 
-        SendChatMessageRequest request = new SendChatMessageRequest("Oi");
+        String request = "Oi";
         assertThrows(AnaUnavailableException.class, () -> useCase.prepare(request));
     }
 
@@ -107,7 +107,7 @@ class StreamChatMessageImplTest {
                         .build()
         ));
 
-        StreamChatSession session = useCase.prepare(new SendChatMessageRequest("Me fala do pedido 12"));
+        StreamChatSession session = useCase.prepare("Me fala do pedido 12");
 
         assertTrue(session.briefing().contains("pedido 12"));
         assertTrue(session.briefing().contains("Maria"));

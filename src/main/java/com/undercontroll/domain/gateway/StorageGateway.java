@@ -1,13 +1,12 @@
 package com.undercontroll.domain.gateway;
 
-import com.undercontroll.application.dto.announcement.GenerateUploadUrlResponse;
-import java.util.Optional;
+import com.undercontroll.domain.model.PresignedUpload;
 
 public interface StorageGateway {
 
-    void putObject(String bucket, String key, byte[] data, Optional<String> contentType);
+    PresignedUpload presignAnnouncementImageUpload(String key);
 
-    GenerateUploadUrlResponse generatePresignedUploadUrl(String bucket, String key, Integer expirationMinutes);
-    String generateReadPresignedUrl(String bucket, String key, long expirationMinutes);
+    String announcementImageReadUrl(String key);
 
+    void storeOrderExport(String key, byte[] pdf);
 }

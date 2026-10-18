@@ -1,8 +1,12 @@
 package com.undercontroll.domain.usecase.auth;
 
-import com.undercontroll.application.dto.auth.CreatePasswordEventRequest;
+import com.undercontroll.domain.enums.PasswordEventType;
 import com.undercontroll.domain.model.PasswordEvent;
 
 public interface CreatePasswordEventPort {
-    PasswordEvent execute(CreatePasswordEventRequest request);
+
+    PasswordEvent execute(Input input);
+
+    record Input(PasswordEventType type, String agent, String userPhone, String value) {
+    }
 }
