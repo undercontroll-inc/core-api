@@ -32,7 +32,8 @@ public interface TranscriptionApi {
     )
     @ApiResponse(
             responseCode = "400",
-            description = "Missing, empty, too large, or unsupported audio",
+            description = "Missing, empty, over 8MB, unrecognized content, declared MIME that contradicts the content, "
+                    + "WAV longer than the maximum duration, or a format the provider does not accept (code TRANSCRIPTION_INVALID)",
             content = @Content(
                     mediaType = MediaType.APPLICATION_JSON_VALUE,
                     schema = @Schema(implementation = ErrorResponse.class)

@@ -3,6 +3,7 @@ package com.undercontroll.infrastructure.ai;
 import com.undercontroll.domain.exception.TranscriptionUnavailableException;
 import com.undercontroll.domain.gateway.AudioTranscriptionGateway;
 import com.undercontroll.domain.model.AudioClip;
+import com.undercontroll.domain.model.AudioFormat;
 import com.undercontroll.domain.support.Durations;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.audio.transcription.AudioTranscriptionPrompt;
@@ -12,8 +13,13 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.util.StringUtils;
 
+import java.util.EnumSet;
+import java.util.Set;
+
 @Slf4j
 public class OpenAiAudioTranscriptionAdapter implements AudioTranscriptionGateway {
+
+    static final Set<AudioFormat> SUPPORTED = Set.copyOf(EnumSet.allOf(AudioFormat.class));
 
     private final TranscriptionModel transcriptionModel;
     private final String model;
@@ -65,6 +71,11 @@ public class OpenAiAudioTranscriptionAdapter implements AudioTranscriptionGatewa
             );
             throw new TranscriptionUnavailableException(ex);
         }
+    }
+
+    @Override
+    public Set<AudioFormat> supportedFormats() {
+        return SUPPORTED;
     }
 
     static Resource resource(AudioClip audio) {

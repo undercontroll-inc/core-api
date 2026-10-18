@@ -4,55 +4,53 @@ import com.undercontroll.domain.exception.InvalidTranscriptionException;
 import com.undercontroll.domain.exception.TranscriptionUnavailableException;
 import com.undercontroll.domain.gateway.AudioTranscriptionGateway;
 import com.undercontroll.domain.model.AudioClip;
+import com.undercontroll.domain.model.AudioFormat;
+import com.undercontroll.domain.model.AudioFormatDetector;
 import com.undercontroll.domain.support.Durations;
 import com.undercontroll.domain.usecase.transcription.TranscribeAudioPort;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.Locale;
-import java.util.Set;
+import java.util.Optional;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class TranscribeAudioImpl implements TranscribeAudioPort {
 
     static final long MAX_BYTES = 8L * 1024 * 1024;
 
-    private static final Set<String> ALLOWED_TYPES = Set.of(
-            "audio/webm",
-            "audio/mpeg",
-            "audio/mp3",
-            "audio/mp4",
-            "audio/m4a",
-            "audio/x-m4a",
-            "audio/wav",
-            "audio/x-wav",
-            "audio/wave",
-            "audio/ogg"
-    );
-
-    private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
-            "webm", "mp3", "mpeg", "mp4", "m4a", "wav", "ogg"
-    );
-
     private final ObjectProvider<AudioTranscriptionGateway> audioTranscriptionGateway;
+    private final Duration maxDuration;
+
+    public TranscribeAudioImpl(
+            ObjectProvider<AudioTranscriptionGateway> audioTranscriptionGateway,
+            @Value("${undercontroll.ai.transcription.max-duration:180s}") Duration maxDuration
+    ) {
+        this.audioTranscriptionGateway = audioTranscriptionGateway;
+        this.maxDuration = maxDuration;
+    }
 
     @Override
     public String execute(AudioClip audio) {
-        validate(audio);
+        AudioClip clip = validate(audio);
         long started = System.nanoTime();
-        log.info("Transcription requested mime={} byteSize={}", audio.contentType(), audio.size());
+        log.info("Transcription requested format={} byteSize={}", clip.format(), clip.size());
         AudioTranscriptionGateway gateway = audioTranscriptionGateway.getIfAvailable();
         if (gateway == null) {
             log.warn("Transcription gateway is not available");
             throw new TranscriptionUnavailableException();
         }
+        if (!gateway.supportedFormats().contains(clip.format())) {
+            throw new InvalidTranscriptionException(
+                    "Audio format " + clip.format().extension() + " is not supported by the transcription provider");
+        }
         try {
-            String text = gateway.transcribe(audio);
-            if (isBlank(text)) {
+            String text = gateway.transcribe(clip);
+            if (text == null || text.isBlank()) {
                 throw new TranscriptionUnavailableException();
             }
             String trimmed = text.trim();
@@ -69,7 +67,7 @@ public class TranscribeAudioImpl implements TranscribeAudioPort {
         }
     }
 
-    private static void validate(AudioClip audio) {
+    AudioClip validate(AudioClip audio) {
         if (audio == null || audio.content() == null) {
             throw new InvalidTranscriptionException("Audio file is required");
         }
@@ -79,40 +77,32 @@ public class TranscribeAudioImpl implements TranscribeAudioPort {
         if (audio.size() > MAX_BYTES) {
             throw new InvalidTranscriptionException("Audio file exceeds 8MB");
         }
-        if (!allowed(audio.contentType(), audio.filename())) {
-            throw new InvalidTranscriptionException("Unsupported audio type");
+        AudioFormat detected = AudioFormatDetector.detect(audio.content())
+                .orElseThrow(() -> new InvalidTranscriptionException(
+                        "Unsupported or unrecognized audio content; use webm, ogg, wav, mp3 or m4a"));
+        String declared = mediaType(audio.contentType());
+        if (declared != null) {
+            Optional<AudioFormat> declaredFormat = AudioFormat.fromMimeType(declared);
+            if (declaredFormat.isEmpty()) {
+                throw new InvalidTranscriptionException("Unsupported audio type " + declared);
+            }
+            if (declaredFormat.get() != detected) {
+                throw new InvalidTranscriptionException("Declared type " + declared
+                        + " does not match the audio content (" + detected.extension() + ")");
+            }
         }
-    }
-
-    static boolean allowed(String contentType, String filename) {
-        String type = mediaType(contentType);
-        if (type != null && ALLOWED_TYPES.contains(type)) {
-            return true;
+        Optional<Duration> duration = AudioFormatDetector.wavDuration(audio.content());
+        if (duration.isPresent() && duration.get().compareTo(maxDuration) > 0) {
+            throw new InvalidTranscriptionException("Audio is longer than " + maxDuration.toSeconds() + " seconds");
         }
-        String extension = extension(filename);
-        return extension != null && ALLOWED_EXTENSIONS.contains(extension);
+        return audio.normalized(detected);
     }
 
     private static String mediaType(String contentType) {
-        if (isBlank(contentType)) {
+        if (contentType == null || contentType.isBlank()) {
             return null;
         }
         String type = contentType.split(";", 2)[0].trim().toLowerCase(Locale.ROOT);
         return type.isEmpty() || "application/octet-stream".equals(type) ? null : type;
-    }
-
-    private static String extension(String filename) {
-        if (isBlank(filename)) {
-            return null;
-        }
-        int dot = filename.lastIndexOf('.');
-        if (dot < 0 || dot == filename.length() - 1) {
-            return null;
-        }
-        return filename.substring(dot + 1).toLowerCase(Locale.ROOT);
-    }
-
-    private static boolean isBlank(String value) {
-        return value == null || value.isBlank();
     }
 }

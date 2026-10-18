@@ -67,6 +67,7 @@ class OpenAiAudioTranscriptionAdapterTest {
         var resource = OpenAiAudioTranscriptionAdapter.resource(new AudioClip("bytes".getBytes(), "audio/webm", "note.webm"));
 
         assertEquals("note.webm", resource.getFilename());
+        assertEquals(5, new OpenAiAudioTranscriptionAdapter(transcriptionModel, "whisper-1").supportedFormats().size());
         assertArrayEquals("bytes".getBytes(), resource.getContentAsByteArray());
     }
 }

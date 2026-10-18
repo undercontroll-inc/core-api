@@ -23,7 +23,7 @@ spring:
   servlet:
     multipart:
       max-file-size: 8MB
-      max-request-size: 8MB
+      max-request-size: 9MB
   mvc:
     async:
       request-timeout: 120s
@@ -164,6 +164,7 @@ undercontroll:
       model: ${TRANSCRIPTION_MODEL:}
       timeout: ${TRANSCRIPTION_TIMEOUT:60s}
       thinking: ${TRANSCRIPTION_THINKING:minimal}
+      max-duration: 180s
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
 aws:

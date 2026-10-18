@@ -14,7 +14,7 @@ body:
     id: sz2KFGUrft
     name: audio
 bodyType: multipart/form-data
-description: multipart field audio (webm/mp3/m4a/wav/ogg, max 8MB). ADMINISTRATOR only.
+description: "multipart field audio (webm/ogg/wav/mp3/m4a, max 8MB). The format is detected from the file bytes; a Content-Type that contradicts the content, unrecognized content or WAV longer than 180s returns 400. ADMINISTRATOR only."
 headers:
 - enabled: true
   name: Content-Type

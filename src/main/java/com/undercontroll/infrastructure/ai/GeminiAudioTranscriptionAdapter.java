@@ -11,21 +11,24 @@ import com.google.genai.types.ThinkingLevel;
 import com.undercontroll.domain.exception.TranscriptionUnavailableException;
 import com.undercontroll.domain.gateway.AudioTranscriptionGateway;
 import com.undercontroll.domain.model.AudioClip;
+import com.undercontroll.domain.model.AudioFormat;
 import com.undercontroll.domain.support.Durations;
 import com.undercontroll.infrastructure.ai.config.AiFeatureSettings;
 import com.undercontroll.infrastructure.ai.config.ModelCapabilities;
 import com.undercontroll.infrastructure.ai.config.ThinkingPolicy;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.util.MimeType;
 import org.springframework.util.StringUtils;
 
-import java.util.Locale;
+import java.util.EnumSet;
+import java.util.Set;
 
 @Slf4j
 public class GeminiAudioTranscriptionAdapter implements AudioTranscriptionGateway {
 
     static final String USER_PROMPT =
             "Transcreva fielmente o áudio em português do Brasil. Responda só com o texto falado, sem aspas nem comentários.";
+
+    static final Set<AudioFormat> SUPPORTED = Set.copyOf(EnumSet.allOf(AudioFormat.class));
 
     private final Models models;
     private final String model;
@@ -47,7 +50,7 @@ public class GeminiAudioTranscriptionAdapter implements AudioTranscriptionGatewa
     public String transcribe(AudioClip audio) {
         long started = System.nanoTime();
         try {
-            MimeType mimeType = mimeType(audio.contentType(), audio.filename());
+            String mimeType = mimeType(audio.format());
             byte[] bytes = audio.content();
             log.info(
                     "Gemini transcription started model={} mime={} byteSize={}",
@@ -56,10 +59,10 @@ public class GeminiAudioTranscriptionAdapter implements AudioTranscriptionGatewa
                     bytes.length
             );
             Content content = capabilities.dedicatedTranscription()
-                    ? Content.fromParts(Part.fromBytes(bytes, mimeType.toString()))
+                    ? Content.fromParts(Part.fromBytes(bytes, mimeType))
                     : Content.fromParts(
                             Part.fromText(USER_PROMPT),
-                            Part.fromBytes(bytes, mimeType.toString()));
+                            Part.fromBytes(bytes, mimeType));
             GenerateContentResponse response = models.generateContent(model, content, config());
             String text = response == null ? null : response.text();
             if (!StringUtils.hasText(text)) {
@@ -108,35 +111,12 @@ public class GeminiAudioTranscriptionAdapter implements AudioTranscriptionGatewa
         return builder.thinkingConfig(thinkingConfig.build()).build();
     }
 
-    static MimeType mimeType(String contentType, String filename) {
-        String type = mediaType(contentType);
-        if (type != null) {
-            return MimeType.valueOf(type);
-        }
-        String name = filename == null ? "" : filename.toLowerCase(Locale.ROOT);
-        if (name.endsWith(".mp3") || name.endsWith(".mpeg")) {
-            return MimeType.valueOf("audio/mpeg");
-        }
-        if (name.endsWith(".mp4") || name.endsWith(".m4a")) {
-            return MimeType.valueOf("audio/mp4");
-        }
-        if (name.endsWith(".wav")) {
-            return MimeType.valueOf("audio/wav");
-        }
-        if (name.endsWith(".ogg")) {
-            return MimeType.valueOf("audio/ogg");
-        }
-        return MimeType.valueOf("audio/webm");
+    @Override
+    public Set<AudioFormat> supportedFormats() {
+        return SUPPORTED;
     }
 
-    private static String mediaType(String contentType) {
-        if (!StringUtils.hasText(contentType)) {
-            return null;
-        }
-        String type = contentType.split(";", 2)[0].trim().toLowerCase(Locale.ROOT);
-        if (type.isEmpty() || "application/octet-stream".equals(type)) {
-            return null;
-        }
-        return type;
+    static String mimeType(AudioFormat format) {
+        return format == AudioFormat.MP3 ? "audio/mp3" : format.mimeType();
     }
 }
