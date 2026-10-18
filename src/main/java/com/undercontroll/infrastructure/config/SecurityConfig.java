@@ -25,6 +25,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import jakarta.servlet.DispatcherType;
 import java.util.List;
 
 @RequiredArgsConstructor
@@ -54,6 +55,8 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/v1/api/**", "/h2-console/**")) // NOSONAR - Bearer JWT, no cookies
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
+                            .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
+                            .requestMatchers("/error").permitAll()
                             .requestMatchers("/h2-console/**").access((authentication, context) -> {
                             String remoteAddr = context.getRequest().getRemoteAddr();
                             boolean isLocalhost = LOCALHOST_IPV4.matches(remoteAddr)

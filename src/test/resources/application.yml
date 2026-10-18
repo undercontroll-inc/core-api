@@ -8,6 +8,9 @@ spring:
     password: test
   cache:
     type: simple
+  mvc:
+    async:
+      request-timeout: 120s
   jpa:
     hibernate:
       ddl-auto: create-drop

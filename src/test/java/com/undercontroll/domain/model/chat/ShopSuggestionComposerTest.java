@@ -36,6 +36,29 @@ class ShopSuggestionComposerTest {
     }
 
     @Test
+    @DisplayName("refresh avoids the previous lot and picks other shop facts")
+    void groundedQuestionsAvoidPreviousLot() {
+        ShopSnapshot snapshot = richShop();
+        List<String> first = ShopSuggestionComposer.groundedQuestions(snapshot, 4);
+
+        List<String> next = ShopSuggestionComposer.groundedQuestions(snapshot, first, 4);
+
+        assertEquals(4, next.size());
+        String joined = String.join(" | ", next);
+        assertTrue(joined.contains("Ana")
+                || joined.contains("Compressor")
+                || joined.contains("Motor")
+                || joined.contains("Pedro")
+                || joined.contains("Feriado"));
+        for (String previous : first) {
+            for (String candidate : next) {
+                assertFalse(ShopSuggestionComposer.similar(previous, candidate),
+                        () -> previous + " ~ " + candidate);
+            }
+        }
+    }
+
+    @Test
     @DisplayName("drops paraphrases and fills with fact-based questions")
     void mixDropsParaphrases() {
         ShopSnapshot snapshot = sampleShop();
@@ -116,6 +139,62 @@ class ShopSuggestionComposerTest {
         assertTrue(briefing.contains("Maria"));
         assertTrue(briefing.contains("liquidificador"));
         assertTrue(briefing.contains("Resistência"));
+    }
+
+    private static ShopSnapshot richShop() {
+        return ShopSuggestionComposer.from(
+                List.of(
+                        Order.builder()
+                                .id(12)
+                                .status(OrderStatus.PENDING)
+                                .user(User.builder().name("Maria").lastName("Souza").build())
+                                .orderItems(List.of(
+                                        OrderItem.builder().type("liquidificador").brand("Mondial").build()
+                                ))
+                                .build(),
+                        Order.builder()
+                                .id(15)
+                                .status(OrderStatus.IN_ANALYSIS)
+                                .user(User.builder().name("Ana").lastName("Costa").build())
+                                .orderItems(List.of(
+                                        OrderItem.builder().type("geladeira").brand("Brastemp").build()
+                                ))
+                                .build(),
+                        Order.builder()
+                                .id(20)
+                                .status(OrderStatus.COMPLETED)
+                                .user(User.builder().name("João").lastName("Lima").build())
+                                .orderItems(List.of(
+                                        OrderItem.builder().type("airfryer").brand("Philco").build()
+                                ))
+                                .build(),
+                        Order.builder()
+                                .id(21)
+                                .status(OrderStatus.COMPLETED)
+                                .user(User.builder().name("Pedro").lastName("Nunes").build())
+                                .orderItems(List.of(
+                                        OrderItem.builder().type("microondas").brand("Electrolux").build()
+                                ))
+                                .build()
+                ),
+                List.of(
+                        ComponentPart.builder().name("Resistência").quantity(2L).build(),
+                        ComponentPart.builder().name("Compressor").quantity(1L).build()
+                ),
+                List.of(
+                        Demand.builder()
+                                .quantity(1L)
+                                .component(ComponentPart.builder().name("Capacitor").build())
+                                .order(Order.builder().id(8).build())
+                                .build(),
+                        Demand.builder()
+                                .quantity(2L)
+                                .component(ComponentPart.builder().name("Motor").build())
+                                .order(Order.builder().id(9).build())
+                                .build()
+                ),
+                Announcement.builder().title("Feriado").build()
+        );
     }
 
     private static ShopSnapshot sampleShop() {

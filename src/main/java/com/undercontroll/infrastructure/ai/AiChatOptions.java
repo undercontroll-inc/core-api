@@ -19,7 +19,7 @@ public final class AiChatOptions {
     }
 
     public static ChatOptions ana(String provider, String geminiModel) {
-        return of(provider, geminiModel, 0.2, 1024, true);
+        return of(provider, geminiModel, 0.2, 1024, false);
     }
 
     public static ChatOptions insights(String provider) {
@@ -43,6 +43,8 @@ public final class AiChatOptions {
                     .maxOutputTokens(maxTokens);
             if (fast) {
                 applyFastThinking(builder, geminiModel);
+            } else {
+                applyAnaThinking(builder, geminiModel);
             }
             return builder.build();
         }
@@ -57,6 +59,13 @@ public final class AiChatOptions {
         if (model.contains("gemini-3")) {
             builder.thinkingLevel(GoogleGenAiThinkingLevel.LOW);
         } else if (model.contains("gemini-2.5")) {
+            builder.thinkingBudget(0);
+        }
+    }
+
+    private static void applyAnaThinking(GoogleGenAiChatOptions.Builder builder, String geminiModel) {
+        String model = geminiModel == null ? "" : geminiModel.toLowerCase(Locale.ROOT);
+        if (model.contains("gemini-2.5")) {
             builder.thinkingBudget(0);
         }
     }
