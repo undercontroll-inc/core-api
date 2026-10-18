@@ -1,0 +1,139 @@
+CREATE TABLE IF NOT EXISTS market_published_snapshot (
+    snapshot_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    run_id VARCHAR(36) NOT NULL UNIQUE,
+    bucket_key VARCHAR(10) NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    quality_report JSON,
+    published_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS market_curated_product (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    run_id VARCHAR(36) NOT NULL,
+    bucket_key VARCHAR(10) NOT NULL,
+    source VARCHAR(20),
+    external_type VARCHAR(20),
+    external_id VARCHAR(40),
+    title VARCHAR(300),
+    canonical_title VARCHAR(300),
+    rank INT,
+    rank_band VARCHAR(20),
+    rank_delta INT,
+    trajectory_label VARCHAR(30),
+    score NUMERIC(10, 2),
+    priority_label VARCHAR(30),
+    confidence VARCHAR(10),
+    domain_id VARCHAR(80),
+    category_id VARCHAR(40),
+    category_name VARCHAR(120),
+    brand VARCHAR(80),
+    brand_slug VARCHAR(80),
+    model VARCHAR(80),
+    product_key VARCHAR(160),
+    voltage VARCHAR(10),
+    power_watts INT,
+    capacity_value NUMERIC(10, 2),
+    capacity_unit VARCHAR(10),
+    energy_efficiency VARCHAR(5),
+    price NUMERIC(12, 2),
+    price_min NUMERIC(12, 2),
+    price_median NUMERIC(12, 2),
+    price_max NUMERIC(12, 2),
+    price_delta_pct NUMERIC(10, 2),
+    discount_pct NUMERIC(10, 2),
+    available_offer_count INT,
+    observed_offer_count INT NOT NULL DEFAULT 0,
+    valid_price_count INT NOT NULL DEFAULT 0,
+    sample_complete BOOLEAN NOT NULL DEFAULT FALSE,
+    observed_seller_count INT,
+    relevance NUMERIC(10, 4),
+    domain_reason VARCHAR(80),
+    permalink VARCHAR(300),
+    collected_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE TABLE IF NOT EXISTS market_price_movement (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    run_id VARCHAR(36) NOT NULL,
+    domain_id VARCHAR(80) NOT NULL,
+    bucket_key VARCHAR(10) NOT NULL,
+    previous_bucket_key VARCHAR(10),
+    consecutive BOOLEAN NOT NULL DEFAULT FALSE,
+    paired_count INT NOT NULL DEFAULT 0,
+    current_product_count INT NOT NULL DEFAULT 0,
+    previous_product_count INT NOT NULL DEFAULT 0,
+    current_cohort_median NUMERIC(12, 2),
+    previous_cohort_median NUMERIC(12, 2),
+    price_index_delta_pct NUMERIC(10, 2)
+);
+
+CREATE OR REPLACE VIEW vw_market_published_snapshot AS
+SELECT snapshot_id, run_id, bucket_key, status, quality_report, published_at
+FROM market_published_snapshot
+ORDER BY published_at DESC, snapshot_id DESC
+FETCH FIRST 1 ROWS ONLY;
+
+CREATE OR REPLACE VIEW vw_market_product_current AS
+SELECT c.bucket_key, c.source, c.external_type, c.external_id, c.title, c.canonical_title, c.rank, c.rank_band,
+       c.rank_delta, c.trajectory_label, c.score, c.priority_label, c.confidence, c.domain_id, c.category_id,
+       c.category_name, c.brand, c.brand_slug, c.model, c.product_key, c.voltage, c.power_watts, c.capacity_value,
+       c.capacity_unit, c.energy_efficiency, c.price, c.price_min, c.price_median, c.price_max, c.price_delta_pct,
+       c.discount_pct, c.available_offer_count, c.observed_offer_count, c.valid_price_count, c.sample_complete,
+       c.observed_seller_count, c.relevance, c.domain_reason, c.permalink, c.collected_at
+FROM market_curated_product c
+WHERE c.run_id = (SELECT run_id FROM vw_market_published_snapshot);
+
+CREATE OR REPLACE VIEW vw_market_rising_products AS
+SELECT bucket_key, external_type, external_id, title, brand, brand_slug, model, product_key, domain_id, category_id,
+       category_name, rank, rank_band, rank_delta, trajectory_label, score, priority_label, confidence, price_median,
+       price_min, price_max, price_delta_pct, discount_pct, available_offer_count, observed_offer_count,
+       valid_price_count, sample_complete, observed_seller_count, capacity_value, capacity_unit, power_watts, voltage,
+       permalink
+FROM vw_market_product_current
+WHERE trajectory_label IN ('CRESCIMENTO', 'CRESCIMENTO_FORTE')
+   OR priority_label = 'PRIORIDADE_ALTA';
+
+CREATE OR REPLACE VIEW vw_market_category_summary AS
+SELECT domain_id, bucket_key,
+       MAX(category_name) AS category_name_sample,
+       COUNT(*) AS product_count,
+       COUNT(DISTINCT brand_slug) AS brand_count,
+       ROUND(CAST(AVG(score) AS NUMERIC(12, 4)), 2) AS avg_score,
+       MAX(score) AS max_score,
+       ROUND(CAST(AVG(price_median) AS NUMERIC(12, 4)), 2) AS avg_price_median,
+       MIN(price_min) AS price_floor,
+       MAX(price_max) AS price_ceiling,
+       ROUND(CAST(AVG(valid_price_count) AS NUMERIC(12, 4)), 2) AS avg_valid_price_count,
+       ROUND(CAST(AVG(price_delta_pct) AS NUMERIC(12, 4)), 2) AS avg_price_delta_pct,
+       ROUND(CAST(AVG(discount_pct) AS NUMERIC(12, 4)), 2) AS avg_discount_pct,
+       SUM(CASE WHEN trajectory_label IN ('CRESCIMENTO', 'CRESCIMENTO_FORTE') THEN 1 ELSE 0 END) AS rising_count,
+       SUM(CASE WHEN trajectory_label = 'QUEDA' THEN 1 ELSE 0 END) AS falling_count,
+       SUM(CASE WHEN confidence = 'HIGH' THEN 1 ELSE 0 END) AS high_confidence_count
+FROM market_curated_product
+WHERE domain_id IS NOT NULL
+  AND run_id = (SELECT run_id FROM vw_market_published_snapshot)
+GROUP BY domain_id, bucket_key;
+
+CREATE OR REPLACE VIEW vw_market_brand_summary AS
+SELECT brand_slug, bucket_key,
+       MAX(brand) AS brand_name,
+       COUNT(*) AS product_count,
+       COUNT(DISTINCT domain_id) AS domain_count,
+       ROUND(CAST(AVG(score) AS NUMERIC(12, 4)), 2) AS avg_score,
+       MIN(rank) AS best_rank,
+       ROUND(CAST(AVG(price_median) AS NUMERIC(12, 4)), 2) AS avg_price_median,
+       MIN(price_min) AS price_floor,
+       MAX(price_max) AS price_ceiling,
+       ROUND(CAST(AVG(price_delta_pct) AS NUMERIC(12, 4)), 2) AS avg_price_delta_pct,
+       ROUND(CAST(AVG(discount_pct) AS NUMERIC(12, 4)), 2) AS avg_discount_pct,
+       SUM(CASE WHEN trajectory_label IN ('CRESCIMENTO', 'CRESCIMENTO_FORTE') THEN 1 ELSE 0 END) AS rising_count
+FROM market_curated_product
+WHERE brand_slug IS NOT NULL
+  AND run_id = (SELECT run_id FROM vw_market_published_snapshot)
+GROUP BY brand_slug, bucket_key;
+
+CREATE OR REPLACE VIEW vw_market_price_movement AS
+SELECT m.domain_id, m.bucket_key, m.previous_bucket_key, m.consecutive, m.paired_count, m.current_product_count,
+       m.previous_product_count, m.current_cohort_median, m.previous_cohort_median, m.price_index_delta_pct
+FROM market_price_movement m
+WHERE m.run_id = (SELECT run_id FROM vw_market_published_snapshot);

@@ -11,6 +11,8 @@ spring:
   mvc:
     async:
       request-timeout: 120s
+  flyway:
+    enabled: false
   jpa:
     hibernate:
       ddl-auto: create-drop
