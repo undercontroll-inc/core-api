@@ -5,6 +5,7 @@ import com.undercontroll.domain.usecase.component.ComponentOutput;
 import com.undercontroll.domain.model.ComponentPart;
 import com.undercontroll.domain.exception.InvalidComponentCreationException;
 import com.undercontroll.domain.gateway.ComponentGateway;
+import com.undercontroll.domain.gateway.MetricName;
 import com.undercontroll.domain.gateway.MetricsGateway;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +36,7 @@ public class RegisterComponentImpl implements RegisterComponentPort {
                 .build();
 
         ComponentPart savedComponent = componentGateway.save(component);
-        metricsGateway.incrementComponentCreated();
+        metricsGateway.increment(MetricName.COMPONENT_CREATED);
         log.info("Component created id={} name={}", savedComponent.getId(), savedComponent.getName());
         return ComponentOutput.from(savedComponent);
     }

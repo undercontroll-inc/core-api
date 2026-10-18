@@ -13,6 +13,7 @@ import com.undercontroll.domain.gateway.OrderGateway;
 import com.undercontroll.domain.gateway.UserGateway;
 import com.undercontroll.domain.gateway.StockManagementGateway;
 import com.undercontroll.domain.gateway.CurrentUserAdminPort;
+import com.undercontroll.domain.gateway.MetricName;
 import com.undercontroll.domain.gateway.MetricsGateway;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -114,7 +115,7 @@ public class CreateOrderImpl implements CreateOrderPort {
             stockManagementGateway.decreaseStock(component.getId(), part.quantity());
         }
 
-        metricsGateway.incrementOrderCreated();
+        metricsGateway.increment(MetricName.ORDER_CREATED);
         metricsGateway.recordOrderProcessingTime(startTime);
 
         log.info("Order {} created with {} demands", savedOrder.getId(), request.parts().size());

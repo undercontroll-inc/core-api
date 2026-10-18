@@ -9,6 +9,7 @@ import com.undercontroll.domain.model.User;
 import com.undercontroll.domain.enums.UserType;
 import com.undercontroll.domain.exception.InvalidUserException;
 import com.undercontroll.domain.gateway.UserGateway;
+import com.undercontroll.domain.gateway.MetricName;
 import com.undercontroll.domain.gateway.MetricsGateway;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -87,7 +88,7 @@ public class CreateUserImpl implements CreateUserPort {
                 ));
             }
 
-            metricsGateway.incrementAccountCreated();
+            metricsGateway.increment(MetricName.ACCOUNT_CREATED);
             log.info("User created userId={} type={}", createdUser.getId(), createdUser.getUserType());
             return new Output(
                     createdUser.getName(),
@@ -101,7 +102,7 @@ public class CreateUserImpl implements CreateUserPort {
                     createdUser.getUserType()
             );
         } catch (InvalidUserException e) {
-            metricsGateway.incrementAccountCreationFailed();
+            metricsGateway.increment(MetricName.ACCOUNT_CREATION_FAILED);
             throw e;
         }
     }

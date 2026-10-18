@@ -12,6 +12,7 @@ import com.undercontroll.domain.exception.InvalidUpdateOrderException;
 import com.undercontroll.domain.exception.OrderNotFoundException;
 import com.undercontroll.domain.model.Order;
 import com.undercontroll.domain.enums.OrderStatus;
+import com.undercontroll.domain.gateway.MetricName;
 import com.undercontroll.domain.gateway.MetricsGateway;
 import com.undercontroll.domain.gateway.OrderGateway;
 import org.junit.jupiter.api.BeforeEach;
@@ -123,7 +124,7 @@ class UpdateOrderImplTest {
     void testUpdateOrder_ShouldIncrementCompletedMetric_WhenStatusIsCompleted() {
         when(orderGateway.findById(1)).thenReturn(Optional.of(existingOrder));
         when(orderGateway.save(any(Order.class))).thenReturn(existingOrder);
-        doNothing().when(metricsGateway).incrementOrderCompleted();
+        doNothing().when(metricsGateway).increment(MetricName.ORDER_COMPLETED);
 
         UpdateOrderPort.Input request = new UpdateOrderPort.Input(
                 OrderStatus.COMPLETED, List.of(), List.of(), null, null
@@ -131,14 +132,14 @@ class UpdateOrderImplTest {
 
         updateOrderImpl.execute(1, request);
 
-        verify(metricsGateway, times(1)).incrementOrderCompleted();
+        verify(metricsGateway, times(1)).increment(MetricName.ORDER_COMPLETED);
     }
 
     @Test
     @DisplayName("Should throw OrderNotFoundException when order not found")
     void testUpdateOrder_ShouldThrowException_WhenOrderNotFound() {
         when(orderGateway.findById(999)).thenReturn(Optional.empty());
-        doNothing().when(metricsGateway).incrementOrderUpdateFailed();
+        doNothing().when(metricsGateway).increment(MetricName.ORDER_UPDATE_FAILED);
 
         UpdateOrderPort.Input request = new UpdateOrderPort.Input(
                 OrderStatus.COMPLETED, List.of(), List.of(), null, null
@@ -148,7 +149,7 @@ class UpdateOrderImplTest {
 
         verify(orderGateway, times(1)).findById(999);
         verify(orderGateway, never()).save(any());
-        verify(metricsGateway, times(1)).incrementOrderUpdateFailed();
+        verify(metricsGateway, times(1)).increment(MetricName.ORDER_UPDATE_FAILED);
     }
 
     @Test
@@ -190,7 +191,7 @@ class UpdateOrderImplTest {
         assertEquals(OrderStatus.PENDING, existingOrder.getStatus());
         assertEquals("New customer description", existingOrder.getCustomerDescription());
         assertEquals("Original technical", existingOrder.getTechnicalDescription());
-        verify(metricsGateway, never()).incrementOrderCompleted();
+        verify(metricsGateway, never()).increment(MetricName.ORDER_COMPLETED);
         verify(orderGateway, times(1)).save(existingOrder);
     }
 

@@ -4,6 +4,7 @@ import com.undercontroll.domain.exception.InvalidDemandException;
 import com.undercontroll.domain.exception.OrderNotFoundException;
 import com.undercontroll.domain.gateway.ComponentGateway;
 import com.undercontroll.domain.gateway.DemandGateway;
+import com.undercontroll.domain.gateway.MetricName;
 import com.undercontroll.domain.gateway.MetricsGateway;
 import com.undercontroll.domain.gateway.OrderGateway;
 import com.undercontroll.domain.model.ComponentPart;
@@ -56,7 +57,7 @@ class DemandUseCasesTest {
                 .execute(5, new CreateDemandPort.Input(10, 3L));
 
         assertEquals(new DemandOutput(25, 10, 5, 3L), output);
-        verify(metricsGateway).incrementDemandCreated();
+        verify(metricsGateway).increment(MetricName.DEMAND_CREATED);
     }
 
     @Test

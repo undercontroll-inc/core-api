@@ -8,6 +8,7 @@ import com.undercontroll.domain.model.Order;
 import com.undercontroll.domain.exception.InvalidDemandException;
 import com.undercontroll.domain.gateway.ComponentGateway;
 import com.undercontroll.domain.gateway.DemandGateway;
+import com.undercontroll.domain.gateway.MetricName;
 import com.undercontroll.domain.gateway.MetricsGateway;
 import com.undercontroll.domain.gateway.OrderGateway;
 import lombok.RequiredArgsConstructor;
@@ -48,7 +49,7 @@ public class CreateDemandImpl implements CreateDemandPort {
 
         Demand savedDemand = demandGateway.save(demand);
 
-        metricsGateway.incrementDemandCreated();
+        metricsGateway.increment(MetricName.DEMAND_CREATED);
 
         return DemandOutput.from(savedDemand);
     }

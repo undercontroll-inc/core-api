@@ -1,5 +1,6 @@
 package com.undercontroll.application.usecase;
 
+import com.undercontroll.domain.gateway.MetricName;
 import com.undercontroll.domain.gateway.MetricsGateway;
 import com.undercontroll.domain.gateway.NotificationGateway;
 import com.undercontroll.domain.exception.InvalidUserException;
@@ -142,7 +143,7 @@ class CreateUserImplTest {
 
         assertThrows(InvalidUserException.class, () -> useCase.execute(request));
 
-        verify(metricsGateway).incrementAccountCreationFailed();
+        verify(metricsGateway).increment(MetricName.ACCOUNT_CREATION_FAILED);
         verify(userGateway, never()).save(any());
     }
 

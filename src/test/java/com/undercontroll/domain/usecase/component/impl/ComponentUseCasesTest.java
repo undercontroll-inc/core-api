@@ -5,6 +5,7 @@ import com.undercontroll.domain.exception.InvalidComponentCreationException;
 import com.undercontroll.domain.exception.InvalidDeleteComponentException;
 import com.undercontroll.domain.exception.InvalidUpdateComponentException;
 import com.undercontroll.domain.gateway.ComponentGateway;
+import com.undercontroll.domain.gateway.MetricName;
 import com.undercontroll.domain.gateway.MetricsGateway;
 import com.undercontroll.domain.model.ComponentPart;
 import com.undercontroll.domain.model.Demand;
@@ -57,7 +58,7 @@ class ComponentUseCasesTest {
         );
 
         assertEquals(new ComponentOutput(7, "Capacitor", "45uF", "Epcos", 2.5, 0L, "Loja", "Elétrica"), output);
-        verify(metricsGateway).incrementComponentCreated();
+        verify(metricsGateway).increment(MetricName.COMPONENT_CREATED);
     }
 
     @Test
@@ -86,7 +87,7 @@ class ComponentUseCasesTest {
         assertEquals(3.0, output.price());
         assertEquals("Nova loja", output.supplier());
         assertEquals("Motor", output.category());
-        verify(metricsGateway).incrementComponentUpdated();
+        verify(metricsGateway).increment(MetricName.COMPONENT_UPDATED);
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.undercontroll.domain.usecase.announcement.impl;
 
 import com.undercontroll.domain.event.AnnouncementCreatedEvent;
 import com.undercontroll.domain.gateway.AnnouncementGateway;
+import com.undercontroll.domain.gateway.MetricName;
 import com.undercontroll.domain.gateway.MetricsGateway;
 import com.undercontroll.domain.gateway.NotificationGateway;
 import com.undercontroll.domain.gateway.StorageGateway;
@@ -47,7 +48,7 @@ public class CreateAnnouncementImpl implements CreateAnnouncementPort {
             announcementCreated = announcementGateway.save(announcementCreated);
         }
 
-        metricsGateway.incrementAnnouncementCreated();
+        metricsGateway.increment(MetricName.ANNOUNCEMENT_CREATED);
         log.info("Announcement created id={} type={}", announcementCreated.getId(), announcementCreated.getType());
 
         notificationGateway.handleAnnouncementCreated(new AnnouncementCreatedEvent(announcementCreated, token));

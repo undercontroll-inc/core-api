@@ -6,6 +6,7 @@ import com.undercontroll.domain.model.ComponentPart;
 import com.undercontroll.domain.exception.ComponentNotFoundException;
 import com.undercontroll.domain.exception.InvalidUpdateComponentException;
 import com.undercontroll.domain.gateway.ComponentGateway;
+import com.undercontroll.domain.gateway.MetricName;
 import com.undercontroll.domain.gateway.MetricsGateway;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -53,7 +54,7 @@ public class UpdateComponentImpl implements UpdateComponentPort {
         }
 
         ComponentPart savedComponent = componentGateway.save(component);
-        metricsGateway.incrementComponentUpdated();
+        metricsGateway.increment(MetricName.COMPONENT_UPDATED);
         log.info("Component updated id={}", savedComponent.getId());
         return ComponentOutput.from(savedComponent);
     }

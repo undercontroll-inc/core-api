@@ -4,6 +4,7 @@ import com.undercontroll.domain.enums.AuthProvider;
 import com.undercontroll.domain.enums.UserType;
 import com.undercontroll.domain.exception.InvalidAuthException;
 import com.undercontroll.domain.gateway.GoogleAuthGateway;
+import com.undercontroll.domain.gateway.MetricName;
 import com.undercontroll.domain.gateway.MetricsGateway;
 import com.undercontroll.domain.gateway.RefreshTokenGateway;
 import com.undercontroll.domain.gateway.TokenGateway;
@@ -66,7 +67,7 @@ class AuthUserImplTest {
         assertEquals("access", output.accessToken());
         assertEquals("refresh", output.refreshToken());
         assertEquals(42, output.user().id());
-        verify(metricsGateway).incrementLoginSuccess();
+        verify(metricsGateway).increment(MetricName.LOGIN_SUCCESS);
     }
 
     @Test
@@ -94,7 +95,7 @@ class AuthUserImplTest {
         assertThrows(InvalidAuthException.class, () -> useCase.execute(new AuthUserPort.Input(AuthProvider.PASSWORD, "ana@x.com", " ", null)));
         assertThrows(InvalidAuthException.class, () -> useCase.execute(new AuthUserPort.Input(AuthProvider.GOOGLE, "ana@x.com", null, " ")));
 
-        verify(metricsGateway, org.mockito.Mockito.times(5)).incrementLoginFailed();
+        verify(metricsGateway, org.mockito.Mockito.times(5)).increment(MetricName.LOGIN_FAILED);
         verify(tokenGateway, never()).generateToken(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
     }
 }

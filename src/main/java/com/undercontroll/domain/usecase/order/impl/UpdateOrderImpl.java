@@ -12,6 +12,7 @@ import com.undercontroll.domain.usecase.demand.CreateDemandPort;
 import com.undercontroll.domain.usecase.order.OrderPartInput;
 import com.undercontroll.domain.usecase.order.UpdateOrderPort;
 import com.undercontroll.domain.usecase.order_item.UpdateOrderItemPort;
+import com.undercontroll.domain.gateway.MetricName;
 import com.undercontroll.domain.gateway.MetricsGateway;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -58,7 +59,7 @@ public class UpdateOrderImpl implements UpdateOrderPort {
             orderGateway.save(order);
             log.info("Order {} updated successfully", orderId);
         } catch (Exception e) {
-            metricsGateway.incrementOrderUpdateFailed();
+            metricsGateway.increment(MetricName.ORDER_UPDATE_FAILED);
             throw e;
         }
     }
@@ -70,7 +71,7 @@ public class UpdateOrderImpl implements UpdateOrderPort {
         order.setStatus(status);
         log.info("Order {} status updated to {}", orderId, status);
         if (status == OrderStatus.COMPLETED) {
-            metricsGateway.incrementOrderCompleted();
+            metricsGateway.increment(MetricName.ORDER_COMPLETED);
         }
     }
 

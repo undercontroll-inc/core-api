@@ -6,6 +6,7 @@ import com.undercontroll.domain.model.User;
 import com.undercontroll.domain.usecase.auth.AuthUserPort;
 import com.undercontroll.domain.usecase.user.UserOutput;
 import com.undercontroll.domain.gateway.GoogleAuthGateway;
+import com.undercontroll.domain.gateway.MetricName;
 import com.undercontroll.domain.gateway.MetricsGateway;
 import com.undercontroll.domain.gateway.RefreshTokenGateway;
 import com.undercontroll.domain.gateway.TokenGateway;
@@ -42,7 +43,7 @@ public class AuthUserImpl implements AuthUserPort {
 
         String accessToken = tokenGateway.generateToken(String.valueOf(user.getId()), user.getUserType());
         String refreshToken = refreshTokenGateway.createRefreshToken(user.getId(), user.getEmail(), user.getUserType());
-        metricsGateway.incrementLoginSuccess();
+        metricsGateway.increment(MetricName.LOGIN_SUCCESS);
         log.info("Login succeeded userId={} provider={}", user.getId(), request.provider());
         return new Output(accessToken, refreshToken, UserOutput.from(user));
     }
@@ -59,7 +60,7 @@ public class AuthUserImpl implements AuthUserPort {
     }
 
     private Output fail() {
-        metricsGateway.incrementLoginFailed();
+        metricsGateway.increment(MetricName.LOGIN_FAILED);
         log.warn("Login failed");
         throw new InvalidAuthException("Email or password is invalid");
     }
