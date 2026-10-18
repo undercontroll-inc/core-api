@@ -24,7 +24,7 @@ import java.time.Duration;
 public class RedisConfig {
 
     private static final int TTL_MINUTES = 10;
-    private static final String CACHE_KEY_VERSION = "v3:";
+    private static final String CACHE_KEY_VERSION = "v4:";
 
 
     @Bean

@@ -2,13 +2,12 @@ package com.undercontroll.infrastructure.mapper;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.undercontroll.domain.exception.InsightPayloadUnreadableException;
 import com.undercontroll.domain.model.insight.InsightsPayload;
 import com.undercontroll.infrastructure.ai.InsightsPayloadJson;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-@Slf4j
 @Component
 @RequiredArgsConstructor
 public class InsightsPayloadCodec {
@@ -34,8 +33,7 @@ public class InsightsPayloadCodec {
         try {
             return jsonMapper.toDomain(objectMapper.readValue(json, InsightsPayloadJson.class));
         } catch (JsonProcessingException ex) {
-            log.warn("Failed to deserialize stored insights payload: {}", ex.getMessage());
-            return null;
+            throw new InsightPayloadUnreadableException(ex);
         }
     }
 }

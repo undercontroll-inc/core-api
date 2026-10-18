@@ -2,12 +2,14 @@ package com.undercontroll.application.dto.insights;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.undercontroll.domain.model.insight.InsightsPayload;
-import com.undercontroll.domain.model.market.MatchCoverage;
+import com.undercontroll.domain.model.insight.InsightReadState;
+import com.undercontroll.domain.usecase.insights.GetMarketInsightsPort;
 import com.undercontroll.infrastructure.mapper.InsightsPayloadCodec;
 import com.undercontroll.infrastructure.mapper.InsightsPayloadJsonMapperImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -52,17 +54,25 @@ class InsightsResponseMapperTest {
                 List.of("limitação")
         );
 
-        MarketInsightsResponse response = InsightsResponseMapper.from(payload, "2026-08-01T04:00");
+        MarketInsightsResponse response = InsightsResponseMapper.from(new GetMarketInsightsPort.Output(
+                InsightReadState.STALE, "2026-09", Instant.parse("2026-10-01T03:00:00Z"), "2026-08",
+                Instant.parse("2026-09-01T04:00:00Z"), null, payload));
 
-        assertEquals("2026-08", response.bucketKey());
+        assertEquals("STALE", response.state());
+        assertEquals("2026-09", response.requestedBucketKey());
+        assertEquals("mês de setembro de 2026", response.requestedMonth());
+        assertEquals("2026-10-01T03:00:00Z", response.snapshotPublishedAt());
+        assertEquals("2026-08", response.availableBucketKey());
+        assertEquals("mês de agosto de 2026", response.availableMonth());
         assertEquals("2026-07", response.comparisonBucketKey());
+        assertEquals("ALERTA_PRECO:MLB-MICROWAVES", response.insights().get(0).id());
         assertEquals(1, response.matchCoverage().exact());
         assertEquals("ALERTA_PRECO", response.insights().get(0).type());
         assertEquals("Texto", response.insights().get(0).text());
         assertEquals("Electrolux", response.risingProducts().get(0).brand());
         assertEquals(18, response.risingProducts().get(0).validPriceCount());
         assertEquals("limitação", response.limitations().get(0));
-        assertEquals("2026-08-01T04:00", response.generatedAt());
+        assertEquals("2026-09-01T04:00:00Z", response.generatedAt());
     }
 
     @Test
@@ -99,7 +109,7 @@ class InsightsResponseMapperTest {
                 }
                 """;
         InsightsPayload payload = codec.decode(json);
-        MarketInsightsResponse response = InsightsResponseMapper.from(payload, null);
+        MarketInsightsResponse response = InsightsResponseMapper.from(ready(payload));
 
         assertEquals("ALERTA_PRECO", response.insights().get(0).type());
         assertEquals("Texto legado", response.insights().get(0).text());
@@ -115,11 +125,18 @@ class InsightsResponseMapperTest {
     }
 
     @Test
-    @DisplayName("returns empty response for a null payload")
-    void nullPayload() {
-        MarketInsightsResponse response = InsightsResponseMapper.from(null, null);
+    @DisplayName("awaiting data has a state, no months and empty lists")
+    void awaitingData() {
+        MarketInsightsResponse response = InsightsResponseMapper.from(GetMarketInsightsPort.Output.awaitingData());
+
+        assertEquals("AWAITING_DATA", response.state());
+        assertNull(response.requestedBucketKey());
+        assertNull(response.requestedMonth());
+        assertNull(response.availableMonth());
+        assertNull(response.generatedAt());
+        assertNull(response.comparisonBucketKey());
         assertTrue(response.insights().isEmpty());
-        assertNull(response.bucketKey());
+        assertEquals(MarketInsightsResponse.MatchCoverageResponse.empty(), response.matchCoverage());
     }
 
     @Test
@@ -132,14 +149,15 @@ class InsightsResponseMapperTest {
                 null,
                 null
         );
-        MarketInsightsResponse response = InsightsResponseMapper.from(payload, null);
+        MarketInsightsResponse response = InsightsResponseMapper.from(ready(payload));
         assertEquals(0, response.matchCoverage().exact());
+        assertNull(response.comparisonBucketKey());
         assertTrue(response.insights().isEmpty());
         assertTrue(response.risingProducts().isEmpty());
         assertTrue(response.limitations().isEmpty());
+    }
 
-        MarketInsightsResponse.MatchCoverageResponse coverage = InsightsResponseMapper.fromCoverage(new MatchCoverage(9, 8, 7, 6));
-        assertEquals(9, coverage.exact());
-        assertEquals(MarketInsightsResponse.MatchCoverageResponse.empty(), InsightsResponseMapper.fromCoverage(null));
+    private static GetMarketInsightsPort.Output ready(InsightsPayload payload) {
+        return new GetMarketInsightsPort.Output(InsightReadState.READY, "2026-08", null, "2026-08", null, null, payload);
     }
 }

@@ -1,6 +1,7 @@
 package com.undercontroll.infrastructure.mapper;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.undercontroll.domain.exception.InsightPayloadUnreadableException;
 import com.undercontroll.domain.model.insight.InsightsPayload;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -10,6 +11,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class InsightsPayloadCodecTest {
@@ -58,11 +60,11 @@ class InsightsPayloadCodecTest {
     }
 
     @Test
-    @DisplayName("treats missing or unreadable payloads as absent")
+    @DisplayName("a missing payload is absent but an unreadable one is an error")
     void absentPayload() {
         assertNull(codec.decode(null));
         assertNull(codec.decode(" "));
-        assertNull(codec.decode("{not-json"));
         assertNull(codec.encode(null));
+        assertThrows(InsightPayloadUnreadableException.class, () -> codec.decode("{not-json"));
     }
 }

@@ -1,16 +1,20 @@
 package com.undercontroll.domain.usecase.insights.impl;
 
+import com.undercontroll.domain.enums.InsightJobStatus;
+import com.undercontroll.domain.gateway.InsightJobGateway;
 import com.undercontroll.domain.gateway.InsightPublicationGateway;
-import com.undercontroll.domain.gateway.MarketViewGateway;
-import com.undercontroll.domain.model.insight.MarketInsightPublication;
+import com.undercontroll.domain.gateway.InsightsLlmGateway;
+import com.undercontroll.domain.gateway.MarketSnapshotGateway;
+import com.undercontroll.domain.model.insight.InsightJob;
+import com.undercontroll.domain.model.insight.InsightReadState;
 import com.undercontroll.domain.model.insight.InsightsPayload;
-import com.undercontroll.domain.usecase.insights.GetMarketInsightsPort;
+import com.undercontroll.domain.model.insight.MarketInsightPublication;
+import com.undercontroll.domain.model.market.PublishedMarketSnapshot;
+import com.undercontroll.domain.usecase.insights.GetMarketInsightsPort.Output;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 
 import java.time.Instant;
 import java.util.List;
@@ -19,73 +23,124 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
 class GetMarketInsightsImplTest {
 
-    @Mock
-    private MarketViewGateway marketViewGateway;
+    private static final Instant PUBLISHED = Instant.parse("2026-10-01T03:00:00Z");
+    private static final Instant GENERATED = Instant.parse("2026-09-01T04:00:00Z");
+    private static final InsightsPayload PAYLOAD = new InsightsPayload(
+            new InsightsPayload.Periodo("2026-08", "2026-07"), new InsightsPayload.CoberturaMatch(1, 0, 0, 0),
+            List.of(), List.of(), List.of("Popularidade, não vendas."));
 
-    @Mock
-    private InsightPublicationGateway insightPublicationGateway;
+    private final MarketSnapshotGateway snapshots = mock(MarketSnapshotGateway.class);
+    private final InsightPublicationGateway publications = mock(InsightPublicationGateway.class);
+    private final InsightJobGateway jobs = mock(InsightJobGateway.class);
+    @SuppressWarnings("unchecked")
+    private final ObjectProvider<InsightsLlmGateway> llm = mock(ObjectProvider.class);
+    private final GetMarketInsightsImpl useCase = new GetMarketInsightsImpl(snapshots, publications, jobs, llm);
 
-    @InjectMocks
-    private GetMarketInsightsImpl getMarketInsights;
+    @BeforeEach
+    void setUp() {
+        when(snapshots.findPublished()).thenReturn(Optional.of(
+                new PublishedMarketSnapshot(11L, "run", "2026-09", "SUCCESS", PUBLISHED)));
+        when(llm.getIfAvailable()).thenReturn(mock(InsightsLlmGateway.class));
+    }
 
     @Test
-    @DisplayName("returns empty output when bucket does not exist")
-    void emptyWhenNoBucket() {
-        when(marketViewGateway.findCurrentBucketKey()).thenReturn(Optional.empty());
+    @DisplayName("without a published snapshot the state is AWAITING_DATA and nothing else is read")
+    void awaitingData() {
+        when(snapshots.findPublished()).thenReturn(Optional.empty());
 
-        GetMarketInsightsPort.Output output = getMarketInsights.execute();
+        assertEquals(Output.awaitingData(), useCase.execute());
+        verifyNoInteractions(publications, jobs);
+    }
 
+    @Test
+    @DisplayName("a publication of the published snapshot is READY with both months and dates")
+    void ready() {
+        when(publications.findLatest()).thenReturn(Optional.of(publication(11L, "2026-09")));
+
+        Output output = useCase.execute();
+
+        assertEquals(InsightReadState.READY, output.state());
+        assertEquals("2026-09", output.requestedBucketKey());
+        assertEquals(PUBLISHED, output.snapshotPublishedAt());
+        assertEquals("2026-09", output.availableBucketKey());
+        assertEquals(GENERATED, output.generatedAt());
+        assertSame(PAYLOAD, output.payload());
+        verifyNoInteractions(jobs);
+    }
+
+    @Test
+    @DisplayName("a pending or running job is GENERATING and still serves the previous publication")
+    void generating() {
+        when(publications.findLatest()).thenReturn(Optional.of(publication(10L, "2026-08")));
+        when(jobs.findLatestForSnapshot(11L)).thenReturn(Optional.of(job(InsightJobStatus.RUNNING, null)));
+
+        Output output = useCase.execute();
+
+        assertEquals(InsightReadState.GENERATING, output.state());
+        assertEquals("2026-09", output.requestedBucketKey());
+        assertEquals("2026-08", output.availableBucketKey());
+        assertSame(PAYLOAD, output.payload());
+    }
+
+    @Test
+    @DisplayName("a failed job is FAILED with the error kind and no payload when nothing was published")
+    void failed() {
+        when(publications.findLatest()).thenReturn(Optional.empty());
+        when(jobs.findLatestForSnapshot(11L)).thenReturn(Optional.of(job(InsightJobStatus.FAILED, "AUTH: 401 Unauthorized")));
+
+        Output output = useCase.execute();
+
+        assertEquals(InsightReadState.FAILED, output.state());
+        assertEquals("AUTH", output.failureReason());
         assertNull(output.payload());
-        verify(insightPublicationGateway, never()).findLatest();
+        assertNull(output.availableBucketKey());
     }
 
     @Test
-    @DisplayName("returns empty output when the latest publication belongs to another month")
-    void emptyWhenNoSuccessfulBatch() {
-        when(marketViewGateway.findCurrentBucketKey()).thenReturn(Optional.of("2026-08"));
-        when(insightPublicationGateway.findLatest()).thenReturn(Optional.of(publication("2026-07", null)));
+    @DisplayName("before the poller creates the job the state is GENERATING when insights are enabled")
+    void notYetEnqueued() {
+        when(publications.findLatest()).thenReturn(Optional.empty());
+        when(jobs.findLatestForSnapshot(11L)).thenReturn(Optional.empty());
 
-        assertEquals(GetMarketInsightsPort.Output.empty(), getMarketInsights.execute());
+        assertEquals(InsightReadState.GENERATING, useCase.execute().state());
     }
 
     @Test
-    @DisplayName("returns the stored payload and generation time when a successful batch exists")
-    void returnsStoredPayload() {
-        InsightsPayload payload = new InsightsPayload(
-                new InsightsPayload.Periodo("2026-08", "2026-07"),
-                new InsightsPayload.CoberturaMatch(1, 0, 0, 0),
-                List.of(),
-                List.of(),
-                List.of("Os dados refletem popularidade e preço anunciado, não volume de vendas.")
-        );
-        when(marketViewGateway.findCurrentBucketKey()).thenReturn(Optional.of("2026-08"));
-        when(insightPublicationGateway.findLatest()).thenReturn(Optional.of(publication("2026-08", payload)));
+    @DisplayName("with insights disabled an older publication is STALE and no publication is FAILED")
+    void disabled() {
+        when(llm.getIfAvailable()).thenReturn(null);
+        when(jobs.findLatestForSnapshot(11L)).thenReturn(Optional.empty());
+        when(publications.findLatest()).thenReturn(Optional.of(publication(10L, "2026-08")));
 
-        GetMarketInsightsPort.Output output = getMarketInsights.execute();
+        assertEquals(InsightReadState.STALE, useCase.execute().state());
 
-        assertSame(payload, output.payload());
-        assertEquals("2026-09-01T04:00:00Z", output.generatedAt());
+        when(publications.findLatest()).thenReturn(Optional.empty());
+        Output output = useCase.execute();
+        assertEquals(InsightReadState.FAILED, output.state());
+        assertEquals("INSIGHTS_DISABLED", output.failureReason());
     }
 
     @Test
-    @DisplayName("returns empty output when the stored payload could not be read")
-    void emptyOnUnreadablePayload() {
-        when(marketViewGateway.findCurrentBucketKey()).thenReturn(Optional.of("2026-08"));
-        when(insightPublicationGateway.findLatest()).thenReturn(Optional.of(publication("2026-08", null)));
-
-        assertEquals(GetMarketInsightsPort.Output.empty(), getMarketInsights.execute());
+    @DisplayName("the failure reason is the error kind before the colon")
+    void reason() {
+        assertEquals("INVALID_OUTPUT", GetMarketInsightsImpl.reason("INVALID_OUTPUT: still invalid"));
+        assertEquals("UNKNOWN", GetMarketInsightsImpl.reason("UNKNOWN"));
+        assertNull(GetMarketInsightsImpl.reason(" "));
+        assertNull(GetMarketInsightsImpl.reason(null));
     }
 
-    private static MarketInsightPublication publication(String bucketKey, InsightsPayload payload) {
-        return new MarketInsightPublication(1L, 1L, 1L, 10L, bucketKey, null, payload, "gemini", "m", "7",
-                Instant.parse("2026-09-01T04:00:00Z"));
+    private static MarketInsightPublication publication(long snapshotId, String bucketKey) {
+        return new MarketInsightPublication(1L, 1L, 1L, snapshotId, bucketKey, null, PAYLOAD, "gemini", "m", "7", GENERATED);
+    }
+
+    private static InsightJob job(InsightJobStatus status, String error) {
+        return new InsightJob(5L, 11L, "2026-09", "7", "h", "gemini", "m", status, 1, null, null, PUBLISHED, error,
+                PUBLISHED, PUBLISHED, null);
     }
 }

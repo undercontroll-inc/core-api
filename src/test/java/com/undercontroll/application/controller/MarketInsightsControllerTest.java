@@ -4,6 +4,7 @@ import com.undercontroll.application.controller.impl.MarketInsightsController;
 import com.undercontroll.domain.usecase.insights.GetMarketInsightsPort;
 import com.undercontroll.infrastructure.config.SecurityConfig;
 import com.undercontroll.domain.gateway.TokenGateway;
+import com.undercontroll.domain.exception.InsightPayloadUnreadableException;
 import com.undercontroll.domain.exception.MarketDataUnavailableException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,13 +16,8 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -41,12 +37,14 @@ class MarketInsightsControllerTest {
 
     @Test
     @WithMockUser(roles = "ADMINISTRATOR")
-    @DisplayName("GET /v1/api/insights returns 200 with empty lists when the monthly batch is missing")
+    @DisplayName("GET /v1/api/insights returns 200 AWAITING_DATA with empty lists before the first snapshot")
     void emptyInsights() throws Exception {
-        when(getMarketInsightsPort.execute()).thenReturn(GetMarketInsightsPort.Output.empty());
+        when(getMarketInsightsPort.execute()).thenReturn(GetMarketInsightsPort.Output.awaitingData());
 
         mockMvc.perform(get("/v1/api/insights"))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.state").value("AWAITING_DATA"))
+                .andExpect(jsonPath("$.requestedBucketKey").doesNotExist())
                 .andExpect(jsonPath("$.insights").isEmpty())
                 .andExpect(jsonPath("$.risingProducts").isEmpty())
                 .andExpect(jsonPath("$.limitations").isEmpty());
@@ -58,6 +56,17 @@ class MarketInsightsControllerTest {
     void getForbiddenForCustomer() throws Exception {
         mockMvc.perform(get("/v1/api/insights"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMINISTRATOR")
+    @DisplayName("GET /v1/api/insights returns 500 when the published payload is unreadable")
+    void unreadablePayload() throws Exception {
+        when(getMarketInsightsPort.execute()).thenThrow(new InsightPayloadUnreadableException(new IllegalStateException("bad json")));
+
+        mockMvc.perform(get("/v1/api/insights"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.code").value(InsightPayloadUnreadableException.CODE));
     }
 
     @Test

@@ -16,7 +16,6 @@ public class MarketInsightsController implements MarketInsightsApi {
 
     @Override
     public ResponseEntity<MarketInsightsResponse> getInsights() {
-        GetMarketInsightsPort.Output output = getMarketInsightsPort.execute();
-        return ResponseEntity.ok(InsightsResponseMapper.from(output.payload(), output.generatedAt()));
+        return ResponseEntity.ok(InsightsResponseMapper.from(getMarketInsightsPort.execute()));
     }
 }

@@ -19,8 +19,23 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @RequestMapping(value = "/v1/api/insights", produces = MediaType.APPLICATION_JSON_VALUE)
 public interface MarketInsightsApi {
 
-    @Operation(summary = "Get the monthly insights batch (read-only; empty list if not generated yet)")
+    @Operation(
+            summary = "Get the insights of the published market snapshot with an explicit state",
+            description = "Always 200 with a state: READY (current), STALE (older publication, nothing running), "
+                    + "AWAITING_DATA (ETL has not published yet, empty lists), GENERATING (job pending or running; "
+                    + "an older publication may be served) or FAILED (failureReason set; an older publication may be "
+                    + "served). Compare requestedBucketKey with availableBucketKey to show stale content. Only READY "
+                    + "responses are cached."
+    )
     @GetApiResponses
+    @ApiResponse(
+            responseCode = "500",
+            description = "Published payload is unreadable (code INSIGHT_PAYLOAD_UNREADABLE)",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    schema = @Schema(implementation = ErrorResponse.class)
+            )
+    )
     @ApiResponse(
             responseCode = "503",
             description = "Market views unavailable (code MARKET_DATA_UNAVAILABLE); not cached, retry later",

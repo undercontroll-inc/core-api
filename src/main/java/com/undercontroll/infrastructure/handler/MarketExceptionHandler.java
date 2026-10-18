@@ -1,6 +1,7 @@
 package com.undercontroll.infrastructure.handler;
 
 import com.undercontroll.application.dto.common.ExceptionHandlerResponse;
+import com.undercontroll.domain.exception.InsightPayloadUnreadableException;
 import com.undercontroll.domain.exception.InsightsDisabledException;
 import com.undercontroll.domain.exception.MarketDataUnavailableException;
 import com.undercontroll.domain.exception.MarketSnapshotAwaitingException;
@@ -43,5 +44,14 @@ public class MarketExceptionHandler extends GenericExceptionHandler {
     ) {
         return buildErrorResponse(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), request.getRequestURI(),
                 InsightsDisabledException.CODE);
+    }
+
+    @ExceptionHandler(InsightPayloadUnreadableException.class)
+    public ResponseEntity<ExceptionHandlerResponse> handleUnreadable(
+            InsightPayloadUnreadableException ex,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), request.getRequestURI(),
+                InsightPayloadUnreadableException.CODE, ex);
     }
 }
