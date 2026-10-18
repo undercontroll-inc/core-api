@@ -1,6 +1,6 @@
 package com.undercontroll.application.controller;
 
-import com.undercontroll.infrastructure.config.ApiResponseDocumentation.*;
+import com.undercontroll.application.controller.doc.ApiResponseDocumentation.*;
 import com.undercontroll.application.dto.dashboard.CustomerTypeResponse;
 import com.undercontroll.application.dto.dashboard.DashboardMetricsResponse;
 import com.undercontroll.application.dto.dashboard.OrdersByStatusResponse;

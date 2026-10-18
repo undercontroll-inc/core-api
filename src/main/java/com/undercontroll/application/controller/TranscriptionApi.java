@@ -1,7 +1,7 @@
 package com.undercontroll.application.controller;
 
 import com.undercontroll.application.dto.transcription.TranscribeAudioResponse;
-import com.undercontroll.infrastructure.config.ApiResponseDocumentation.ErrorResponse;
+import com.undercontroll.application.controller.doc.ApiResponseDocumentation.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;

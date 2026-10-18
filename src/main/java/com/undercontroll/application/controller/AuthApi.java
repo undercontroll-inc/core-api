@@ -1,6 +1,6 @@
 package com.undercontroll.application.controller;
 
-import com.undercontroll.infrastructure.config.ApiResponseDocumentation.*;
+import com.undercontroll.application.controller.doc.ApiResponseDocumentation.*;
 import com.undercontroll.application.dto.auth.AuthUserRequest;
 import com.undercontroll.application.dto.auth.AuthUserResponse;
 import com.undercontroll.application.dto.auth.RefreshTokenRequest;
