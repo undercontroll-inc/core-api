@@ -3,6 +3,7 @@ package com.undercontroll.application.controller.sse;
 import com.undercontroll.application.dto.chat.ChatStreamDeltaEvent;
 import com.undercontroll.application.dto.chat.ChatStreamDoneEvent;
 import com.undercontroll.application.dto.chat.ChatStreamErrorEvent;
+import com.undercontroll.application.dto.chat.ChatStreamPartialEvent;
 import com.undercontroll.application.dto.chat.ChatStreamStartEvent;
 import com.undercontroll.application.dto.chat.ChatStreamStatusEvent;
 import com.undercontroll.domain.gateway.ChatStreamSink;
@@ -63,13 +64,19 @@ public class SseChatStreamSink implements ChatStreamSink {
 
     @Override
     public void complete(String fullContent) {
-        send("done", new ChatStreamDoneEvent(fullContent));
+        send("done", ChatStreamDoneEvent.completed(fullContent));
+        emitter.complete();
+    }
+
+    @Override
+    public void partial(String content, String reason) {
+        send("partial", ChatStreamPartialEvent.of(content, reason));
         emitter.complete();
     }
 
     @Override
     public void error(String code, String message) {
-        send("error", new ChatStreamErrorEvent(code, message));
+        send("error", ChatStreamErrorEvent.failed(code, message));
         emitter.complete();
     }
 

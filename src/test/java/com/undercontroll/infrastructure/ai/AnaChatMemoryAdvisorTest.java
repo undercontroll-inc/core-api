@@ -16,6 +16,7 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.metadata.ChatGenerationMetadata;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.Prompt;
@@ -81,6 +82,26 @@ class AnaChatMemoryAdvisorTest {
         assertEquals("ok", messages.get(2).getText());
         assertEquals("agora", messages.get(3).getText());
         verify(chatMemory).add(eq("7"), any(UserMessage.class));
+    }
+
+    @Test
+    @DisplayName("does not persist a reply truncated by the token limit")
+    void skipsMemoryWhenTruncated() {
+        when(chatMemory.get("7")).thenReturn(List.of());
+        ChatClientRequest request = new ChatClientRequest(
+                new Prompt(List.of(new UserMessage("agora"))),
+                Map.of(ChatMemory.CONVERSATION_ID, "7")
+        );
+        when(chain.nextCall(any())).thenReturn(response);
+        when(response.chatResponse()).thenReturn(new ChatResponse(List.of(new Generation(
+                new AssistantMessage("Tem"),
+                ChatGenerationMetadata.builder().finishReason("MAX_TOKENS").build()
+        ))));
+
+        new AnaChatMemoryAdvisor(chatMemory).adviseCall(request, chain);
+
+        verify(chatMemory, never()).add(any(), any(Message.class));
+        verify(chatMemory, never()).add(any(), any(List.class));
     }
 
     @Test

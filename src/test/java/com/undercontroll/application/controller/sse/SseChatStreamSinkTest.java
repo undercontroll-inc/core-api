@@ -67,6 +67,15 @@ class SseChatStreamSinkTest {
     }
 
     @Test
+    @DisplayName("partial is a terminal event that closes the stream")
+    void partialClosesTheStream() throws IOException {
+        sink.partial("Tem 2", "max_tokens");
+
+        verify(emitter).send(any(SseEmitter.SseEventBuilder.class));
+        verify(emitter).complete();
+    }
+
+    @Test
     @DisplayName("heartbeat failures complete the emitter")
     void heartbeatFailure() throws IOException {
         sink.start("12");

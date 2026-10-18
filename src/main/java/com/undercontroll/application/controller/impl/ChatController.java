@@ -7,10 +7,13 @@ import com.undercontroll.application.dto.chat.SendChatMessageResponse;
 import com.undercontroll.domain.usecase.chat.GetChatSuggestionsPort;
 import com.undercontroll.domain.usecase.chat.SendChatMessagePort;
 import com.undercontroll.application.controller.sse.AnaChatSseSupport;
+import com.undercontroll.domain.model.chat.AnaReply;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import java.util.Locale;
 
 @RestController
 @RequiredArgsConstructor
@@ -22,7 +25,12 @@ public class ChatController implements ChatApi {
 
     @Override
     public ResponseEntity<SendChatMessageResponse> sendMessage(SendChatMessageRequest message) {
-        return ResponseEntity.ok(new SendChatMessageResponse(sendChatMessagePort.execute(message.content())));
+        AnaReply reply = sendChatMessagePort.execute(message.content());
+        return ResponseEntity.ok(new SendChatMessageResponse(
+                reply.content(),
+                reply.state().name().toLowerCase(Locale.ROOT),
+                reply.reason()
+        ));
     }
 
     @Override

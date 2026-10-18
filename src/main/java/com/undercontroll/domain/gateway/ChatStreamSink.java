@@ -10,6 +10,8 @@ public interface ChatStreamSink {
 
     void complete(String fullContent);
 
+    void partial(String content, String reason);
+
     void error(String code, String message);
 
     default void onCancel(Runnable cancel) {

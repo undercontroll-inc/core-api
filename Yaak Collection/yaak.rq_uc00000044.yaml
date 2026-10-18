@@ -13,7 +13,7 @@ body:
       "content": "${[ chat_content ]}"
     }
 bodyType: application/json
-description: ""
+description: "Response {content, state: completed | partial, reason}. partial means the reply was cut (e.g. max_tokens) and is not stored in memory."
 headers:
 - enabled: true
   name: Content-Type

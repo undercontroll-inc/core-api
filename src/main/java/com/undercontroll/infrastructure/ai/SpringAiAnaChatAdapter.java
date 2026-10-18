@@ -3,18 +3,20 @@ package com.undercontroll.infrastructure.ai;
 import com.undercontroll.domain.exception.AnaUnavailableException;
 import com.undercontroll.domain.gateway.AnaChatGateway;
 import com.undercontroll.domain.gateway.ChatStreamSink;
+import com.undercontroll.domain.model.chat.AnaReply;
 import com.undercontroll.domain.support.Durations;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.model.ChatResponse;
 import reactor.core.Disposable;
+import reactor.core.Disposables;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
 public class SpringAiAnaChatAdapter implements AnaChatGateway {
@@ -37,22 +39,25 @@ public class SpringAiAnaChatAdapter implements AnaChatGateway {
     }
 
     @Override
-    public String reply(String conversationId, String message, String shopBriefing) {
+    public AnaReply reply(String conversationId, String message, String shopBriefing) {
         long started = System.nanoTime();
         boolean webSearch = isWebSearch(conversationId, message);
         try {
             log.info("Ana chat started conversationId={} tools={}", conversationId, toolsLabel(webSearch));
-            String content = prompt(conversationId, message, shopBriefing).call().content();
-            if (content == null || content.isBlank()) {
+            ChatResponse response = prompt(conversationId, message, shopBriefing).call().chatResponse();
+            String content = text(response);
+            if (content.isBlank()) {
                 throw new AnaUnavailableException();
             }
+            String partialReason = AnaFinishReason.partialReason(AnaFinishReason.of(response));
             log.info(
-                    "Ana chat finished conversationId={} tools={} durationMs={}",
+                    "Ana chat finished conversationId={} tools={} state={} durationMs={}",
                     conversationId,
                     toolsLabel(webSearch),
+                    partialReason == null ? "completed" : "partial:" + partialReason,
                     Durations.millisSince(started)
             );
-            return content;
+            return partialReason == null ? AnaReply.completed(content) : AnaReply.partial(content, partialReason);
         } catch (AnaUnavailableException ex) {
             log.warn(
                     "Ana chat unavailable conversationId={} durationMs={}",
@@ -76,88 +81,21 @@ public class SpringAiAnaChatAdapter implements AnaChatGateway {
         long started = System.nanoTime();
         boolean webSearch = isWebSearch(conversationId, message);
         log.info("Ana chat stream started conversationId={} tools={}", conversationId, toolsLabel(webSearch));
-        StringBuilder full = new StringBuilder();
-        AtomicBoolean finished = new AtomicBoolean();
+        StreamTurn turn = new StreamTurn(conversationId, started, sink);
+        Disposable.Swap subscription = Disposables.swap();
+        sink.onCancel(() -> {
+            turn.cancelled();
+            subscription.dispose();
+        });
         try {
-            Flux<String> tokens = prompt(conversationId, message, shopBriefing)
+            Flux<ChatResponse> responses = prompt(conversationId, message, shopBriefing)
                     .stream()
-                    .content()
-                    .doOnNext(chunk -> {
-                        if (chunk != null && !chunk.isEmpty()) {
-                            full.append(chunk);
-                        }
-                    })
-                    .onErrorResume(error -> {
-                        if (full.isEmpty()) {
-                            return Flux.error(error);
-                        }
-                        log.warn(
-                                "Ana chat stream recovered conversationId={} durationMs={} cause={}",
-                                conversationId,
-                                Durations.millisSince(started),
-                                error.toString()
-                        );
-                        return Flux.empty();
-                    })
+                    .chatResponse()
                     .limitRate(1)
                     .subscribeOn(Schedulers.boundedElastic());
-            AtomicReference<Disposable> subscription = new AtomicReference<>();
-            sink.onCancel(() -> {
-                Disposable disposable = subscription.get();
-                if (disposable != null) {
-                    disposable.dispose();
-                }
-            });
-            subscription.set(tokens.subscribe(
-                    chunk -> {
-                        if (chunk == null || chunk.isEmpty()) {
-                            return;
-                        }
-                        sink.delta(chunk);
-                    },
-                    error -> {
-                        if (!finished.compareAndSet(false, true)) {
-                            return;
-                        }
-                        log.warn(
-                                "Ana chat stream failed conversationId={} durationMs={} cause={}",
-                                conversationId,
-                                Durations.millisSince(started),
-                                error.toString()
-                        );
-                        sink.error(AnaUnavailableException.CODE, AnaUnavailableException.MESSAGE);
-                    },
-                    () -> {
-                        if (!finished.compareAndSet(false, true)) {
-                            return;
-                        }
-                        String content = full.toString();
-                        if (content.isBlank()) {
-                            log.warn(
-                                    "Ana chat stream unavailable conversationId={} durationMs={}",
-                                    conversationId,
-                                    Durations.millisSince(started)
-                            );
-                            sink.error(AnaUnavailableException.CODE, AnaUnavailableException.MESSAGE);
-                            return;
-                        }
-                        log.info(
-                                "Ana chat stream finished conversationId={} tools={} durationMs={}",
-                                conversationId,
-                                toolsLabel(webSearch),
-                                Durations.millisSince(started)
-                        );
-                        sink.complete(content);
-                    }
-            ));
+            subscription.update(responses.subscribe(turn::next, turn::failed, turn::completed));
         } catch (RuntimeException ex) {
-            log.warn(
-                    "Ana chat stream failed conversationId={} durationMs={} cause={}",
-                    conversationId,
-                    Durations.millisSince(started),
-                    ex.toString()
-            );
-            sink.error(AnaUnavailableException.CODE, AnaUnavailableException.MESSAGE);
+            turn.failed(ex);
         }
     }
 
@@ -196,5 +134,85 @@ public class SpringAiAnaChatAdapter implements AnaChatGateway {
 
     private static String toolsLabel(boolean webSearch) {
         return webSearch ? "shop+web" : "shop";
+    }
+
+    private static String text(ChatResponse response) {
+        if (response == null || response.getResult() == null || response.getResult().getOutput() == null) {
+            return "";
+        }
+        String text = response.getResult().getOutput().getText();
+        return text == null ? "" : text;
+    }
+
+    private static final class StreamTurn {
+
+        private final String conversationId;
+        private final long started;
+        private final ChatStreamSink sink;
+        private final StringBuilder content = new StringBuilder();
+        private final AtomicBoolean finished = new AtomicBoolean();
+        private volatile String finishReason;
+
+        private StreamTurn(String conversationId, long started, ChatStreamSink sink) {
+            this.conversationId = conversationId;
+            this.started = started;
+            this.sink = sink;
+        }
+
+        void next(ChatResponse response) {
+            String reason = AnaFinishReason.of(response);
+            if (reason != null) {
+                finishReason = reason;
+            }
+            String chunk = text(response);
+            if (!chunk.isEmpty()) {
+                content.append(chunk);
+                sink.delta(chunk);
+            }
+        }
+
+        void completed() {
+            if (!finished.compareAndSet(false, true)) {
+                return;
+            }
+            String text = content.toString();
+            if (text.isBlank()) {
+                log.warn("Ana chat stream unavailable conversationId={} durationMs={}",
+                        conversationId, Durations.millisSince(started));
+                sink.error(AnaUnavailableException.CODE, AnaUnavailableException.MESSAGE);
+                return;
+            }
+            String partialReason = AnaFinishReason.partialReason(finishReason);
+            if (partialReason != null) {
+                log.warn("Ana chat stream partial conversationId={} reason={} durationMs={}",
+                        conversationId, partialReason, Durations.millisSince(started));
+                sink.partial(text, partialReason);
+                return;
+            }
+            log.info("Ana chat stream finished conversationId={} finishReason={} durationMs={}",
+                    conversationId, finishReason, Durations.millisSince(started));
+            sink.complete(text);
+        }
+
+        void failed(Throwable error) {
+            if (!finished.compareAndSet(false, true)) {
+                return;
+            }
+            String text = content.toString();
+            log.warn("Ana chat stream failed conversationId={} partial={} durationMs={} cause={}",
+                    conversationId, !text.isBlank(), Durations.millisSince(started), error.toString());
+            if (text.isBlank()) {
+                sink.error(AnaUnavailableException.CODE, AnaUnavailableException.MESSAGE);
+            } else {
+                sink.partial(text, AnaFinishReason.INTERRUPTED);
+            }
+        }
+
+        void cancelled() {
+            if (finished.compareAndSet(false, true)) {
+                log.info("Ana chat stream cancelled conversationId={} durationMs={}",
+                        conversationId, Durations.millisSince(started));
+            }
+        }
     }
 }

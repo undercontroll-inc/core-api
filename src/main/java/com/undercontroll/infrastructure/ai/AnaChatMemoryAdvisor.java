@@ -86,6 +86,9 @@ public class AnaChatMemoryAdvisor implements CallAdvisor, StreamAdvisor {
     }
 
     private void persist(String conversationId, UserMessage userMessage, ChatClientResponse response) {
+        if (AnaFinishReason.partialReason(AnaFinishReason.of(response.chatResponse())) != null) {
+            return;
+        }
         if (userMessage != null) {
             chatMemory.add(conversationId, userMessage);
         }

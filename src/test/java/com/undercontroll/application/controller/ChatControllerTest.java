@@ -2,6 +2,7 @@ package com.undercontroll.application.controller;
 
 import com.undercontroll.application.controller.impl.ChatController;
 import com.undercontroll.domain.exception.AnaUnavailableException;
+import com.undercontroll.domain.model.chat.AnaReply;
 import com.undercontroll.domain.gateway.ChatStreamSink;
 import com.undercontroll.domain.usecase.chat.GetChatSuggestionsPort;
 import com.undercontroll.domain.usecase.chat.SendChatMessagePort;
@@ -77,13 +78,28 @@ class ChatControllerTest {
     @WithMockUser(username = "12", roles = "ADMINISTRATOR")
     @DisplayName("POST /v1/api/chats/messages returns the assistant reply")
     void sendMessage() throws Exception {
-        when(sendChatMessagePort.execute(any())).thenReturn("Tem 2 consertos abertos.");
+        when(sendChatMessagePort.execute(any())).thenReturn(AnaReply.completed("Tem 2 consertos abertos."));
 
         mockMvc.perform(post("/v1/api/chats/messages")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"content\":\"Quais consertos estão abertos?\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content").value("Tem 2 consertos abertos."));
+                .andExpect(jsonPath("$.content").value("Tem 2 consertos abertos."))
+                .andExpect(jsonPath("$.state").value("completed"));
+    }
+
+    @Test
+    @WithMockUser(username = "12", roles = "ADMINISTRATOR")
+    @DisplayName("POST /v1/api/chats/messages flags truncated replies as partial")
+    void sendMessagePartial() throws Exception {
+        when(sendChatMessagePort.execute(any())).thenReturn(AnaReply.partial("Tem 2 cons", "max_tokens"));
+
+        mockMvc.perform(post("/v1/api/chats/messages")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"content\":\"Oi\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.state").value("partial"))
+                .andExpect(jsonPath("$.reason").value("max_tokens"));
     }
 
     @Test
@@ -162,6 +178,7 @@ class ChatControllerTest {
                     .andExpect(content().string(containsString("\"conversationId\":\"12\"")))
                     .andExpect(content().string(containsString("event:delta")))
                     .andExpect(content().string(containsString("event:done")))
+                    .andExpect(content().string(containsString("\"state\":\"completed\"")))
                     .andExpect(content().string(containsString("Tem 2 consertos abertos.")));
             return;
         }

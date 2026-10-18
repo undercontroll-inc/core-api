@@ -161,6 +161,12 @@ class StreamChatMessageImplTest {
             events.add("done:" + fullContent);
         }
 
+
+        @Override
+        public void partial(String content, String reason) {
+            events.add("partial:" + reason + ":" + content);
+        }
+
         @Override
         public void error(String code, String message) {
             events.add("error:" + code);

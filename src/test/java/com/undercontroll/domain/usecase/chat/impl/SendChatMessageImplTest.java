@@ -4,6 +4,7 @@ import com.undercontroll.domain.gateway.ShopSnapshotLoader;
 import com.undercontroll.domain.enums.OrderStatus;
 import com.undercontroll.domain.exception.AnaUnavailableException;
 import com.undercontroll.domain.gateway.AnaChatGateway;
+import com.undercontroll.domain.model.chat.AnaReply;
 import com.undercontroll.domain.gateway.CurrentUserIdPort;
 import com.undercontroll.domain.gateway.OrderGateway;
 import com.undercontroll.domain.model.Order;
@@ -87,12 +88,13 @@ class SendChatMessageImplTest {
         ));
         ArgumentCaptor<String> briefing = ArgumentCaptor.forClass(String.class);
         when(gateway.reply(eq("7"), eq("Quais consertos estão abertos?"), briefing.capture()))
-                .thenReturn("Tem 3 em andamento.");
+                .thenReturn(AnaReply.completed("Tem 3 em andamento."));
 
-        String response = useCase.execute(
+        AnaReply response = useCase.execute(
                 "Quais consertos estão abertos?");
 
-        assertEquals("Tem 3 em andamento.", response);
+        assertEquals("Tem 3 em andamento.", response.content());
+        assertTrue(response.isCompleted());
         assertTrue(briefing.getValue().contains("Maria"));
         assertTrue(briefing.getValue().contains("liquidificador"));
         assertTrue(briefing.getValue().contains("João"));
@@ -126,7 +128,7 @@ class SendChatMessageImplTest {
         ));
         ArgumentCaptor<String> briefing = ArgumentCaptor.forClass(String.class);
         when(gateway.reply(eq("7"), eq("Me fala do pedido 12"), briefing.capture()))
-                .thenReturn("O liquidificador da Maria ainda não foi olhado.");
+                .thenReturn(AnaReply.completed("O liquidificador da Maria ainda não foi olhado."));
 
         useCase.execute("Me fala do pedido 12");
 
@@ -152,7 +154,7 @@ class SendChatMessageImplTest {
         ));
         ArgumentCaptor<String> briefing = ArgumentCaptor.forClass(String.class);
         when(gateway.reply(eq("7"), eq("Quanto custa?"), briefing.capture()))
-                .thenReturn("O conserto da Maria ainda não tem valor.");
+                .thenReturn(AnaReply.completed("O conserto da Maria ainda não tem valor."));
 
         useCase.execute("Quanto custa?");
 

@@ -2,6 +2,7 @@ package com.undercontroll.infrastructure.ai;
 
 import com.undercontroll.domain.exception.AnaUnavailableException;
 import com.undercontroll.domain.gateway.ChatStreamSink;
+import com.undercontroll.domain.model.chat.AnaReply;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,6 +13,7 @@ import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.chat.metadata.ChatGenerationMetadata;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.Prompt;
@@ -21,8 +23,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
@@ -46,7 +50,7 @@ class SpringAiAnaChatAdapterTest {
                 new AssistantMessage("O liquidificador da Maria ainda não foi olhado.")
         ));
         SpringAiAnaChatAdapter adapter = new SpringAiAnaChatAdapter(
-                ChatClient.builder(new StubChatModel(List.of("ok"), null)).build(),
+                ChatClient.builder(new StubChatModel(List.of("ok"), "STOP", null)).build(),
                 chatMemory,
                 webSearchTool,
                 shopTools
@@ -59,58 +63,107 @@ class SpringAiAnaChatAdapterTest {
     }
 
     @Test
-    @DisplayName("streams token deltas and completes with the full reply")
+    @DisplayName("streams token deltas and completes when the provider reports STOP")
     void streamReply() throws InterruptedException {
-        when(chatMemory.get("7")).thenReturn(List.of());
-        SpringAiAnaChatAdapter adapter = adapter(new StubChatModel(List.of("Tem ", "2."), null));
-        RecordingSink sink = new RecordingSink();
+        RecordingSink sink = stream(new StubChatModel(List.of("Tem ", "2."), "STOP", null));
 
-        adapter.streamReply("7", "Oi", "briefing", sink);
-
-        assertTrue(sink.await());
         assertEquals(List.of("delta:Tem ", "delta:2.", "done:Tem 2."), sink.events);
     }
 
     @Test
     @DisplayName("emits an error event when the streamed reply is blank")
     void streamBlank() throws InterruptedException {
-        when(chatMemory.get("7")).thenReturn(List.of());
-        SpringAiAnaChatAdapter adapter = adapter(new StubChatModel(List.of(), null));
-        RecordingSink sink = new RecordingSink();
+        RecordingSink sink = stream(new StubChatModel(List.of(), "STOP", null));
 
-        adapter.streamReply("7", "Oi", "briefing", sink);
-
-        assertTrue(sink.await());
         assertEquals(List.of("error:" + AnaUnavailableException.CODE), sink.events);
     }
 
     @Test
-    @DisplayName("emits an error event when the stream fails")
+    @DisplayName("emits an error event when the stream fails before any text")
     void streamFails() throws InterruptedException {
-        when(chatMemory.get("7")).thenReturn(List.of());
-        SpringAiAnaChatAdapter adapter = adapter(new StubChatModel(List.of(), new IllegalStateException("down")));
-        RecordingSink sink = new RecordingSink();
+        RecordingSink sink = stream(new StubChatModel(List.of(), null, new IllegalStateException("down")));
 
-        adapter.streamReply("7", "Oi", "briefing", sink);
-
-        assertTrue(sink.await());
         assertEquals(List.of("error:" + AnaUnavailableException.CODE), sink.events);
     }
 
     @Test
-    @DisplayName("completes with the streamed text when Gemini fails after emitting deltas")
-    void streamRecoversAfterDeltas() throws InterruptedException {
-        when(chatMemory.get("7")).thenReturn(List.of());
-        SpringAiAnaChatAdapter adapter = adapter(new StubChatModel(
+    @DisplayName("a failure after deltas ends as partial, never as done")
+    void streamFailsAfterDeltas() throws InterruptedException {
+        RecordingSink sink = stream(new StubChatModel(
                 List.of("Tem ", "2."),
+                null,
                 new IllegalStateException("Failed to parse the JSON string.")
         ));
+
+        assertEquals(List.of("delta:Tem ", "delta:2.", "partial:interrupted:Tem 2."), sink.events);
+    }
+
+    @Test
+    @DisplayName("MAX_TOKENS finish reason ends as partial")
+    void streamTruncated() throws InterruptedException {
+        RecordingSink sink = stream(new StubChatModel(List.of("Tem "), "MAX_TOKENS", null));
+
+        assertEquals(List.of("delta:Tem ", "partial:max_tokens:Tem "), sink.events);
+    }
+
+    @Test
+    @DisplayName("a client that is already gone cancels the upstream subscription immediately")
+    void cancelBeforeSubscribe() {
+        when(chatMemory.get("7")).thenReturn(List.of());
+        AtomicBoolean upstreamCancelled = new AtomicBoolean();
+        CountDownLatch subscribed = new CountDownLatch(1);
+        ChatModel model = new StubChatModel(List.of(), null, null) {
+            @Override
+            public Flux<ChatResponse> stream(Prompt prompt) {
+                return Flux.<ChatResponse>never()
+                        .doOnSubscribe(subscription -> subscribed.countDown())
+                        .doOnCancel(() -> upstreamCancelled.set(true));
+            }
+        };
+        RecordingSink sink = new RecordingSink() {
+            @Override
+            public void onCancel(Runnable cancel) {
+                cancel.run();
+            }
+        };
+
+        adapter(model).streamReply("7", "Oi", "briefing", sink);
+
+        assertTrue(sink.events.isEmpty());
+        assertTrue(subscribed.getCount() == 1 || upstreamCancelled.get());
+    }
+
+    @Test
+    @DisplayName("sync reply reports completed or partial from the finish reason")
+    void replyStates() {
+        when(chatMemory.get("7")).thenReturn(List.of());
+
+        AnaReply completed = adapter(new StubChatModel(List.of("Tem 2."), "STOP", null)).reply("7", "Oi", "b");
+        AnaReply partial = adapter(new StubChatModel(List.of("Tem"), "LENGTH", null)).reply("7", "Oi", "b");
+
+        assertTrue(completed.isCompleted());
+        assertEquals("Tem 2.", completed.content());
+        assertEquals(AnaReply.State.PARTIAL, partial.state());
+        assertEquals("max_tokens", partial.reason());
+    }
+
+    @Test
+    @DisplayName("sync reply turns blank text and provider errors into unavailable")
+    void replyFailures() {
+        when(chatMemory.get("7")).thenReturn(List.of());
+        SpringAiAnaChatAdapter blank = adapter(new StubChatModel(List.of(" "), "STOP", null));
+        SpringAiAnaChatAdapter failing = adapter(new StubChatModel(List.of(), null, new IllegalStateException("down")));
+
+        assertThrows(AnaUnavailableException.class, () -> blank.reply("7", "Oi", "b"));
+        assertThrows(AnaUnavailableException.class, () -> failing.reply("7", "Oi", "b"));
+    }
+
+    private RecordingSink stream(ChatModel model) throws InterruptedException {
+        when(chatMemory.get("7")).thenReturn(List.of());
         RecordingSink sink = new RecordingSink();
-
-        adapter.streamReply("7", "Oi", "briefing", sink);
-
+        adapter(model).streamReply("7", "Oi", "briefing", sink);
         assertTrue(sink.await());
-        assertEquals(List.of("delta:Tem ", "delta:2.", "done:Tem 2."), sink.events);
+        return sink;
     }
 
     private SpringAiAnaChatAdapter adapter(ChatModel chatModel) {
@@ -122,33 +175,48 @@ class SpringAiAnaChatAdapterTest {
         );
     }
 
-    private static final class StubChatModel implements ChatModel {
+    private static class StubChatModel implements ChatModel {
 
         private final List<String> chunks;
+        private final String finishReason;
         private final RuntimeException error;
 
-        private StubChatModel(List<String> chunks, RuntimeException error) {
+        private StubChatModel(List<String> chunks, String finishReason, RuntimeException error) {
             this.chunks = chunks;
+            this.finishReason = finishReason;
             this.error = error;
         }
 
         @Override
         public ChatResponse call(Prompt prompt) {
-            return new ChatResponse(List.of(new Generation(new AssistantMessage(String.join("", chunks)))));
+            if (error != null) {
+                throw error;
+            }
+            return response(String.join("", chunks), finishReason);
         }
 
         @Override
         public Flux<ChatResponse> stream(Prompt prompt) {
-            Flux<ChatResponse> body = Flux.fromIterable(chunks)
-                    .map(chunk -> new ChatResponse(List.of(new Generation(new AssistantMessage(chunk)))));
+            List<ChatResponse> responses = new ArrayList<>();
+            for (int i = 0; i < chunks.size(); i++) {
+                responses.add(response(chunks.get(i), i == chunks.size() - 1 ? finishReason : null));
+            }
+            Flux<ChatResponse> body = Flux.fromIterable(responses);
             if (error == null) {
                 return body;
             }
             return body.concatWith(Flux.error(error));
         }
+
+        private static ChatResponse response(String text, String finishReason) {
+            ChatGenerationMetadata metadata = finishReason == null
+                    ? ChatGenerationMetadata.NULL
+                    : ChatGenerationMetadata.builder().finishReason(finishReason).build();
+            return new ChatResponse(List.of(new Generation(new AssistantMessage(text), metadata)));
+        }
     }
 
-    private static final class RecordingSink implements ChatStreamSink {
+    private static class RecordingSink implements ChatStreamSink {
 
         private final List<String> events = new ArrayList<>();
         private final CountDownLatch done = new CountDownLatch(1);
@@ -171,6 +239,12 @@ class SpringAiAnaChatAdapterTest {
         @Override
         public void complete(String fullContent) {
             events.add("done:" + fullContent);
+            done.countDown();
+        }
+
+        @Override
+        public void partial(String content, String reason) {
+            events.add("partial:" + reason + ":" + content);
             done.countDown();
         }
 

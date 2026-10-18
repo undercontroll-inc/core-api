@@ -27,7 +27,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @RequestMapping(value = "/v1/api/chats", produces = MediaType.APPLICATION_JSON_VALUE)
 public interface ChatApi {
 
-    @Operation(summary = "Send a question to Ana")
+    @Operation(summary = "Send a question to Ana", description = "state is completed or partial (reason tells why, e.g. max_tokens)")
     @PostApiResponses
     @PostMapping("/messages")
     ResponseEntity<SendChatMessageResponse> sendMessage(@Valid @RequestBody SendChatMessageRequest message);
@@ -36,7 +36,10 @@ public interface ChatApi {
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
-                    description = "SSE stream with start, status, delta, done, or error events",
+                    description = "SSE stream: start, status, delta events, then exactly one terminal event: "
+                            + "done {state=completed, content}, partial {state=partial, content, reason, retryable} "
+                            + "(e.g. max_tokens, interrupted) or error {state=failed, code, message, retryable}. "
+                            + "A client disconnect cancels generation and nothing is stored.",
                     content = @Content(mediaType = MediaType.TEXT_EVENT_STREAM_VALUE)
             ),
             @ApiResponse(

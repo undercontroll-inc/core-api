@@ -13,7 +13,7 @@ body:
       "content": "${[ chat_content ]}"
     }
 bodyType: application/json
-description: ""
+description: "SSE events: start {conversationId}, status {phase}, delta {content}, then exactly one terminal event: - done {state: completed, content} - partial {state: partial, content, reason (max_tokens | interrupted | ...), retryable} - error {state: failed, code, message, retryable} Partial or failed replies are not stored in Ana's memory. Disconnecting cancels generation."
 headers:
 - enabled: true
   name: Content-Type
