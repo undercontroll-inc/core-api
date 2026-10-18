@@ -4,6 +4,7 @@ import com.undercontroll.domain.exception.AnaUnavailableException;
 import com.undercontroll.domain.gateway.ChatStreamSink;
 import com.undercontroll.domain.model.chat.AnaReply;
 import com.undercontroll.domain.model.chat.AnaTurnRequest;
+import com.undercontroll.domain.support.Deadline;
 import com.undercontroll.domain.model.chat.ChatMessage;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,11 +22,15 @@ import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.model.tool.ToolCallingChatOptions;
 import reactor.core.publisher.Flux;
+import reactor.test.StepVerifier;
+import reactor.test.scheduler.VirtualTimeScheduler;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -36,7 +41,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class SpringAiAnaChatAdapterTest {
 
-    private static final AnaTurnRequest TURN = new AnaTurnRequest("7", "Oi", "briefing", List.of(), false);
+    private static final AnaTurnRequest TURN = new AnaTurnRequest("7", "Oi", "briefing", List.of(), false, Deadline.after(Duration.ofSeconds(60)));
 
     @Mock
     private AnaWebSearchTool webSearchTool;
@@ -59,7 +64,7 @@ class SpringAiAnaChatAdapterTest {
                 ChatMessage.user("Me fala do pedido 12"),
                 ChatMessage.assistant("Está em análise."),
                 ChatMessage.assistant(" ")
-        ), false);
+        ), false, Deadline.after(Duration.ofSeconds(60)));
 
         adapter(model).reply(turn);
 
@@ -189,10 +194,87 @@ class SpringAiAnaChatAdapterTest {
         SpringAiAnaChatAdapter adapter = adapter(model);
 
         adapter.reply(TURN);
-        adapter.reply(new AnaTurnRequest("7", "manual?", "briefing", List.of(), true));
+        adapter.reply(new AnaTurnRequest("7", "manual?", "briefing", List.of(), true, Deadline.after(Duration.ofSeconds(60))));
 
         assertEquals(List.of("get_last_announcement", "get_order", "list_orders", "search_components"), toolNames(prompts.get(0)));
         assertTrue(toolNames(prompts.get(1)).contains("search_web"));
+    }
+
+    @Test
+    @DisplayName("a provider that never answers ends within the turn budget as CHAT_TIMEOUT and is cancelled")
+    void neverAnswering() throws InterruptedException {
+        AtomicBoolean upstreamCancelled = new AtomicBoolean();
+        ChatModel silent = new StubChatModel(List.of(), null, null) {
+            @Override
+            public Flux<ChatResponse> stream(Prompt prompt) {
+                return Flux.<ChatResponse>never().doOnCancel(() -> upstreamCancelled.set(true));
+            }
+        };
+        AnaTurnRequest shortTurn = new AnaTurnRequest("7", "Oi", "b", List.of(), false, Deadline.after(Duration.ofMillis(150)));
+        RecordingSink sink = new RecordingSink();
+        long started = System.nanoTime();
+
+        adapter(silent).streamReply(shortTurn, sink);
+
+        assertTrue(sink.await());
+        assertTrue(Duration.ofNanos(System.nanoTime() - started).compareTo(Duration.ofSeconds(2)) < 0);
+        assertEquals(List.of("error:" + AnaUnavailableException.TIMEOUT_CODE), sink.events);
+        assertTrue(upstreamCancelled.get());
+    }
+
+    @Test
+    @DisplayName("text received before the deadline is kept as partial timeout in both paths")
+    void timeoutAfterText() throws InterruptedException {
+        ChatModel stalls = new StubChatModel(List.of(), null, null) {
+            @Override
+            public Flux<ChatResponse> stream(Prompt prompt) {
+                return Flux.just(new ChatResponse(List.of(new Generation(new AssistantMessage("Tem ")))))
+                        .concatWith(Flux.never());
+            }
+        };
+        RecordingSink sink = new RecordingSink();
+
+        adapter(stalls).streamReply(new AnaTurnRequest("7", "Oi", "b", List.of(), false, Deadline.after(Duration.ofMillis(150))), sink);
+        AnaReply reply = adapter(stalls).reply(new AnaTurnRequest("7", "Oi", "b", List.of(), false, Deadline.after(Duration.ofMillis(150))));
+
+        assertTrue(sink.await());
+        assertEquals(List.of("delta:Tem ", "partial:timeout:Tem "), sink.events);
+        assertEquals("timeout", reply.reason());
+    }
+
+    @Test
+    @DisplayName("first token, idle and total limits apply in virtual time")
+    void deadlinesInVirtualTime() {
+        StepVerifier.withVirtualTime(() -> SpringAiAnaChatAdapter.withDeadline(
+                        Flux.never(), virtualDeadline(Duration.ofSeconds(60)), Duration.ofSeconds(30), Duration.ofSeconds(20)))
+                .expectSubscription()
+                .expectNoEvent(Duration.ofSeconds(29))
+                .thenAwait(Duration.ofSeconds(1))
+                .expectError(TimeoutException.class)
+                .verify(Duration.ofSeconds(5));
+
+        StepVerifier.withVirtualTime(() -> SpringAiAnaChatAdapter.withDeadline(
+                        Flux.just("a").concatWith(Flux.never()), virtualDeadline(Duration.ofSeconds(60)),
+                        Duration.ofSeconds(30), Duration.ofSeconds(20)))
+                .expectNext("a")
+                .expectNoEvent(Duration.ofSeconds(19))
+                .thenAwait(Duration.ofSeconds(1))
+                .expectError(TimeoutException.class)
+                .verify(Duration.ofSeconds(5));
+
+        StepVerifier.withVirtualTime(() -> SpringAiAnaChatAdapter.withDeadline(
+                        Flux.interval(Duration.ofSeconds(10)), virtualDeadline(Duration.ofSeconds(35)),
+                        Duration.ofSeconds(30), Duration.ofSeconds(20)))
+                .expectSubscription()
+                .thenAwait(Duration.ofSeconds(30))
+                .expectNextCount(3)
+                .thenAwait(Duration.ofSeconds(5))
+                .expectError(TimeoutException.class)
+                .verify(Duration.ofSeconds(5));
+    }
+
+    private static Deadline virtualDeadline(Duration budget) {
+        return Deadline.after(budget, () -> VirtualTimeScheduler.get().now(TimeUnit.NANOSECONDS));
     }
 
     private static List<String> toolNames(Prompt prompt) {
@@ -213,7 +295,9 @@ class SpringAiAnaChatAdapterTest {
         return new SpringAiAnaChatAdapter(
                 ChatClient.builder(chatModel).build(),
                 webSearchTool,
-                shopTools
+                shopTools,
+                Duration.ofSeconds(30),
+                Duration.ofSeconds(20)
         );
     }
 

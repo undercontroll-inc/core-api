@@ -26,7 +26,8 @@ docs {
   Body conversationId is optional (default "default"); 409 CHAT_CONVERSATION_BUSY if that conversation is still answering.
   SSE events: start {conversationId}, status {phase}, delta {content}, then exactly one terminal event:
   - done {state: completed, content}
-  - partial {state: partial, content, reason (max_tokens | interrupted | ...), retryable}
-  - error {state: failed, code, message, retryable}
+  - partial {state: partial, content, reason (max_tokens | interrupted | timeout | ...), retryable}
+  - error {state: failed, code (CHAT_UNAVAILABLE | CHAT_TIMEOUT), message, retryable}
+  Turn budget: 60s total, 30s to the first token, 20s between tokens; at most 2 tool rounds and 1 web search.
   Partial or failed replies are not stored in Ana's memory. Disconnecting cancels generation.
 }

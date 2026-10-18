@@ -80,7 +80,7 @@ public interface ChatApi {
                     responseCode = "200",
                     description = "SSE stream: start, status, delta events, then exactly one terminal event: "
                             + "done {state=completed, content}, partial {state=partial, content, reason, retryable} "
-                            + "(e.g. max_tokens, interrupted) or error {state=failed, code, message, retryable}. "
+                            + "(max_tokens, interrupted, timeout) or error {state=failed, code CHAT_UNAVAILABLE|CHAT_TIMEOUT, message, retryable}. "
                             + "A client disconnect cancels generation and nothing is stored.",
                     content = @Content(mediaType = MediaType.TEXT_EVENT_STREAM_VALUE)
             ),

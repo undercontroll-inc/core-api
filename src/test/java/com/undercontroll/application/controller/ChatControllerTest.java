@@ -5,6 +5,7 @@ import com.undercontroll.domain.exception.AnaUnavailableException;
 import com.undercontroll.domain.exception.ConversationBusyException;
 import com.undercontroll.domain.model.chat.AnaReply;
 import com.undercontroll.domain.model.chat.AnaTurnRequest;
+import com.undercontroll.domain.support.Deadline;
 import com.undercontroll.domain.model.chat.ConversationKey;
 import com.undercontroll.domain.gateway.ChatStreamSink;
 import com.undercontroll.domain.usecase.chat.GetChatSuggestionsPort;
@@ -31,6 +32,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.time.Duration;
 import java.util.List;
 
 import static org.hamcrest.Matchers.containsString;
@@ -158,7 +160,7 @@ class ChatControllerTest {
     void streamMessage() throws Exception {
         when(streamChatMessagePort.prepare(any(), any())).thenReturn(new AnaChatSession(
                 new ConversationKey(12, "kitchen"),
-                new AnaTurnRequest("kitchen", "Oi", "briefing", List.of(), false),
+                new AnaTurnRequest("kitchen", "Oi", "briefing", List.of(), false, Deadline.after(Duration.ofSeconds(60))),
                 null,
                 true
         ));

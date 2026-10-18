@@ -143,6 +143,11 @@ undercontroll:
       memory-ttl-hours: 24
       memory-window: 10
       lock-ttl: 90s
+      turn-timeout: ${ANA_TURN_TIMEOUT:60s}
+      first-token-timeout: 30s
+      idle-timeout: 20s
+      max-tool-rounds: 2
+      max-web-searches: 1
     insights:
       provider: ${INSIGHTS_PROVIDER:none}
       model: ${INSIGHTS_MODEL:}

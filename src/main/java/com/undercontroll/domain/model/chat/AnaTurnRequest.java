@@ -1,5 +1,7 @@
 package com.undercontroll.domain.model.chat;
 
+import com.undercontroll.domain.support.Deadline;
+
 import java.util.List;
 
 public record AnaTurnRequest(
@@ -7,7 +9,8 @@ public record AnaTurnRequest(
         String message,
         String briefing,
         List<ChatMessage> history,
-        boolean webSearch
+        boolean webSearch,
+        Deadline deadline
 ) {
 
     public AnaTurnRequest {

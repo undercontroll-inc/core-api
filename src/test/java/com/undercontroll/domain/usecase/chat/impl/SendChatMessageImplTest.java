@@ -3,6 +3,7 @@ package com.undercontroll.domain.usecase.chat.impl;
 import com.undercontroll.domain.gateway.AnaChatGateway;
 import com.undercontroll.domain.model.chat.AnaReply;
 import com.undercontroll.domain.model.chat.AnaTurnRequest;
+import com.undercontroll.domain.support.Deadline;
 import com.undercontroll.domain.model.chat.ConversationKey;
 import com.undercontroll.domain.usecase.chat.AnaChatSession;
 import com.undercontroll.domain.usecase.chat.SendChatMessagePort;
@@ -13,6 +14,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Duration;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -28,7 +30,7 @@ class SendChatMessageImplTest {
 
     private static final AnaChatSession SESSION = new AnaChatSession(
             new ConversationKey(7, "kitchen"),
-            new AnaTurnRequest("kitchen", "Oi", "briefing", List.of(), false),
+            new AnaTurnRequest("kitchen", "Oi", "briefing", List.of(), false, Deadline.after(Duration.ofSeconds(60))),
             null,
             true
     );

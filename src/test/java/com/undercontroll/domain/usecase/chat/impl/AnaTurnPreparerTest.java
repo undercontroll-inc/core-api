@@ -15,6 +15,7 @@ import com.undercontroll.domain.model.OrderItem;
 import com.undercontroll.domain.model.User;
 import com.undercontroll.domain.model.chat.AnaReply;
 import com.undercontroll.domain.model.chat.AnaTurnRequest;
+import com.undercontroll.domain.support.Deadline;
 import com.undercontroll.domain.model.chat.ChatMessage;
 import com.undercontroll.domain.model.chat.ConversationKey;
 import com.undercontroll.domain.model.chat.ShopSnapshot;
@@ -69,7 +70,7 @@ class AnaTurnPreparerTest {
 
     @BeforeEach
     void setUp() {
-        preparer = new AnaTurnPreparer(anaChatGateway, currentUserIdPort, shopSnapshotLoader, orderGateway, memory, LOCK_TTL);
+        preparer = new AnaTurnPreparer(anaChatGateway, currentUserIdPort, shopSnapshotLoader, orderGateway, memory, LOCK_TTL, Duration.ofSeconds(60));
     }
 
     @Test
@@ -96,6 +97,7 @@ class AnaTurnPreparerTest {
         assertTrue(session.turn().webSearch());
         assertTrue(session.turn().briefing().contains("Maria"));
         assertEquals("kitchen", session.turn().conversationId());
+        assertFalse(session.turn().deadline().expired());
         verify(memory, times(1)).load(KEY);
     }
 
@@ -217,7 +219,7 @@ class AnaTurnPreparerTest {
     private AnaChatSession session(boolean memoryAvailable) {
         return new AnaChatSession(
                 KEY,
-                new AnaTurnRequest("kitchen", "Oi", "b", List.of(), false),
+                new AnaTurnRequest("kitchen", "Oi", "b", List.of(), false, Deadline.after(Duration.ofSeconds(60))),
                 lock,
                 memoryAvailable
         );

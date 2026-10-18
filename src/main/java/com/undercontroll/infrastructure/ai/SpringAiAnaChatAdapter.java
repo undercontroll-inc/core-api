@@ -6,6 +6,7 @@ import com.undercontroll.domain.gateway.ChatStreamSink;
 import com.undercontroll.domain.model.chat.AnaReply;
 import com.undercontroll.domain.model.chat.AnaTurnRequest;
 import com.undercontroll.domain.model.chat.ChatMessage;
+import com.undercontroll.domain.support.Deadline;
 import com.undercontroll.domain.support.Durations;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -16,9 +17,12 @@ import org.springframework.ai.chat.model.ChatResponse;
 import reactor.core.Disposable;
 import reactor.core.Disposables;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
@@ -27,15 +31,21 @@ public class SpringAiAnaChatAdapter implements AnaChatGateway {
     private final ChatClient anaChatClient;
     private final AnaWebSearchTool anaWebSearchTool;
     private final AnaShopTools anaShopTools;
+    private final Duration firstTokenTimeout;
+    private final Duration idleTimeout;
 
     public SpringAiAnaChatAdapter(
             ChatClient anaChatClient,
             AnaWebSearchTool anaWebSearchTool,
-            AnaShopTools anaShopTools
+            AnaShopTools anaShopTools,
+            Duration firstTokenTimeout,
+            Duration idleTimeout
     ) {
         this.anaChatClient = anaChatClient;
         this.anaWebSearchTool = anaWebSearchTool;
         this.anaShopTools = anaShopTools;
+        this.firstTokenTimeout = firstTokenTimeout;
+        this.idleTimeout = idleTimeout;
     }
 
     @Override
@@ -53,7 +63,7 @@ public class SpringAiAnaChatAdapter implements AnaChatGateway {
             }
             log.warn("Ana chat interrupted conversationId={} durationMs={} cause={}",
                     turn.conversationId(), Durations.millisSince(started), ex.toString());
-            return AnaReply.partial(text.content(), AnaFinishReason.INTERRUPTED);
+            return AnaReply.partial(text.content(), AnaFinishReason.of(ex));
         }
         if (text.isBlank()) {
             log.warn("Ana chat unavailable conversationId={} durationMs={}",
@@ -97,7 +107,14 @@ public class SpringAiAnaChatAdapter implements AnaChatGateway {
         } else {
             spec = spec.tools(anaShopTools);
         }
-        return spec.stream().chatResponse();
+        return withDeadline(spec.stream().chatResponse(), turn.deadline(), firstTokenTimeout, idleTimeout);
+    }
+
+    static <T> Flux<T> withDeadline(Flux<T> source, Deadline deadline, Duration firstToken, Duration idle) {
+        return source.timeout(
+                Mono.defer(() -> Mono.delay(deadline.cap(firstToken))),
+                item -> Mono.defer(() -> Mono.delay(deadline.cap(idle)))
+        );
     }
 
     static List<Message> history(List<ChatMessage> history) {
@@ -199,10 +216,13 @@ public class SpringAiAnaChatAdapter implements AnaChatGateway {
             }
             log.warn("Ana chat stream failed conversationId={} partial={} durationMs={} cause={}",
                     conversationId, !text.isBlank(), Durations.millisSince(started), error.toString());
-            if (text.isBlank()) {
-                sink.error(AnaUnavailableException.CODE, AnaUnavailableException.MESSAGE);
+            boolean timeout = error instanceof TimeoutException;
+            if (!text.isBlank()) {
+                sink.partial(text.content(), AnaFinishReason.of(error));
+            } else if (timeout) {
+                sink.error(AnaUnavailableException.TIMEOUT_CODE, AnaUnavailableException.TIMEOUT_MESSAGE);
             } else {
-                sink.partial(text.content(), AnaFinishReason.INTERRUPTED);
+                sink.error(AnaUnavailableException.CODE, AnaUnavailableException.MESSAGE);
             }
         }
 

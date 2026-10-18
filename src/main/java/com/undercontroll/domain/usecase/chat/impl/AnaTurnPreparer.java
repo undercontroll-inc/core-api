@@ -16,6 +16,7 @@ import com.undercontroll.domain.model.chat.AnaWebSearchNeed;
 import com.undercontroll.domain.model.chat.ChatMessage;
 import com.undercontroll.domain.model.chat.ConversationKey;
 import com.undercontroll.domain.model.chat.ShopBriefingWriter;
+import com.undercontroll.domain.support.Deadline;
 import com.undercontroll.domain.usecase.chat.AnaChatSession;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
@@ -36,6 +37,7 @@ class AnaTurnPreparer {
     private final OrderGateway orderGateway;
     private final AnaConversationMemory memory;
     private final Duration lockTtl;
+    private final Duration turnTimeout;
 
     AnaTurnPreparer(
             ObjectProvider<AnaChatGateway> anaChatGateway,
@@ -43,7 +45,8 @@ class AnaTurnPreparer {
             ShopSnapshotLoader shopSnapshotLoader,
             OrderGateway orderGateway,
             AnaConversationMemory memory,
-            @Value("${undercontroll.ai.ana.lock-ttl:90s}") Duration lockTtl
+            @Value("${undercontroll.ai.ana.lock-ttl:90s}") Duration lockTtl,
+            @Value("${undercontroll.ai.ana.turn-timeout:60s}") Duration turnTimeout
     ) {
         this.anaChatGateway = anaChatGateway;
         this.currentUserIdPort = currentUserIdPort;
@@ -51,6 +54,7 @@ class AnaTurnPreparer {
         this.orderGateway = orderGateway;
         this.memory = memory;
         this.lockTtl = lockTtl;
+        this.turnTimeout = turnTimeout;
     }
 
     AnaChatGateway gateway() {
@@ -62,6 +66,7 @@ class AnaTurnPreparer {
     }
 
     AnaChatSession prepare(String message, String conversationId) {
+        Deadline deadline = Deadline.after(turnTimeout);
         gateway();
         ConversationKey key = ConversationKey.of(currentUserIdPort.require(), conversationId);
         ConversationLock lock = lock(key);
@@ -84,7 +89,7 @@ class AnaTurnPreparer {
                     .toList();
             briefing = ShopBriefingWriter.appendOrderDetails(briefing, cited);
             boolean webSearch = AnaWebSearchNeed.matchesConversation(message, texts);
-            AnaTurnRequest turn = new AnaTurnRequest(key.conversationId(), message, briefing, history, webSearch);
+            AnaTurnRequest turn = new AnaTurnRequest(key.conversationId(), message, briefing, history, webSearch, deadline);
             return new AnaChatSession(key, turn, lock, memoryAvailable);
         } catch (RuntimeException ex) {
             release(lock);
