@@ -32,9 +32,18 @@ class TextsTest {
     }
 
     @Test
-    @DisplayName("alphanumeric keeps only folded letters and digits")
-    void alphanumeric() {
-        assertEquals("fogao", Texts.alphanumeric("Fogão!"));
-        assertEquals("", Texts.alphanumeric(null));
+    @DisplayName("blankToNull strips values and maps blanks to null")
+    void blankToNull() {
+        assertEquals("Ana", Texts.blankToNull("  Ana "));
+        assertNull(Texts.blankToNull(" "));
+        assertNull(Texts.blankToNull(null));
+    }
+
+    @Test
+    @DisplayName("clip trims and cuts at the max length")
+    void clip() {
+        assertEquals("liquidificador", Texts.clip(" liquidificador ", 28));
+        assertEquals("abc", Texts.clip("abc def", 4));
+        assertNull(Texts.clip(null, 4));
     }
 }

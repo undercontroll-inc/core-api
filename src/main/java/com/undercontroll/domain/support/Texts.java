@@ -40,10 +40,21 @@ public final class Texts {
         return WHITESPACE.matcher(folded).replaceAll(" ");
     }
 
-    public static String alphanumeric(String value) {
-        if (value == null) {
-            return "";
+    public static String blankToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
         }
-        return NON_ALPHANUMERIC.matcher(stripAccents(value.toLowerCase(Locale.ROOT))).replaceAll("");
+        return value.strip();
+    }
+
+    public static String clip(String value, int max) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.strip();
+        if (trimmed.length() <= max) {
+            return trimmed;
+        }
+        return trimmed.substring(0, max).strip();
     }
 }

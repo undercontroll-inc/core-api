@@ -6,7 +6,7 @@ import com.undercontroll.domain.gateway.CurrentUserIdPort;
 import com.undercontroll.domain.gateway.OrderGateway;
 import com.undercontroll.domain.gateway.ShopSnapshotLoader;
 import com.undercontroll.domain.model.Order;
-import com.undercontroll.domain.model.chat.ShopSuggestionComposer;
+import com.undercontroll.domain.model.chat.ShopBriefingWriter;
 import com.undercontroll.domain.usecase.chat.StreamChatSession;
 import org.springframework.beans.factory.ObjectProvider;
 
@@ -31,13 +31,13 @@ final class AnaConversationPrep {
         }
         Integer userId = currentUserIdPort.require();
         String conversationId = String.valueOf(userId);
-        String briefing = ShopSuggestionComposer.chatBriefing(shopSnapshotLoader.load());
+        String briefing = ShopBriefingWriter.chatBriefing(shopSnapshotLoader.load());
         String scope = conversationScope(message, llm.recentConversationTexts(conversationId));
-        List<Order> cited = ShopSuggestionComposer.mentionedOrderIds(scope).stream()
+        List<Order> cited = ShopBriefingWriter.mentionedOrderIds(scope).stream()
                 .map(orderGateway::findDetailById)
                 .flatMap(Optional::stream)
                 .toList();
-        briefing = ShopSuggestionComposer.appendOrderDetails(briefing, cited);
+        briefing = ShopBriefingWriter.appendOrderDetails(briefing, cited);
         return new Prepared(llm, userId, conversationId, briefing);
     }
 

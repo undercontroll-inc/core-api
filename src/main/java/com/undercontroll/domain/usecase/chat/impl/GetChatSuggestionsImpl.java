@@ -3,7 +3,7 @@ package com.undercontroll.domain.usecase.chat.impl;
 import com.undercontroll.domain.gateway.AnaSuggestionStore;
 import com.undercontroll.domain.gateway.CurrentUserIdPort;
 import com.undercontroll.domain.gateway.ShopSnapshotLoader;
-import com.undercontroll.domain.model.chat.ShopSuggestionComposer;
+import com.undercontroll.domain.model.chat.GroundedQuestionGenerator;
 import com.undercontroll.domain.usecase.chat.GetChatSuggestionsPort;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -38,7 +38,7 @@ public class GetChatSuggestionsImpl implements GetChatSuggestionsPort {
             return previous;
         }
         int count = Math.max(1, suggestionCount);
-        List<String> suggestions = ShopSuggestionComposer.groundedQuestions(
+        List<String> suggestions = GroundedQuestionGenerator.groundedQuestions(
                 shopSnapshotLoader.load(),
                 refresh ? previous : List.of(),
                 count

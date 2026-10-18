@@ -10,7 +10,7 @@ import com.undercontroll.domain.model.Order;
 import com.undercontroll.domain.model.OrderItem;
 import com.undercontroll.domain.model.User;
 import com.undercontroll.domain.model.chat.ShopSnapshot;
-import com.undercontroll.domain.model.chat.ShopSuggestionComposer;
+import com.undercontroll.domain.model.chat.ShopSnapshotFactory;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -56,7 +56,7 @@ class SendChatMessageImplTest {
     void replies() {
         when(anaChatGateway.getIfAvailable()).thenReturn(gateway);
         when(currentUserIdPort.require()).thenReturn(7);
-        when(shopSnapshotLoader.load()).thenReturn(ShopSuggestionComposer.from(
+        when(shopSnapshotLoader.load()).thenReturn(ShopSnapshotFactory.from(
                 List.of(
                         Order.builder()
                                 .id(12)

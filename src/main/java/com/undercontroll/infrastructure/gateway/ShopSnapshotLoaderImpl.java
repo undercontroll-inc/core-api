@@ -7,7 +7,7 @@ import com.undercontroll.domain.gateway.OrderGateway;
 import com.undercontroll.domain.gateway.ShopSnapshotLoader;
 import com.undercontroll.domain.model.Order;
 import com.undercontroll.domain.model.chat.ShopSnapshot;
-import com.undercontroll.domain.model.chat.ShopSuggestionComposer;
+import com.undercontroll.domain.model.chat.ShopSnapshotFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
@@ -28,15 +28,15 @@ public class ShopSnapshotLoaderImpl implements ShopSnapshotLoader {
     @Cacheable(value = "anaShopSnapshot", key = "'current'")
     public ShopSnapshot load() {
         List<Order> orders = new ArrayList<>();
-        orders.addAll(orderGateway.findOpenRepairs(ShopSuggestionComposer.OPEN_LIMIT));
-        orders.addAll(orderGateway.findReadyForPickup(ShopSuggestionComposer.PICKUP_LIMIT));
-        return ShopSuggestionComposer.from(
+        orders.addAll(orderGateway.findOpenRepairs(ShopSnapshotFactory.OPEN_LIMIT));
+        orders.addAll(orderGateway.findReadyForPickup(ShopSnapshotFactory.PICKUP_LIMIT));
+        return ShopSnapshotFactory.from(
                 orders,
                 componentGateway.findLowStock(
-                        ShopSuggestionComposer.LOW_STOCK_MAX,
-                        ShopSuggestionComposer.STOCK_LIMIT
+                        ShopSnapshotFactory.LOW_STOCK_MAX,
+                        ShopSnapshotFactory.STOCK_LIMIT
                 ),
-                demandGateway.findRecent(ShopSuggestionComposer.DEMAND_LIMIT),
+                demandGateway.findRecent(ShopSnapshotFactory.DEMAND_LIMIT),
                 announcementGateway.findLastAnnouncement().orElse(null)
         );
     }

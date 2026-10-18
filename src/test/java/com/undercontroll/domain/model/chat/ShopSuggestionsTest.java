@@ -16,14 +16,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class ShopSuggestionComposerTest {
+class ShopSuggestionsTest {
 
     @Test
     @DisplayName("builds one useful question per shop fact instead of repeating open repairs")
     void groundedQuestionsCoverDistinctFacts() {
         ShopSnapshot snapshot = sampleShop();
 
-        List<String> questions = ShopSuggestionComposer.groundedQuestions(snapshot, 4);
+        List<String> questions = GroundedQuestionGenerator.groundedQuestions(snapshot, 4);
 
         assertEquals(4, questions.size());
         String joined = String.join(" | ", questions);
@@ -31,17 +31,17 @@ class ShopSuggestionComposerTest {
         assertTrue(joined.contains("Resistência"));
         assertTrue(joined.contains("Capacitor"));
         assertTrue(joined.contains("João"));
-        assertFalse(ShopSuggestionComposer.similar(questions.get(0), questions.get(1)));
-        assertFalse(ShopSuggestionComposer.similar(questions.get(0), questions.get(2)));
+        assertFalse(QuestionSimilarity.similar(questions.get(0), questions.get(1)));
+        assertFalse(QuestionSimilarity.similar(questions.get(0), questions.get(2)));
     }
 
     @Test
     @DisplayName("refresh avoids the previous lot and picks other shop facts")
     void groundedQuestionsAvoidPreviousLot() {
         ShopSnapshot snapshot = richShop();
-        List<String> first = ShopSuggestionComposer.groundedQuestions(snapshot, 4);
+        List<String> first = GroundedQuestionGenerator.groundedQuestions(snapshot, 4);
 
-        List<String> next = ShopSuggestionComposer.groundedQuestions(snapshot, first, 4);
+        List<String> next = GroundedQuestionGenerator.groundedQuestions(snapshot, first, 4);
 
         assertEquals(4, next.size());
         String joined = String.join(" | ", next);
@@ -52,52 +52,16 @@ class ShopSuggestionComposerTest {
                 || joined.contains("Feriado"));
         for (String previous : first) {
             for (String candidate : next) {
-                assertFalse(ShopSuggestionComposer.similar(previous, candidate),
+                assertFalse(QuestionSimilarity.similar(previous, candidate),
                         () -> previous + " ~ " + candidate);
             }
         }
     }
 
     @Test
-    @DisplayName("drops paraphrases and fills with fact-based questions")
-    void mixDropsParaphrases() {
-        ShopSnapshot snapshot = sampleShop();
-
-        List<String> mixed = ShopSuggestionComposer.mix(
-                List.of(
-                        "Quais consertos estão abertos?",
-                        "Quais consertos estão em andamento?",
-                        "Tem conserto pendente?",
-                        "Quantos consertos tem abertos?"
-                ),
-                snapshot,
-                List.of(),
-                4
-        );
-
-        assertEquals(4, mixed.size());
-        String joined = String.join(" ", mixed);
-        assertTrue(joined.contains("Maria"));
-        assertTrue(joined.contains("Resistência"));
-        assertFalse(joined.contains("Quais consertos estão abertos?"));
-    }
-
-    @Test
-    @DisplayName("prompt lists real names so the LLM cannot invent a generic shop")
-    void promptContainsFacts() {
-        String prompt = ShopSuggestionComposer.prompt(sampleShop(), List.of("Pergunta velha"), 4);
-
-        assertTrue(prompt.contains("Maria Souza"));
-        assertTrue(prompt.contains("liquidificador Mondial"));
-        assertTrue(prompt.contains("Resistência"));
-        assertTrue(prompt.contains("Capacitor"));
-        assertTrue(prompt.contains("Pergunta velha"));
-    }
-
-    @Test
     @DisplayName("chat briefing lists open and pickup repairs, not delivered ones")
     void chatBriefing() {
-        String briefing = ShopSuggestionComposer.chatBriefing(sampleShop());
+        String briefing = ShopBriefingWriter.chatBriefing(sampleShop());
 
         assertTrue(briefing.contains("Maria"));
         assertTrue(briefing.contains("liquidificador"));
@@ -113,9 +77,9 @@ class ShopSuggestionComposerTest {
     @Test
     @DisplayName("extracts pedido ids from shop questions")
     void mentionedOrderIds() {
-        assertEquals(List.of(12), ShopSuggestionComposer.mentionedOrderIds("Me fala do pedido 12"));
-        assertEquals(List.of(3, 4), ShopSuggestionComposer.mentionedOrderIds("pedidos 3 e pedido 4"));
-        assertTrue(ShopSuggestionComposer.mentionedOrderIds("qual o pedido da pizza").isEmpty());
+        assertEquals(List.of(12), ShopBriefingWriter.mentionedOrderIds("Me fala do pedido 12"));
+        assertEquals(List.of(3, 4), ShopBriefingWriter.mentionedOrderIds("pedidos 3 e pedido 4"));
+        assertTrue(ShopBriefingWriter.mentionedOrderIds("qual o pedido da pizza").isEmpty());
     }
 
     @Test
@@ -132,7 +96,7 @@ class ShopSuggestionComposerTest {
                         .build()))
                 .build();
 
-        String briefing = ShopSuggestionComposer.appendOrderDetails("resumo", List.of(order));
+        String briefing = ShopBriefingWriter.appendOrderDetails("resumo", List.of(order));
 
         assertTrue(briefing.contains("resumo"));
         assertTrue(briefing.contains("pedido 12"));
@@ -142,7 +106,7 @@ class ShopSuggestionComposerTest {
     }
 
     private static ShopSnapshot richShop() {
-        return ShopSuggestionComposer.from(
+        return ShopSnapshotFactory.from(
                 List.of(
                         Order.builder()
                                 .id(12)
@@ -198,7 +162,7 @@ class ShopSuggestionComposerTest {
     }
 
     private static ShopSnapshot sampleShop() {
-        return ShopSuggestionComposer.from(
+        return ShopSnapshotFactory.from(
                 List.of(
                         Order.builder()
                                 .id(12)

@@ -16,7 +16,6 @@ import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.Objects;
 
 @Slf4j
 @Component
@@ -89,15 +88,7 @@ public class AnaShopTools {
 
     private static OrderLine toOrderLine(Order order) {
         User user = order.getUser();
-        String customer = null;
-        if (user != null) {
-            String joined = String.join(" ",
-                    Objects.toString(user.getName(), ""),
-                    Objects.toString(user.getLastName(), "")).trim();
-            if (!joined.isBlank()) {
-                customer = joined;
-            }
-        }
+        String customer = user == null ? null : user.fullName();
         int items = order.getOrderItems() == null ? 0 : order.getOrderItems().size();
         return new OrderLine(
                 order.getId(),

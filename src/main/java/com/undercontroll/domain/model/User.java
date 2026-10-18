@@ -4,6 +4,7 @@ import com.undercontroll.domain.enums.UserType;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @ToString
 @Getter
@@ -43,4 +44,8 @@ public class User {
 
     private UserType userType;
 
+    public String fullName() {
+        String joined = String.join(" ", Objects.toString(name, ""), Objects.toString(lastName, "")).trim();
+        return joined.isBlank() ? null : joined;
+    }
 }

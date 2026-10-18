@@ -11,6 +11,12 @@ public record ShopSnapshot(
 ) {
 
     public record RepairFact(Integer orderId, String customer, String appliance, String statusLabel) {
+
+        public static final String NOT_LOOKED_AT = "ainda não olhado";
+
+        public boolean notLookedAt() {
+            return NOT_LOOKED_AT.equals(statusLabel);
+        }
     }
 
     public record StockFact(String name, long quantity) {

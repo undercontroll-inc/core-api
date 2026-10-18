@@ -49,7 +49,7 @@ Depois de **qualquer** mudança de contrato HTTP (path, método, status, query, 
 - Insights: um `ChatModel`; payload estruturado (`.entity(...)`). Sem segundo roundtrip tipo `extractJson`. Sem `ChatModel` (`INSIGHTS_PROVIDER=none`) → insights/Ana indisponíveis (Ana: 503). Gemini precisa de `GEMINI_API_KEY` (ou `GOOGLE_API_KEY`) no processo.
 - Texto visível de insight: mês por extenso ("mês de agosto de 2026"), nunca `2026-08` nem a palavra `bucket`.
 - `spring.jpa.open-in-view: false`. Associação LAZY só dentro de `@Transactional` (ou EntityGraph / fetch join). Não mapear proxy depois da sessão fechada.
-- Sugestões da Ana saem de fatos do banco (`ShopSuggestionComposer.groundedQuestions`), sem LLM. O briefing do chat usa o mesmo snapshot (abertos, pickup, estoque, demandas, aviso). Listagens da oficina usam query limitada, não `findAll` da tabela toda.
+- Sugestões da Ana saem de fatos do banco (`GroundedQuestionGenerator.groundedQuestions`), sem LLM. O briefing do chat usa o mesmo snapshot (abertos, pickup, estoque, demandas, aviso). Listagens da oficina usam query limitada, não `findAll` da tabela toda.
 - Não commitar `.env`, credenciais, nem `jwt.secret` real.
 
 ## Gotchas
