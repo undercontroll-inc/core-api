@@ -28,6 +28,11 @@ spring:
     async:
       request-timeout: 120s
 
+  task:
+    scheduling:
+      pool:
+        size: 2
+
   http:
     client:
       connect-timeout: 5s
@@ -156,7 +161,12 @@ undercontroll:
       max-output-tokens: 4096
       thinking: ${INSIGHTS_THINKING:low}
       prompt-version: "7"
-      cron: "0 0 4 1 * *"
+      poll-interval: ${INSIGHTS_POLL_INTERVAL:5m}
+      worker-interval: ${INSIGHTS_WORKER_INTERVAL:30s}
+      job-deadline: ${INSIGHTS_JOB_DEADLINE:5m}
+      lease-duration: 10m
+      max-job-attempts: 3
+      reschedule-delay: 5m
       max-insights: 7
       repair-catalog-days: 90
     transcription:

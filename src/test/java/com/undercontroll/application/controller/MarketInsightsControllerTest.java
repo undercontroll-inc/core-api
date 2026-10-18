@@ -1,9 +1,7 @@
 package com.undercontroll.application.controller;
 
 import com.undercontroll.application.controller.impl.MarketInsightsController;
-import com.undercontroll.domain.usecase.insights.EnqueueInsightJobPort;
 import com.undercontroll.domain.usecase.insights.GetMarketInsightsPort;
-import com.undercontroll.domain.usecase.insights.ProcessInsightJobsPort;
 import com.undercontroll.infrastructure.config.SecurityConfig;
 import com.undercontroll.domain.gateway.TokenGateway;
 import com.undercontroll.domain.exception.MarketDataUnavailableException;
@@ -14,7 +12,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -28,7 +25,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@ActiveProfiles("dev")
 @Import({SecurityConfig.class})
 @AutoConfigureMockMvc
 @WebMvcTest(MarketInsightsController.class)
@@ -39,12 +35,6 @@ class MarketInsightsControllerTest {
 
     @MockitoBean
     private GetMarketInsightsPort getMarketInsightsPort;
-
-    @MockitoBean
-    private EnqueueInsightJobPort enqueueInsightJobPort;
-
-    @MockitoBean
-    private ProcessInsightJobsPort processInsightJobsPort;
 
     @MockitoBean
     private TokenGateway tokenGateway;
@@ -68,52 +58,6 @@ class MarketInsightsControllerTest {
     void getForbiddenForCustomer() throws Exception {
         mockMvc.perform(get("/v1/api/insights"))
                 .andExpect(status().isForbidden());
-    }
-
-    @Test
-    @WithMockUser(roles = "ADMINISTRATOR")
-    @DisplayName("POST /v1/api/insights returns 200 when generation succeeds")
-    void adminCreatesInsights() throws Exception {
-        when(enqueueInsightJobPort.execute(true))
-                .thenReturn(new EnqueueInsightJobPort.Result(EnqueueInsightJobPort.Result.Status.ENQUEUED, null));
-
-        mockMvc.perform(post("/v1/api/insights"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(""));
-        verify(processInsightJobsPort).execute();
-    }
-
-    @Test
-    @WithMockUser(roles = "ADMINISTRATOR")
-    @DisplayName("POST /v1/api/insights returns 409 without a published snapshot and 503 when insights are disabled")
-    void adminCreateWithoutSnapshotOrProvider() throws Exception {
-        when(enqueueInsightJobPort.execute(true)).thenReturn(EnqueueInsightJobPort.Result.awaitingData());
-        mockMvc.perform(post("/v1/api/insights")).andExpect(status().isConflict());
-
-        when(enqueueInsightJobPort.execute(true)).thenReturn(EnqueueInsightJobPort.Result.disabled());
-        mockMvc.perform(post("/v1/api/insights")).andExpect(status().isServiceUnavailable());
-
-        verifyNoInteractions(processInsightJobsPort);
-    }
-
-    @Test
-    @WithMockUser(roles = "CUSTOMER")
-    @DisplayName("POST /v1/api/insights is forbidden for customers")
-    void postForbiddenForCustomer() throws Exception {
-        mockMvc.perform(post("/v1/api/insights"))
-                .andExpect(status().isForbidden());
-
-        verify(enqueueInsightJobPort, never()).execute(true);
-    }
-
-    @Test
-    @DisplayName("POST /v1/api/insights is unauthorized without a token")
-    void postUnauthorizedWithoutToken() throws Exception {
-        mockMvc.perform(post("/v1/api/insights"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("UNAUTHENTICATED"));
-
-        verifyNoInteractions(enqueueInsightJobPort);
     }
 
     @Test

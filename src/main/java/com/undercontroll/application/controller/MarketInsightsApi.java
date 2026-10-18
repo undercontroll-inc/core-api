@@ -2,7 +2,6 @@ package com.undercontroll.application.controller;
 
 import com.undercontroll.application.dto.insights.MarketInsightsResponse;
 import com.undercontroll.application.controller.doc.ApiResponseDocumentation.GetApiResponses;
-import com.undercontroll.application.controller.doc.ApiResponseDocumentation.PostApiResponses;
 import com.undercontroll.application.controller.doc.ApiResponseDocumentation.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -13,7 +12,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 @Tag(name = "Insights", description = "Monthly AI-generated insights from the ETL pipeline and workshop repairs")
@@ -33,9 +31,4 @@ public interface MarketInsightsApi {
     )
     @GetMapping
     ResponseEntity<MarketInsightsResponse> getInsights();
-
-    @Operation(summary = "Generate the monthly insights batch (dev profile only; overwrites the existing batch)")
-    @PostApiResponses
-    @PostMapping
-    ResponseEntity<Void> createInsights();
 }
