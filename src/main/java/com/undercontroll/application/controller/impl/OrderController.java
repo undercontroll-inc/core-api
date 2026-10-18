@@ -11,8 +11,6 @@ import com.undercontroll.application.controller.OrderApi;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -40,24 +38,6 @@ public class OrderController implements OrderApi {
 
     @Override
     public ResponseEntity<GetAllOrdersResponse> getOrders(Integer userId, Integer page, Integer size) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-
-        boolean isAdmin = auth.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMINISTRATOR"));
-
-        if (!isAdmin) {
-            Integer authenticatedUserId;
-            try {
-                authenticatedUserId = Integer.parseInt(auth.getName());
-            } catch (NumberFormatException ex) {
-                return ResponseEntity.status(403).build();
-            }
-
-            if (userId == null || !authenticatedUserId.equals(userId)) {
-                return ResponseEntity.status(403).build();
-            }
-        }
-
         return ResponseEntity.ok(mapper.toResponse(getOrdersPort.execute(userId, page, size)));
     }
 

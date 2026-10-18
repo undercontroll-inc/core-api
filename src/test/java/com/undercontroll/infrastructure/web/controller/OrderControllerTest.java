@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.undercontroll.application.dto.order.CreateOrderRequest;
 import com.undercontroll.application.dto.order.UpdateOrderRequest;
 import com.undercontroll.domain.usecase.user.UserOutput;
+import com.undercontroll.domain.exception.UnauthorizedOrderOperation;
 import com.undercontroll.domain.enums.OrderStatus;
 import com.undercontroll.domain.enums.UserType;
 import com.undercontroll.domain.gateway.TokenGateway;
@@ -184,11 +185,13 @@ class OrderControllerTest {
     @Test
     @DisplayName("GET /v1/api/orders - CUSTOMER without userId should be forbidden and return 403")
     void customerShouldBeForbiddenToGetAllOrders() throws Exception {
+        when(getOrdersPort.execute(isNull(), anyInt(), anyInt()))
+                .thenThrow(new UnauthorizedOrderOperation("Customers can only list their own orders"));
+
         mockMvc.perform(get("/v1/api/orders")
                         .with(user("customer@example.com").roles("CUSTOMER")))
-                .andExpect(status().isForbidden());
-
-        verify(getOrdersPort, never()).execute(any(), anyInt(), anyInt());
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(UnauthorizedOrderOperation.CODE));
     }
 
     @Test
@@ -266,12 +269,13 @@ class OrderControllerTest {
     @Test
     @DisplayName("GET /v1/api/orders?userId=X - CUSTOMER requesting another user's orders should be forbidden")
     void customerShouldBeForbiddenToGetAnotherUsersOrders() throws Exception {
+        when(getOrdersPort.execute(eq(2), anyInt(), anyInt()))
+                .thenThrow(new UnauthorizedOrderOperation("Customers can only list their own orders"));
+
         mockMvc.perform(get("/v1/api/orders")
                         .with(user("1").roles("CUSTOMER"))
                         .param("userId", "2"))
                 .andExpect(status().isForbidden());
-
-        verify(getOrdersPort, never()).execute(any(), anyInt(), anyInt());
     }
 
     @Test
