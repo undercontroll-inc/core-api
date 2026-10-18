@@ -2,6 +2,7 @@ package com.undercontroll.infrastructure.ai;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.undercontroll.domain.exception.InsightLlmException;
 import com.undercontroll.domain.exception.LlmOutputException;
 import com.undercontroll.domain.insight.InsightContract;
 import com.undercontroll.domain.model.insight.InsightCandidate;
@@ -11,6 +12,7 @@ import com.undercontroll.domain.model.insight.InsightGenerationInput;
 import com.undercontroll.domain.model.insight.InsightGenerationSettings;
 import com.undercontroll.domain.model.insight.InsightMetric;
 import com.undercontroll.domain.model.insight.InsightType;
+import com.undercontroll.domain.model.insight.LlmFailure;
 import com.undercontroll.domain.model.insight.MetricUnit;
 import com.undercontroll.domain.model.insight.RepairRelation;
 import com.undercontroll.domain.model.market.MatchCoverage;
@@ -26,7 +28,11 @@ import org.springframework.ai.google.genai.GoogleGenAiChatOptions;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.openai.api.ResponseFormat;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.client.HttpClientErrorException;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -51,7 +57,7 @@ class SpringAiInsightsLlmAdapterTest {
             MatchCoverage.empty(), List.of(CANDIDATE), List.of(), List.of());
     private static final InsightContract CONTRACT = new InsightContract(3);
     private static final InsightGenerationSettings SETTINGS =
-            new InsightGenerationSettings("gemini", "gemini-2.5-flash", "7", 3, 90);
+            new InsightGenerationSettings("gemini", "gemini-2.5-flash", "7", 3, 90, "hash");
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final ChatClient chatClient = mock(ChatClient.class, RETURNS_DEEP_STUBS);
@@ -106,17 +112,36 @@ class SpringAiInsightsLlmAdapterTest {
     }
 
     @Test
-    @DisplayName("truncated, empty or malformed output is an output error")
+    @DisplayName("truncated, empty or malformed output is classified as invalid output")
     void outputErrors() {
         SpringAiInsightsLlmAdapter adapter = adapter(geminiDefaults);
         InsightDraftRequest request = InsightDraftRequest.first(INPUT, CONTRACT);
 
         stubResponse("{\"insights\":[", "MAX_TOKENS");
-        assertThrows(LlmOutputException.class, () -> adapter.draft(request));
+        assertEquals(LlmFailure.Kind.INVALID_OUTPUT, assertThrows(InsightLlmException.class,
+                () -> adapter.draft(request)).failure().kind());
         stubResponse(" ", "STOP");
-        assertThrows(LlmOutputException.class, () -> adapter.draft(request));
+        assertEquals(LlmFailure.Kind.INVALID_OUTPUT, assertThrows(InsightLlmException.class,
+                () -> adapter.draft(request)).failure().kind());
         stubResponse("not json", "STOP");
-        assertThrows(LlmOutputException.class, () -> adapter.draft(request));
+        InsightLlmException malformed = assertThrows(InsightLlmException.class, () -> adapter.draft(request));
+        assertEquals(LlmFailure.Kind.INVALID_OUTPUT, malformed.failure().kind());
+        assertTrue(malformed.getCause() instanceof LlmOutputException);
+    }
+
+    @Test
+    @DisplayName("provider errors keep their HTTP status and Retry-After")
+    @SuppressWarnings("unchecked")
+    void providerErrors() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(HttpHeaders.RETRY_AFTER, "12");
+        when(chatClient.prompt().options(any(ChatOptions.class)).user(any(Consumer.class)).call().chatResponse())
+                .thenThrow(HttpClientErrorException.create(HttpStatus.TOO_MANY_REQUESTS, "slow down", headers, null, null));
+
+        InsightLlmException error = assertThrows(InsightLlmException.class,
+                () -> adapter(geminiDefaults).draft(InsightDraftRequest.first(INPUT, CONTRACT)));
+
+        assertEquals(new LlmFailure(LlmFailure.Kind.RATE_LIMITED, 429, Duration.ofSeconds(12)), error.failure());
     }
 
     @Test

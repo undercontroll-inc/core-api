@@ -1,9 +1,9 @@
 package com.undercontroll.application.controller;
 
 import com.undercontroll.application.controller.impl.MarketInsightsController;
-import com.undercontroll.domain.usecase.insights.GenerateMonthlyInsightsPort;
+import com.undercontroll.domain.usecase.insights.EnqueueInsightJobPort;
 import com.undercontroll.domain.usecase.insights.GetMarketInsightsPort;
-import com.undercontroll.domain.usecase.insights.InsightGenerationResult;
+import com.undercontroll.domain.usecase.insights.ProcessInsightJobsPort;
 import com.undercontroll.infrastructure.config.SecurityConfig;
 import com.undercontroll.domain.gateway.TokenGateway;
 import com.undercontroll.domain.exception.MarketDataUnavailableException;
@@ -41,7 +41,10 @@ class MarketInsightsControllerTest {
     private GetMarketInsightsPort getMarketInsightsPort;
 
     @MockitoBean
-    private GenerateMonthlyInsightsPort generateMonthlyInsightsPort;
+    private EnqueueInsightJobPort enqueueInsightJobPort;
+
+    @MockitoBean
+    private ProcessInsightJobsPort processInsightJobsPort;
 
     @MockitoBean
     private TokenGateway tokenGateway;
@@ -71,12 +74,26 @@ class MarketInsightsControllerTest {
     @WithMockUser(roles = "ADMINISTRATOR")
     @DisplayName("POST /v1/api/insights returns 200 when generation succeeds")
     void adminCreatesInsights() throws Exception {
-        when(generateMonthlyInsightsPort.execute(true))
-                .thenReturn(InsightGenerationResult.success("2026-08"));
+        when(enqueueInsightJobPort.execute(true))
+                .thenReturn(new EnqueueInsightJobPort.Result(EnqueueInsightJobPort.Result.Status.ENQUEUED, null));
 
         mockMvc.perform(post("/v1/api/insights"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(""));
+        verify(processInsightJobsPort).execute();
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMINISTRATOR")
+    @DisplayName("POST /v1/api/insights returns 409 without a published snapshot and 503 when insights are disabled")
+    void adminCreateWithoutSnapshotOrProvider() throws Exception {
+        when(enqueueInsightJobPort.execute(true)).thenReturn(EnqueueInsightJobPort.Result.awaitingData());
+        mockMvc.perform(post("/v1/api/insights")).andExpect(status().isConflict());
+
+        when(enqueueInsightJobPort.execute(true)).thenReturn(EnqueueInsightJobPort.Result.disabled());
+        mockMvc.perform(post("/v1/api/insights")).andExpect(status().isServiceUnavailable());
+
+        verifyNoInteractions(processInsightJobsPort);
     }
 
     @Test
@@ -86,7 +103,7 @@ class MarketInsightsControllerTest {
         mockMvc.perform(post("/v1/api/insights"))
                 .andExpect(status().isForbidden());
 
-        verify(generateMonthlyInsightsPort, never()).execute(true);
+        verify(enqueueInsightJobPort, never()).execute(true);
     }
 
     @Test
@@ -96,7 +113,7 @@ class MarketInsightsControllerTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("UNAUTHENTICATED"));
 
-        verifyNoInteractions(generateMonthlyInsightsPort);
+        verifyNoInteractions(enqueueInsightJobPort);
     }
 
     @Test

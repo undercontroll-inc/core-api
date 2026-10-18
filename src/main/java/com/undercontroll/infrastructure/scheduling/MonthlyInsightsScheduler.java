@@ -1,9 +1,8 @@
 package com.undercontroll.infrastructure.scheduling;
 
-import com.undercontroll.domain.usecase.insights.GenerateMonthlyInsightsPort;
-import com.undercontroll.domain.model.insight.InsightGenerationSettings;
-import com.undercontroll.domain.usecase.insights.InsightGenerationResult;
 import com.undercontroll.domain.support.Durations;
+import com.undercontroll.domain.usecase.insights.EnqueueInsightJobPort;
+import com.undercontroll.domain.usecase.insights.ProcessInsightJobsPort;
 import com.undercontroll.infrastructure.logging.MdcKeys;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,22 +17,18 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class MonthlyInsightsScheduler {
 
-    private final GenerateMonthlyInsightsPort generateMonthlyInsightsPort;
-    private final InsightGenerationSettings insightGenerationSettings;
+    private final EnqueueInsightJobPort enqueueInsightJobPort;
+    private final ProcessInsightJobsPort processInsightJobsPort;
 
-    @Scheduled(cron = "${undercontroll.ai.insights.cron:0 0 4 1 * *}")
+    @Scheduled(cron = "${undercontroll.ai.insights.cron:0 0 4 1 * *}", zone = "UTC")
     public void generateMonthlyInsights() {
         long started = System.nanoTime();
         MDC.put(MdcKeys.CORRELATION_ID, "insights-" + UUID.randomUUID());
         try {
-            log.info("Starting monthly insights job with provider={}", insightGenerationSettings.provider());
-            InsightGenerationResult result = generateMonthlyInsightsPort.execute(false);
-            log.info(
-                    "Monthly insights job finished status={} bucketKey={} durationMs={}",
-                    result.status(),
-                    result.bucketKey(),
-                    Durations.millisSince(started)
-            );
+            EnqueueInsightJobPort.Result result = enqueueInsightJobPort.execute(false);
+            int processed = processInsightJobsPort.execute();
+            log.info("Monthly insights job finished status={} processed={} durationMs={}",
+                    result.status(), processed, Durations.millisSince(started));
         } finally {
             MDC.clear();
         }

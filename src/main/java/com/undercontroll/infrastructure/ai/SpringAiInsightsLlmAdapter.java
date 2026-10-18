@@ -2,6 +2,7 @@ package com.undercontroll.infrastructure.ai;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.undercontroll.domain.exception.InsightLlmException;
 import com.undercontroll.domain.exception.LlmOutputException;
 import com.undercontroll.domain.gateway.InsightsLlmGateway;
 import com.undercontroll.domain.insight.InsightContract;
@@ -11,6 +12,7 @@ import com.undercontroll.domain.model.insight.InsightDraftRequest;
 import com.undercontroll.domain.model.insight.InsightGenerationInput;
 import com.undercontroll.domain.model.insight.InsightGenerationSettings;
 import com.undercontroll.domain.model.insight.InsightMonthLabel;
+import com.undercontroll.domain.model.insight.LlmFailure;
 import com.undercontroll.domain.support.Durations;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -62,6 +64,20 @@ public class SpringAiInsightsLlmAdapter implements InsightsLlmGateway {
             return new InsightDraft(List.of());
         }
         long started = System.nanoTime();
+        try {
+            return requestDraft(request, started);
+        } catch (InsightLlmException ex) {
+            throw ex;
+        } catch (RuntimeException ex) {
+            LlmFailure failure = LlmErrorClassifier.classify(ex);
+            log.warn("Insight draft failed bucketKey={} kind={} status={} durationMs={}",
+                    input.bucketKey(), failure.kind(), failure.httpStatus(), Durations.millisSince(started));
+            throw new InsightLlmException(failure, failure.kind() + ": " + ex.getMessage(), ex);
+        }
+    }
+
+    private InsightDraft requestDraft(InsightDraftRequest request, long started) {
+        InsightGenerationInput input = request.input();
         ChatResponse response = chatClient.prompt()
                 .options(structuredOptions(request))
                 .user(user -> user.text(userPrompt, StandardCharsets.UTF_8).params(params(request)))

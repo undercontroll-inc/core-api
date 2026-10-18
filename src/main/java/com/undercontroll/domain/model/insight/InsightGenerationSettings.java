@@ -5,6 +5,7 @@ public record InsightGenerationSettings(
         String model,
         String promptVersion,
         int maxInsights,
-        int repairCatalogDays
+        int repairCatalogDays,
+        String modelConfigHash
 ) {
 }

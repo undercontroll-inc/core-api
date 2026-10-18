@@ -5,6 +5,7 @@ import com.undercontroll.domain.gateway.AnaChatGateway;
 import com.undercontroll.domain.gateway.AudioTranscriptionGateway;
 import com.undercontroll.domain.gateway.InsightsLlmGateway;
 import com.undercontroll.domain.model.insight.InsightGenerationSettings;
+import com.undercontroll.domain.model.insight.InsightJobSettings;
 import com.undercontroll.infrastructure.ai.config.AiFeatureSettings;
 import com.undercontroll.infrastructure.ai.config.AiProvider;
 import com.undercontroll.infrastructure.ai.config.ChatModelFactory;
@@ -15,6 +16,8 @@ import org.springframework.boot.convert.ApplicationConversionService;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.web.client.RestClient;
+
+import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -86,6 +89,23 @@ class AiConfigurationMatrixTest {
             assertThat(context).doesNotHaveBean(AudioTranscriptionGateway.class);
             assertThat(context).hasSingleBean(InsightsLlmGateway.class);
         });
+    }
+
+    @Test
+    @DisplayName("the insight model config hash changes with the model and keeps job settings valid")
+    void modelConfigHash() {
+        runner.withPropertyValues("undercontroll.ai.insights.provider=gemini").run(first ->
+                runner.withPropertyValues(
+                        "undercontroll.ai.insights.provider=gemini",
+                        "undercontroll.ai.insights.model=gemini-3.8-flash"
+                ).run(second -> {
+                    String original = first.getBean(InsightGenerationSettings.class).modelConfigHash();
+                    assertThat(original).hasSize(64);
+                    assertThat(original).isNotEqualTo(second.getBean(InsightGenerationSettings.class).modelConfigHash());
+                    assertThat(first.getBean(InsightJobSettings.class).leaseDuration()).isEqualTo(Duration.ofMinutes(10));
+                }));
+        runner.withPropertyValues("undercontroll.ai.insights.lease-duration=1m").run(context ->
+                assertThat(context.getStartupFailure()).hasStackTraceContaining("lease-duration"));
     }
 
     @Test

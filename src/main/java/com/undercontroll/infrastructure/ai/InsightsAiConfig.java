@@ -2,7 +2,10 @@ package com.undercontroll.infrastructure.ai;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.undercontroll.domain.gateway.InsightsLlmGateway;
+import com.undercontroll.domain.insight.InsightRetryPolicy;
 import com.undercontroll.domain.model.insight.InsightGenerationSettings;
+import com.undercontroll.domain.model.insight.InsightJobSettings;
+import com.undercontroll.domain.support.Sleeper;
 import com.undercontroll.infrastructure.ai.config.AiFeatureSettings;
 import com.undercontroll.infrastructure.ai.config.ChatModelFactory;
 import com.undercontroll.infrastructure.ai.config.ConditionalOnAiFeature;
@@ -17,7 +20,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
 
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.util.HexFormat;
+import java.util.Random;
+import java.util.random.RandomGenerator;
 
 @Configuration
 public class InsightsAiConfig {
@@ -46,8 +54,52 @@ public class InsightsAiConfig {
                 insightsAiSettings.model(),
                 promptVersion,
                 maxInsights,
-                repairCatalogDays
+                repairCatalogDays,
+                modelConfigHash(insightsAiSettings, maxInsights, repairCatalogDays)
         );
+    }
+
+    @Bean
+    InsightJobSettings insightJobSettings(
+            @Value("${undercontroll.ai.insights.job-deadline:5m}") Duration deadline,
+            @Value("${undercontroll.ai.insights.lease-duration:10m}") Duration leaseDuration,
+            @Value("${undercontroll.ai.insights.max-job-attempts:3}") int maxAttempts,
+            @Value("${undercontroll.ai.insights.reschedule-delay:5m}") Duration rescheduleDelay
+    ) {
+        return new InsightJobSettings(deadline, leaseDuration, maxAttempts, rescheduleDelay);
+    }
+
+    @Bean
+    InsightRetryPolicy insightRetryPolicy() {
+        return InsightRetryPolicy.DEFAULT;
+    }
+
+    @Bean
+    Sleeper insightRetrySleeper() {
+        return duration -> Thread.sleep(duration.toMillis());
+    }
+
+    @Bean
+    RandomGenerator insightRetryRandom() {
+        return new Random();
+    }
+
+    static String modelConfigHash(AiFeatureSettings settings, int maxInsights, int repairCatalogDays) {
+        String config = String.join("|",
+                settings.provider().label(),
+                String.valueOf(settings.model()),
+                String.valueOf(settings.temperature()),
+                String.valueOf(settings.maxOutputTokens()),
+                settings.thinking().label(),
+                InsightContract.VERSION,
+                String.valueOf(maxInsights),
+                String.valueOf(repairCatalogDays));
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(config.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 is not available", ex);
+        }
     }
 
     @Bean

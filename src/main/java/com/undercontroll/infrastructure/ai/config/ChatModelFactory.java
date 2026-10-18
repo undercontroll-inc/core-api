@@ -22,6 +22,7 @@ import org.springframework.boot.http.client.reactive.ClientHttpConnectorSettings
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
+import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -149,6 +150,7 @@ public class ChatModelFactory {
                 .apiKey(requireOpenAiKey(settings))
                 .restClientBuilder(restClientBuilder(settings.timeout()))
                 .webClientBuilder(webClientBuilder(settings.timeout()))
+                .responseErrorHandler(new DefaultResponseErrorHandler())
                 .build();
     }
 

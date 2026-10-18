@@ -1,9 +1,8 @@
 package com.undercontroll.domain.usecase.insights.impl;
 
-import com.undercontroll.domain.enums.InsightGenerationStatus;
-import com.undercontroll.domain.gateway.MarketInsightGateway;
+import com.undercontroll.domain.gateway.InsightPublicationGateway;
 import com.undercontroll.domain.gateway.MarketViewGateway;
-import com.undercontroll.domain.model.MarketMonthlyInsight;
+import com.undercontroll.domain.model.insight.MarketInsightPublication;
 import com.undercontroll.domain.model.insight.InsightsPayload;
 import com.undercontroll.domain.usecase.insights.GetMarketInsightsPort;
 import org.junit.jupiter.api.DisplayName;
@@ -13,7 +12,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -32,7 +31,7 @@ class GetMarketInsightsImplTest {
     private MarketViewGateway marketViewGateway;
 
     @Mock
-    private MarketInsightGateway marketInsightGateway;
+    private InsightPublicationGateway insightPublicationGateway;
 
     @InjectMocks
     private GetMarketInsightsImpl getMarketInsights;
@@ -45,14 +44,14 @@ class GetMarketInsightsImplTest {
         GetMarketInsightsPort.Output output = getMarketInsights.execute();
 
         assertNull(output.payload());
-        verify(marketInsightGateway, never()).findSuccessfulByBucketKey(any());
+        verify(insightPublicationGateway, never()).findLatest();
     }
 
     @Test
-    @DisplayName("returns empty output when monthly batch was not generated yet")
+    @DisplayName("returns empty output when the latest publication belongs to another month")
     void emptyWhenNoSuccessfulBatch() {
         when(marketViewGateway.findCurrentBucketKey()).thenReturn(Optional.of("2026-08"));
-        when(marketInsightGateway.findSuccessfulByBucketKey("2026-08")).thenReturn(Optional.empty());
+        when(insightPublicationGateway.findLatest()).thenReturn(Optional.of(publication("2026-07", null)));
 
         assertEquals(GetMarketInsightsPort.Output.empty(), getMarketInsights.execute());
     }
@@ -68,32 +67,25 @@ class GetMarketInsightsImplTest {
                 List.of("Os dados refletem popularidade e preço anunciado, não volume de vendas.")
         );
         when(marketViewGateway.findCurrentBucketKey()).thenReturn(Optional.of("2026-08"));
-        when(marketInsightGateway.findSuccessfulByBucketKey("2026-08")).thenReturn(Optional.of(
-                MarketMonthlyInsight.builder()
-                        .bucketKey("2026-08")
-                        .status(InsightGenerationStatus.SUCCESS)
-                        .payload(payload)
-                        .generatedAt(LocalDateTime.of(2026, 8, 1, 4, 0))
-                        .build()
-        ));
+        when(insightPublicationGateway.findLatest()).thenReturn(Optional.of(publication("2026-08", payload)));
 
         GetMarketInsightsPort.Output output = getMarketInsights.execute();
 
         assertSame(payload, output.payload());
-        assertEquals("2026-08-01T04:00", output.generatedAt());
+        assertEquals("2026-09-01T04:00:00Z", output.generatedAt());
     }
 
     @Test
     @DisplayName("returns empty output when the stored payload could not be read")
     void emptyOnUnreadablePayload() {
         when(marketViewGateway.findCurrentBucketKey()).thenReturn(Optional.of("2026-08"));
-        when(marketInsightGateway.findSuccessfulByBucketKey("2026-08")).thenReturn(Optional.of(
-                MarketMonthlyInsight.builder()
-                        .bucketKey("2026-08")
-                        .status(InsightGenerationStatus.SUCCESS)
-                        .build()
-        ));
+        when(insightPublicationGateway.findLatest()).thenReturn(Optional.of(publication("2026-08", null)));
 
         assertEquals(GetMarketInsightsPort.Output.empty(), getMarketInsights.execute());
+    }
+
+    private static MarketInsightPublication publication(String bucketKey, InsightsPayload payload) {
+        return new MarketInsightPublication(1L, 1L, 1L, 10L, bucketKey, null, payload, "gemini", "m", "7",
+                Instant.parse("2026-09-01T04:00:00Z"));
     }
 }
