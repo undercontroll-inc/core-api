@@ -12,8 +12,11 @@ import java.util.List;
 @Repository
 public interface ComponentJpaRepository extends JpaRepository<ComponentPartJpaEntity, Integer> {
 
+    @Query("SELECT c FROM ComponentPartJpaEntity c")
+    List<ComponentPartJpaEntity> findSlice(Pageable pageable);
+
     @Query("SELECT c FROM ComponentPartJpaEntity c WHERE c.name = :name")
-    List<ComponentPartJpaEntity> findByName(@Param("name") String name);
+    List<ComponentPartJpaEntity> findByName(@Param("name") String name, Pageable pageable);
 
     @Query("""
             SELECT c FROM ComponentPartJpaEntity c
@@ -23,7 +26,7 @@ public interface ComponentJpaRepository extends JpaRepository<ComponentPartJpaEn
     List<ComponentPartJpaEntity> searchByName(@Param("name") String name, Pageable pageable);
 
     @Query("SELECT c FROM ComponentPartJpaEntity c WHERE c.category = :category")
-    List<ComponentPartJpaEntity> findByCategory(@Param("category") String category);
+    List<ComponentPartJpaEntity> findByCategory(@Param("category") String category, Pageable pageable);
 
     @Query("""
             SELECT c FROM ComponentPartJpaEntity c

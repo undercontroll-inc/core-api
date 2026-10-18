@@ -49,9 +49,9 @@ class UserUseCasesTest {
     @Test
     @DisplayName("list users picks the query by type and email filter")
     void getUsers() {
-        when(userGateway.findAllCustomersThatHaveEmail()).thenReturn(List.of(user(1, "ana")));
-        when(userGateway.findAllCustomers()).thenReturn(List.of(user(1, "ana"), user(2, "bia")));
-        when(userGateway.findAll()).thenReturn(List.of(user(1, "ana"), user(2, "bia"), user(3, "caio")));
+        when(userGateway.findCustomersWithEmail(GetUsersImpl.LIST_LIMIT)).thenReturn(List.of(user(1, "ana")));
+        when(userGateway.findCustomers(GetUsersImpl.LIST_LIMIT)).thenReturn(List.of(user(1, "ana"), user(2, "bia")));
+        when(userGateway.findAll(GetUsersImpl.LIST_LIMIT)).thenReturn(List.of(user(1, "ana"), user(2, "bia"), user(3, "caio")));
         GetUsersImpl useCase = new GetUsersImpl(userGateway);
 
         assertEquals(1, useCase.execute(UserType.CUSTOMER, true).size());

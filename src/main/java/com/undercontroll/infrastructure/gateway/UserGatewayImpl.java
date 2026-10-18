@@ -6,6 +6,8 @@ import com.undercontroll.infrastructure.mapper.UserMapper;
 import com.undercontroll.infrastructure.persistence.entity.UserJpaEntity;
 import com.undercontroll.infrastructure.persistence.repository.UserJpaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -51,15 +53,15 @@ public class UserGatewayImpl implements UserGateway {
     }
 
     @Override
-    public List<User> findAll() {
-        return userJpaRepository.findAll().stream()
+    public List<User> findAll(int limit) {
+        return userJpaRepository.findSlice(firstPage(limit)).stream()
                 .map(userMapper::toDomain)
                 .toList();
     }
 
     @Override
-    public List<User> findAllCustomers() {
-        return userJpaRepository.findAllCustomers().stream()
+    public List<User> findCustomers(int limit) {
+        return userJpaRepository.findCustomers(firstPage(limit)).stream()
                 .map(userMapper::toDomain)
                 .toList();
     }
@@ -70,10 +72,14 @@ public class UserGatewayImpl implements UserGateway {
     }
 
     @Override
-    public List<User> findAllCustomersThatHaveEmail() {
-        return userJpaRepository.findAllCustomersThatHaveEmail().stream()
+    public List<User> findCustomersWithEmail(int limit) {
+        return userJpaRepository.findCustomersWithEmail(firstPage(limit)).stream()
                 .map(userMapper::toDomain)
                 .toList();
+    }
+
+    private static PageRequest firstPage(int limit) {
+        return PageRequest.of(0, Math.max(1, limit), Sort.by(Sort.Direction.ASC, "id"));
     }
 
 }

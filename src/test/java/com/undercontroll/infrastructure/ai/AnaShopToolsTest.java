@@ -22,6 +22,8 @@ import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -84,7 +86,7 @@ class AnaShopToolsTest {
         List<AnaShopTools.PartLine> parts = tools.searchComponents(null, null);
 
         assertEquals(1, parts.size());
-        verify(componentGateway, never()).findAll();
+        verify(componentGateway, never()).findAll(anyInt());
     }
 
     @Test
@@ -98,7 +100,7 @@ class AnaShopToolsTest {
 
         assertEquals(1, parts.size());
         assertEquals(4L, parts.get(0).quantity());
-        verify(componentGateway, never()).findByName("resistência");
+        verify(componentGateway, never()).findByName(anyString(), anyInt());
         verify(componentGateway, never()).save(org.mockito.ArgumentMatchers.any());
     }
 
@@ -112,7 +114,7 @@ class AnaShopToolsTest {
         List<AnaShopTools.PartLine> parts = tools.searchComponents(null, "resistencias");
 
         assertEquals(1, parts.size());
-        verify(componentGateway, never()).findByCategory("resistencias");
+        verify(componentGateway, never()).findByCategory(anyString(), anyInt());
     }
 
     @Test

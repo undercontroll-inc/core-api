@@ -14,6 +14,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class GetUsersImpl implements GetUsersPort {
 
+    static final int LIST_LIMIT = 500;
+
     private final UserGateway userGateway;
 
     @Override
@@ -22,10 +24,10 @@ public class GetUsersImpl implements GetUsersPort {
 
         if (UserType.CUSTOMER.equals(type)) {
             users = Boolean.TRUE.equals(hasEmail)
-                    ? userGateway.findAllCustomersThatHaveEmail()
-                    : userGateway.findAllCustomers();
+                    ? userGateway.findCustomersWithEmail(LIST_LIMIT)
+                    : userGateway.findCustomers(LIST_LIMIT);
         } else {
-            users = userGateway.findAll();
+            users = userGateway.findAll(LIST_LIMIT);
         }
 
         return users.stream()

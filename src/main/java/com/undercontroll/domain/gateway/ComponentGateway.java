@@ -13,17 +13,17 @@ public interface ComponentGateway {
 
     Optional<ComponentPart> findById(Integer id);
 
-    List<ComponentPart> findAll();
+    List<ComponentPart> findAll(int limit);
 
     List<ComponentPart> findLowStock(long maxQuantity, int limit);
 
     List<ComponentPart> findLowestStock(int limit);
 
-    List<ComponentPart> findByName(String name);
+    List<ComponentPart> findByName(String name, int limit);
 
     List<ComponentPart> searchByName(String name, int limit);
 
-    List<ComponentPart> findByCategory(String category);
+    List<ComponentPart> findByCategory(String category, int limit);
 
     List<ComponentPart> searchByCategory(String category, int limit);
 

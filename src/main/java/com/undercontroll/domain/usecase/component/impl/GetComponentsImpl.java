@@ -14,6 +14,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class GetComponentsImpl implements GetComponentsPort {
 
+    static final int LIST_LIMIT = 500;
+
     private final ComponentGateway componentGateway;
 
     @Override
@@ -22,7 +24,7 @@ public class GetComponentsImpl implements GetComponentsPort {
         List<ComponentPart> components;
 
         if (category != null && !category.isBlank()) {
-            components = componentGateway.findByCategory(category);
+            components = componentGateway.findByCategory(category, LIST_LIMIT);
             if (name != null && !name.isBlank()) {
                 String needle = name.toLowerCase();
                 components = components.stream()
@@ -30,9 +32,9 @@ public class GetComponentsImpl implements GetComponentsPort {
                         .toList();
             }
         } else if (name != null && !name.isBlank()) {
-            components = componentGateway.findByName(name);
+            components = componentGateway.findByName(name, LIST_LIMIT);
         } else {
-            components = componentGateway.findAll();
+            components = componentGateway.findAll(LIST_LIMIT);
         }
 
         return components.stream()

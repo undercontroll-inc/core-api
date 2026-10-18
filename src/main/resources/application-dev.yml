@@ -57,3 +57,7 @@ jwt:
   access-token-expiration-minutes: ${JWT_ACCESS_TOKEN_EXPIRATION_MINUTES:15}
   # Refresh token expiration in days (default: 7 days)
   refresh-token-expiration-days: ${JWT_REFRESH_TOKEN_EXPIRATION_DAYS:7}
+
+undercontroll:
+  seed:
+    password: ${DEV_SEED_PASSWORD:}

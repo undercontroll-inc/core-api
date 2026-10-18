@@ -104,9 +104,9 @@ class ComponentUseCasesTest {
     @Test
     @DisplayName("listing filters by category and name, by name only, or returns all")
     void list() {
-        when(componentGateway.findByCategory("Elétrica")).thenReturn(List.of(part(1, "Capacitor"), part(2, "Fusível"), part(3, null)));
-        when(componentGateway.findByName("fus")).thenReturn(List.of(part(2, "Fusível")));
-        when(componentGateway.findAll()).thenReturn(List.of(part(1, "Capacitor")));
+        when(componentGateway.findByCategory("Elétrica", GetComponentsImpl.LIST_LIMIT)).thenReturn(List.of(part(1, "Capacitor"), part(2, "Fusível"), part(3, null)));
+        when(componentGateway.findByName("fus", GetComponentsImpl.LIST_LIMIT)).thenReturn(List.of(part(2, "Fusível")));
+        when(componentGateway.findAll(GetComponentsImpl.LIST_LIMIT)).thenReturn(List.of(part(1, "Capacitor")));
         GetComponentsImpl useCase = new GetComponentsImpl(componentGateway);
 
         assertEquals(List.of(2), useCase.execute("Elétrica", "FUS").stream().map(ComponentOutput::id).toList());

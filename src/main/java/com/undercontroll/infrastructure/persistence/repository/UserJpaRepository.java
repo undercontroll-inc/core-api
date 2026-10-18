@@ -1,6 +1,7 @@
 package com.undercontroll.infrastructure.persistence.repository;
 
 import com.undercontroll.infrastructure.persistence.entity.UserJpaEntity;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -16,13 +17,16 @@ public interface UserJpaRepository extends JpaRepository<UserJpaEntity, Integer>
     Optional<UserJpaEntity> findUserByPhone(String phone);
     Optional<UserJpaEntity> findUserByCpf(String cpf);
 
+    @Query("SELECT u FROM UserJpaEntity u")
+    List<UserJpaEntity> findSlice(Pageable pageable);
+
     @Query("SELECT u FROM UserJpaEntity u WHERE u.userType = 'CUSTOMER'")
-    List<UserJpaEntity> findAllCustomers();
+    List<UserJpaEntity> findCustomers(Pageable pageable);
 
     @Query("SELECT u FROM UserJpaEntity u WHERE u.userType = 'CUSTOMER' AND u.id = :id")
     Optional<UserJpaEntity> findCustomerById(@Param("id") Integer id);
 
     @Query("SELECT u FROM UserJpaEntity u WHERE u.userType = 'CUSTOMER' AND u.email IS NOT NULL")
-    List<UserJpaEntity> findAllCustomersThatHaveEmail();
+    List<UserJpaEntity> findCustomersWithEmail(Pageable pageable);
 
 }

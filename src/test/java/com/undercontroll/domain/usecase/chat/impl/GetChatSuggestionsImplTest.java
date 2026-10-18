@@ -103,7 +103,7 @@ class GetChatSuggestionsImplTest {
         assertTrue(joined.contains("Capacitor"));
         assertTrue(joined.contains("Feriado"));
         verify(orderGateway, never()).findAll();
-        verify(componentGateway, never()).findAll();
+        verify(componentGateway, never()).findAll(anyInt());
         verify(demandGateway, never()).findAll();
         verify(anaSuggestionStore).save(3, response);
     }

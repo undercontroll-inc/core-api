@@ -14,8 +14,9 @@ import com.undercontroll.domain.enums.AnnouncementType;
 import com.undercontroll.domain.enums.UserType;
 import com.undercontroll.domain.enums.OrderStatus;
 import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -26,30 +27,52 @@ import java.util.List;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
+@Profile("dev")
 public class DataInitializer {
+
+    static final String ADMIN_EMAIL = "admin@undercontroll.com";
 
     private final UserGateway userGateway;
     private final ComponentGateway componentGateway;
     private final AnnouncementGateway announcementGateway;
     private final OrderGateway orderGateway;
-
     private final PasswordEncoder encoder;
+    private final String seedPassword;
+
+    public DataInitializer(
+            UserGateway userGateway,
+            ComponentGateway componentGateway,
+            AnnouncementGateway announcementGateway,
+            OrderGateway orderGateway,
+            PasswordEncoder encoder,
+            @Value("${undercontroll.seed.password:}") String seedPassword
+    ) {
+        this.userGateway = userGateway;
+        this.componentGateway = componentGateway;
+        this.announcementGateway = announcementGateway;
+        this.orderGateway = orderGateway;
+        this.encoder = encoder;
+        this.seedPassword = seedPassword;
+    }
 
     @PostConstruct
     public void init() {
-        log.info("Initializing seed data...");
+        if (seedPassword == null || seedPassword.isBlank()) {
+            log.warn("Skipping seed data: DEV_SEED_PASSWORD is not set");
+            return;
+        }
 
-        if (!userGateway.findAll().isEmpty()) {
+        if (userGateway.findByEmail(ADMIN_EMAIL).isPresent()) {
             log.info("Database already seeded, skipping...");
             return;
         }
 
-        String defaultPassword = encoder.encode("123");
+        log.info("Initializing seed data...");
+        String defaultPassword = encoder.encode(seedPassword);
 
         User admin = User.builder()
                 .name("Admin").lastName("Sistema")
-                .email("admin@undercontroll.com").password(defaultPassword)
+                .email(ADMIN_EMAIL).password(defaultPassword)
                 .address("Rua Principal, 100").cpf("11111111111").CEP("01310100")
                 .phone("11987654321").alreadyRecurrent(true).inFirstLogin(false)
                 .avatarUrl("https://i.pravatar.cc/150?img=1")
