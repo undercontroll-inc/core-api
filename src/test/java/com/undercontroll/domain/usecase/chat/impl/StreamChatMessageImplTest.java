@@ -12,6 +12,7 @@ import com.undercontroll.domain.model.OrderItem;
 import com.undercontroll.domain.model.User;
 import com.undercontroll.domain.model.chat.ShopSnapshot;
 import com.undercontroll.domain.model.chat.ShopSnapshotFactory;
+import com.undercontroll.domain.model.chat.AnaTurnRequest;
 import com.undercontroll.domain.usecase.chat.StreamChatSession;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -78,9 +79,9 @@ class StreamChatMessageImplTest {
         StreamChatSession session = useCase.prepare("Quais consertos estão abertos?");
 
         assertEquals("7", session.conversationId());
-        assertEquals("Quais consertos estão abertos?", session.message());
-        assertTrue(session.briefing().contains("Maria"));
-        assertTrue(session.briefing().contains("liquidificador"));
+        assertEquals("Quais consertos estão abertos?", session.turn().message());
+        assertTrue(session.turn().briefing().contains("Maria"));
+        assertTrue(session.turn().briefing().contains("liquidificador"));
     }
 
     @Test
@@ -109,8 +110,8 @@ class StreamChatMessageImplTest {
 
         StreamChatSession session = useCase.prepare("Me fala do pedido 12");
 
-        assertTrue(session.briefing().contains("pedido 12"));
-        assertTrue(session.briefing().contains("Maria"));
+        assertTrue(session.turn().briefing().contains("pedido 12"));
+        assertTrue(session.turn().briefing().contains("Maria"));
     }
 
     @Test
@@ -118,12 +119,12 @@ class StreamChatMessageImplTest {
     void streamsThroughGateway() {
         when(anaChatGateway.getIfAvailable()).thenReturn(gateway);
         RecordingSink sink = new RecordingSink();
-        StreamChatSession session = new StreamChatSession("7", "Oi", "briefing");
+        StreamChatSession session = new StreamChatSession(new AnaTurnRequest("7", "Oi", "briefing", false));
 
         useCase.stream(session, sink);
 
         assertEquals(List.of("start:7", "status:generating"), sink.events);
-        verify(gateway).streamReply(eq("7"), eq("Oi"), eq("briefing"), eq(sink));
+        verify(gateway).streamReply(eq(session.turn()), eq(sink));
     }
 
     @Test
@@ -132,7 +133,7 @@ class StreamChatMessageImplTest {
         when(anaChatGateway.getIfAvailable()).thenReturn(null);
         RecordingSink sink = new RecordingSink();
 
-        useCase.stream(new StreamChatSession("7", "Oi", "briefing"), sink);
+        useCase.stream(new StreamChatSession(new AnaTurnRequest("7", "Oi", "briefing", false)), sink);
 
         assertEquals(List.of("error:CHAT_UNAVAILABLE"), sink.events);
     }

@@ -1,4 +1,4 @@
-package com.undercontroll.infrastructure.ai;
+package com.undercontroll.domain.model.chat;
 
 import java.util.List;
 import java.util.Locale;

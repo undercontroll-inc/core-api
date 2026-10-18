@@ -1,4 +1,4 @@
-package com.undercontroll.infrastructure.ai;
+package com.undercontroll.domain.model.chat;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

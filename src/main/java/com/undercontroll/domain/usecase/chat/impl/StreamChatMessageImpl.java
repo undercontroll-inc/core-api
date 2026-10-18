@@ -39,7 +39,7 @@ public class StreamChatMessageImpl implements StreamChatMessagePort {
                 prepared.userId(),
                 prepared.conversationId()
         );
-        return prepared.toSession(message);
+        return new StreamChatSession(prepared.turn());
     }
 
     @Override
@@ -52,6 +52,6 @@ public class StreamChatMessageImpl implements StreamChatMessagePort {
         }
         sink.start(session.conversationId());
         sink.status(GENERATING_PHASE);
-        llm.streamReply(session.conversationId(), session.message(), session.briefing(), sink);
+        llm.streamReply(session.turn(), sink);
     }
 }

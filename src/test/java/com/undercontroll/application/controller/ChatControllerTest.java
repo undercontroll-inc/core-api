@@ -3,6 +3,7 @@ package com.undercontroll.application.controller;
 import com.undercontroll.application.controller.impl.ChatController;
 import com.undercontroll.domain.exception.AnaUnavailableException;
 import com.undercontroll.domain.model.chat.AnaReply;
+import com.undercontroll.domain.model.chat.AnaTurnRequest;
 import com.undercontroll.domain.gateway.ChatStreamSink;
 import com.undercontroll.domain.usecase.chat.GetChatSuggestionsPort;
 import com.undercontroll.domain.usecase.chat.SendChatMessagePort;
@@ -152,7 +153,7 @@ class ChatControllerTest {
     @WithMockUser(username = "12", roles = "ADMINISTRATOR")
     @DisplayName("POST /v1/api/chats/messages/stream emits start, delta and done events")
     void streamMessage() throws Exception {
-        when(streamChatMessagePort.prepare(any())).thenReturn(new StreamChatSession("12", "Oi", "briefing"));
+        when(streamChatMessagePort.prepare(any())).thenReturn(new StreamChatSession(new AnaTurnRequest("12", "Oi", "briefing", false)));
         doAnswer(invocation -> {
             ChatStreamSink sink = invocation.getArgument(1);
             sink.start("12");

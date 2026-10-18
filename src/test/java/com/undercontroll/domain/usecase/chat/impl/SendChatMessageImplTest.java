@@ -5,6 +5,7 @@ import com.undercontroll.domain.enums.OrderStatus;
 import com.undercontroll.domain.exception.AnaUnavailableException;
 import com.undercontroll.domain.gateway.AnaChatGateway;
 import com.undercontroll.domain.model.chat.AnaReply;
+import com.undercontroll.domain.model.chat.AnaTurnRequest;
 import com.undercontroll.domain.gateway.CurrentUserIdPort;
 import com.undercontroll.domain.gateway.OrderGateway;
 import com.undercontroll.domain.model.Order;
@@ -29,6 +30,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -86,8 +89,8 @@ class SendChatMessageImplTest {
                 List.of(),
                 null
         ));
-        ArgumentCaptor<String> briefing = ArgumentCaptor.forClass(String.class);
-        when(gateway.reply(eq("7"), eq("Quais consertos estão abertos?"), briefing.capture()))
+        ArgumentCaptor<AnaTurnRequest> turn = ArgumentCaptor.forClass(AnaTurnRequest.class);
+        when(gateway.reply(turn.capture()))
                 .thenReturn(AnaReply.completed("Tem 3 em andamento."));
 
         AnaReply response = useCase.execute(
@@ -95,12 +98,12 @@ class SendChatMessageImplTest {
 
         assertEquals("Tem 3 em andamento.", response.content());
         assertTrue(response.isCompleted());
-        assertTrue(briefing.getValue().contains("Maria"));
-        assertTrue(briefing.getValue().contains("liquidificador"));
-        assertTrue(briefing.getValue().contains("João"));
-        assertTrue(briefing.getValue().contains("em andamento"));
-        assertTrue(briefing.getValue().contains("pronto para buscar"));
-        assertFalse(briefing.getValue().contains("Entregue"));
+        assertTrue(turn.getValue().briefing().contains("Maria"));
+        assertTrue(turn.getValue().briefing().contains("liquidificador"));
+        assertTrue(turn.getValue().briefing().contains("João"));
+        assertTrue(turn.getValue().briefing().contains("em andamento"));
+        assertTrue(turn.getValue().briefing().contains("pronto para buscar"));
+        assertFalse(turn.getValue().briefing().contains("Entregue"));
     }
 
     @Test
@@ -126,15 +129,15 @@ class SendChatMessageImplTest {
                         .orderItems(List.of(OrderItem.builder().type("liquidificador").brand("Mondial").build()))
                         .build()
         ));
-        ArgumentCaptor<String> briefing = ArgumentCaptor.forClass(String.class);
-        when(gateway.reply(eq("7"), eq("Me fala do pedido 12"), briefing.capture()))
+        ArgumentCaptor<AnaTurnRequest> turn = ArgumentCaptor.forClass(AnaTurnRequest.class);
+        when(gateway.reply(turn.capture()))
                 .thenReturn(AnaReply.completed("O liquidificador da Maria ainda não foi olhado."));
 
         useCase.execute("Me fala do pedido 12");
 
-        assertTrue(briefing.getValue().contains("pedido 12"));
-        assertTrue(briefing.getValue().contains("Maria"));
-        assertTrue(briefing.getValue().contains("liquidificador"));
+        assertTrue(turn.getValue().briefing().contains("pedido 12"));
+        assertTrue(turn.getValue().briefing().contains("Maria"));
+        assertTrue(turn.getValue().briefing().contains("liquidificador"));
     }
 
     @Test
@@ -152,13 +155,31 @@ class SendChatMessageImplTest {
                         .orderItems(List.of(OrderItem.builder().type("liquidificador").brand("Mondial").build()))
                         .build()
         ));
-        ArgumentCaptor<String> briefing = ArgumentCaptor.forClass(String.class);
-        when(gateway.reply(eq("7"), eq("Quanto custa?"), briefing.capture()))
+        ArgumentCaptor<AnaTurnRequest> turn = ArgumentCaptor.forClass(AnaTurnRequest.class);
+        when(gateway.reply(turn.capture()))
                 .thenReturn(AnaReply.completed("O conserto da Maria ainda não tem valor."));
 
         useCase.execute("Quanto custa?");
 
-        assertTrue(briefing.getValue().contains("pedido 12"));
-        assertTrue(briefing.getValue().contains("Maria"));
+        assertTrue(turn.getValue().briefing().contains("pedido 12"));
+        assertTrue(turn.getValue().briefing().contains("Maria"));
+        assertEquals("Quanto custa?", turn.getValue().message());
+        assertFalse(turn.getValue().webSearch());
+    }
+
+    @Test
+    @DisplayName("decides web search once from the message and the history read for the turn")
+    void decidesWebSearchOnce() {
+        when(anaChatGateway.getIfAvailable()).thenReturn(gateway);
+        when(currentUserIdPort.require()).thenReturn(7);
+        when(shopSnapshotLoader.load()).thenReturn(ShopSnapshot.empty());
+        when(gateway.recentConversationTexts("7")).thenReturn(List.of("Cadê o manual da airfryer?"));
+        ArgumentCaptor<AnaTurnRequest> turn = ArgumentCaptor.forClass(AnaTurnRequest.class);
+        when(gateway.reply(turn.capture())).thenReturn(AnaReply.completed("Achei."));
+
+        useCase.execute("E a voltagem?");
+
+        assertTrue(turn.getValue().webSearch());
+        verify(gateway, times(1)).recentConversationTexts("7");
     }
 }

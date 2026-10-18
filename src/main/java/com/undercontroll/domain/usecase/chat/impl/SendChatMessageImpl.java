@@ -33,7 +33,7 @@ public class SendChatMessageImpl implements SendChatMessagePort {
                 message
         );
         log.info("Ana chat requested userId={} conversationId={}", prepared.userId(), prepared.conversationId());
-        AnaReply reply = prepared.llm().reply(prepared.conversationId(), message, prepared.briefing());
+        AnaReply reply = prepared.llm().reply(prepared.turn());
         log.info(
                 "Ana chat completed userId={} conversationId={} state={} durationMs={}",
                 prepared.userId(),

@@ -1,4 +1,10 @@
 package com.undercontroll.domain.usecase.chat;
 
-public record StreamChatSession(String conversationId, String message, String briefing) {
+import com.undercontroll.domain.model.chat.AnaTurnRequest;
+
+public record StreamChatSession(AnaTurnRequest turn) {
+
+    public String conversationId() {
+        return turn.conversationId();
+    }
 }

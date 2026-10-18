@@ -6,8 +6,9 @@ import com.undercontroll.domain.gateway.CurrentUserIdPort;
 import com.undercontroll.domain.gateway.OrderGateway;
 import com.undercontroll.domain.gateway.ShopSnapshotLoader;
 import com.undercontroll.domain.model.Order;
+import com.undercontroll.domain.model.chat.AnaTurnRequest;
+import com.undercontroll.domain.model.chat.AnaWebSearchNeed;
 import com.undercontroll.domain.model.chat.ShopBriefingWriter;
-import com.undercontroll.domain.usecase.chat.StreamChatSession;
 import org.springframework.beans.factory.ObjectProvider;
 
 import java.util.List;
@@ -32,13 +33,14 @@ final class AnaConversationPrep {
         Integer userId = currentUserIdPort.require();
         String conversationId = String.valueOf(userId);
         String briefing = ShopBriefingWriter.chatBriefing(shopSnapshotLoader.load());
-        String scope = conversationScope(message, llm.recentConversationTexts(conversationId));
-        List<Order> cited = ShopBriefingWriter.mentionedOrderIds(scope).stream()
+        List<String> history = llm.recentConversationTexts(conversationId);
+        List<Order> cited = ShopBriefingWriter.mentionedOrderIds(conversationScope(message, history)).stream()
                 .map(orderGateway::findDetailById)
                 .flatMap(Optional::stream)
                 .toList();
         briefing = ShopBriefingWriter.appendOrderDetails(briefing, cited);
-        return new Prepared(llm, userId, conversationId, briefing);
+        boolean webSearch = AnaWebSearchNeed.matchesConversation(message, history);
+        return new Prepared(llm, userId, new AnaTurnRequest(conversationId, message, briefing, webSearch));
     }
 
     private static String conversationScope(String current, List<String> history) {
@@ -49,10 +51,10 @@ final class AnaConversationPrep {
         return message + "\n" + String.join("\n", history);
     }
 
-    record Prepared(AnaChatGateway llm, Integer userId, String conversationId, String briefing) {
+    record Prepared(AnaChatGateway llm, Integer userId, AnaTurnRequest turn) {
 
-        StreamChatSession toSession(String message) {
-            return new StreamChatSession(conversationId, message, briefing);
+        String conversationId() {
+            return turn.conversationId();
         }
     }
 }

@@ -3,6 +3,7 @@ package com.undercontroll.infrastructure.ai;
 import com.undercontroll.domain.exception.AnaUnavailableException;
 import com.undercontroll.domain.gateway.ChatStreamSink;
 import com.undercontroll.domain.model.chat.AnaReply;
+import com.undercontroll.domain.model.chat.AnaTurnRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,6 +18,7 @@ import org.springframework.ai.chat.metadata.ChatGenerationMetadata;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.model.tool.ToolCallingChatOptions;
 import reactor.core.publisher.Flux;
 
 import java.util.ArrayList;
@@ -32,6 +34,8 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class SpringAiAnaChatAdapterTest {
+
+    private static final AnaTurnRequest TURN = new AnaTurnRequest("7", "Oi", "briefing", false);
 
     @Mock
     private ChatMemory chatMemory;
@@ -109,7 +113,6 @@ class SpringAiAnaChatAdapterTest {
     @Test
     @DisplayName("a client that is already gone cancels the upstream subscription immediately")
     void cancelBeforeSubscribe() {
-        when(chatMemory.get("7")).thenReturn(List.of());
         AtomicBoolean upstreamCancelled = new AtomicBoolean();
         CountDownLatch subscribed = new CountDownLatch(1);
         ChatModel model = new StubChatModel(List.of(), null, null) {
@@ -127,7 +130,7 @@ class SpringAiAnaChatAdapterTest {
             }
         };
 
-        adapter(model).streamReply("7", "Oi", "briefing", sink);
+        adapter(model).streamReply(TURN, sink);
 
         assertTrue(sink.events.isEmpty());
         assertTrue(subscribed.getCount() == 1 || upstreamCancelled.get());
@@ -136,10 +139,9 @@ class SpringAiAnaChatAdapterTest {
     @Test
     @DisplayName("sync reply reports completed or partial from the finish reason")
     void replyStates() {
-        when(chatMemory.get("7")).thenReturn(List.of());
 
-        AnaReply completed = adapter(new StubChatModel(List.of("Tem 2."), "STOP", null)).reply("7", "Oi", "b");
-        AnaReply partial = adapter(new StubChatModel(List.of("Tem"), "LENGTH", null)).reply("7", "Oi", "b");
+        AnaReply completed = adapter(new StubChatModel(List.of("Tem 2."), "STOP", null)).reply(TURN);
+        AnaReply partial = adapter(new StubChatModel(List.of("Tem"), "LENGTH", null)).reply(TURN);
 
         assertTrue(completed.isCompleted());
         assertEquals("Tem 2.", completed.content());
@@ -150,18 +152,55 @@ class SpringAiAnaChatAdapterTest {
     @Test
     @DisplayName("sync reply turns blank text and provider errors into unavailable")
     void replyFailures() {
-        when(chatMemory.get("7")).thenReturn(List.of());
         SpringAiAnaChatAdapter blank = adapter(new StubChatModel(List.of(" "), "STOP", null));
         SpringAiAnaChatAdapter failing = adapter(new StubChatModel(List.of(), null, new IllegalStateException("down")));
 
-        assertThrows(AnaUnavailableException.class, () -> blank.reply("7", "Oi", "b"));
-        assertThrows(AnaUnavailableException.class, () -> failing.reply("7", "Oi", "b"));
+        assertThrows(AnaUnavailableException.class, () -> blank.reply(TURN));
+        assertThrows(AnaUnavailableException.class, () -> failing.reply(TURN));
+    }
+
+    @Test
+    @DisplayName("sync reply keeps text received before a failure as partial")
+    void replyInterrupted() {
+
+        AnaReply reply = adapter(new StubChatModel(List.of("Tem "), null, new IllegalStateException("reset")))
+                .reply(TURN);
+
+        assertEquals(AnaReply.State.PARTIAL, reply.state());
+        assertEquals("interrupted", reply.reason());
+        assertEquals("Tem ", reply.content());
+    }
+
+    @Test
+    @DisplayName("web search tool is offered only when the turn asks for it")
+    void toolsFollowTurnDecision() {
+        List<Prompt> prompts = new ArrayList<>();
+        ChatModel model = new StubChatModel(List.of("ok"), "STOP", null) {
+            @Override
+            public Flux<ChatResponse> stream(Prompt prompt) {
+                prompts.add(prompt);
+                return super.stream(prompt);
+            }
+        };
+        SpringAiAnaChatAdapter adapter = adapter(model);
+
+        adapter.reply(TURN);
+        adapter.reply(new AnaTurnRequest("7", "manual?", "briefing", true));
+
+        assertEquals(List.of("get_last_announcement", "get_order", "search_components"), toolNames(prompts.get(0)));
+        assertTrue(toolNames(prompts.get(1)).contains("search_web"));
+    }
+
+    private static List<String> toolNames(Prompt prompt) {
+        return ((ToolCallingChatOptions) prompt.getOptions()).getToolCallbacks().stream()
+                .map(callback -> callback.getToolDefinition().name())
+                .sorted()
+                .toList();
     }
 
     private RecordingSink stream(ChatModel model) throws InterruptedException {
-        when(chatMemory.get("7")).thenReturn(List.of());
         RecordingSink sink = new RecordingSink();
-        adapter(model).streamReply("7", "Oi", "briefing", sink);
+        adapter(model).streamReply(TURN, sink);
         assertTrue(sink.await());
         return sink;
     }
