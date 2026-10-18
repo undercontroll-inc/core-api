@@ -11,5 +11,12 @@ get {
 }
 
 docs {
-  503 MARKET_DATA_UNAVAILABLE when the ETL views cannot be read (not cached; retry later).
+  Always 200 with "state":
+  - READY: insights of the published market snapshot.
+  - GENERATING: the job for the published snapshot is pending or running; the previous publication may be served.
+  - FAILED: the job failed ("failureReason": AUTH, CONFIG, RATE_LIMITED, TIMEOUT, TRANSIENT, INVALID_OUTPUT, MARKET_DATA, PUBLISH, SUPERSEDED, UNKNOWN or INSIGHTS_DISABLED); the previous publication may be served.
+  - STALE: only an older publication exists and nothing is running.
+  - AWAITING_DATA: the ETL has not published a snapshot yet; lists are empty.
+  Compare requestedBucketKey (published snapshot) with availableBucketKey (content served) to flag stale content.
+  Only READY is cached. 500 INSIGHT_PAYLOAD_UNREADABLE when the stored payload cannot be read; 503 MARKET_DATA_UNAVAILABLE when the ETL views cannot be read.
 }

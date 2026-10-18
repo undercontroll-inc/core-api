@@ -9,7 +9,7 @@ authentication: {}
 authenticationType: null
 body: {}
 bodyType: null
-description: "503 MARKET_DATA_UNAVAILABLE when the ETL views cannot be read (not cached; retry later)."
+description: "Always 200 with state READY | GENERATING | FAILED | STALE | AWAITING_DATA. Compare requestedBucketKey (published snapshot) with availableBucketKey (content served). failureReason is set when FAILED. Only READY is cached. 500 INSIGHT_PAYLOAD_UNREADABLE when the stored payload cannot be read; 503 MARKET_DATA_UNAVAILABLE when the ETL views cannot be read."
 headers: []
 method: GET
 name: Get market insights
