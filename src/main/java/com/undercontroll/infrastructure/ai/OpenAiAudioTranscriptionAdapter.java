@@ -15,38 +15,41 @@ import org.springframework.util.StringUtils;
 @Slf4j
 public class OpenAiAudioTranscriptionAdapter implements AudioTranscriptionGateway {
 
-    static final String MODEL = "whisper-1";
-
     private final TranscriptionModel transcriptionModel;
+    private final String model;
 
-    public OpenAiAudioTranscriptionAdapter(TranscriptionModel transcriptionModel) {
+    public OpenAiAudioTranscriptionAdapter(TranscriptionModel transcriptionModel, String model) {
         this.transcriptionModel = transcriptionModel;
+        this.model = model;
+    }
+
+    public static OpenAiAudioTranscriptionOptions options(String model) {
+        return OpenAiAudioTranscriptionOptions.builder()
+                .language("pt")
+                .model(model)
+                .temperature(0f)
+                .build();
     }
 
     @Override
     public String transcribe(AudioClip audio) {
         long started = System.nanoTime();
-        log.info("OpenAI transcription started model={} mime={} byteSize={}", MODEL, audio.contentType(), audio.size());
+        log.info("OpenAI transcription started model={} mime={} byteSize={}", model, audio.contentType(), audio.size());
         try {
-            var options = OpenAiAudioTranscriptionOptions.builder()
-                    .language("pt")
-                    .model(MODEL)
-                    .temperature(0f)
-                    .build();
-            String text = transcriptionModel.call(new AudioTranscriptionPrompt(resource(audio), options))
+            String text = transcriptionModel.call(new AudioTranscriptionPrompt(resource(audio), options(model)))
                     .getResult()
                     .getOutput();
             if (!StringUtils.hasText(text)) {
                 log.warn(
                         "OpenAI transcription returned empty text model={} durationMs={}",
-                        MODEL,
+                        model,
                         Durations.millisSince(started)
                 );
                 throw new TranscriptionUnavailableException();
             }
             log.info(
                     "OpenAI transcription finished model={} chars={} durationMs={}",
-                    MODEL,
+                    model,
                     text.trim().length(),
                     Durations.millisSince(started)
             );
@@ -56,7 +59,7 @@ public class OpenAiAudioTranscriptionAdapter implements AudioTranscriptionGatewa
         } catch (RuntimeException ex) {
             log.warn(
                     "OpenAI transcription failed model={} durationMs={} cause={}",
-                    MODEL,
+                    model,
                     Durations.millisSince(started),
                     ex.toString()
             );

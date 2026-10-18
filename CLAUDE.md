@@ -4,7 +4,7 @@ CRM da oficina (eletrodoméstico pequeno). Java 21, Spring Boot 3.5, Maven Wrapp
 
 ## Architecture
 
-HTTP entra em `application/controller/impl`. Regras ficam em `domain/usecase` (portas `*Port` com records `Input`/`Output`). Persistência, JWT, Redis e LLM ficam em `infrastructure`. O Java **nunca** chama a API do Mercado Livre: lê só as views Postgres que o ETL grava (`vw_market_*`). Insights e Ana AI compartilham o mesmo `ChatModel` (`INSIGHTS_PROVIDER`).
+HTTP entra em `application/controller/impl`. Regras ficam em `domain/usecase` (portas `*Port` com records `Input`/`Output`). Persistência, JWT, Redis e LLM ficam em `infrastructure`. O Java **nunca** chama a API do Mercado Livre: lê só as views Postgres que o ETL grava (`vw_market_*`). Ana, insights e transcrição têm configuração própria (`undercontroll.ai.{ana|insights|transcription}.*`: provider, model, timeout, thinking); cada uma monta seu modelo via `ChatModelFactory` (autoconfig de chat do Spring AI desligada).
 
 ## Commands
 
@@ -46,7 +46,7 @@ Depois de **qualquer** mudança de contrato HTTP (path, método, status, query, 
 ## Constraints
 
 - Não chamar Mercado Livre, Highlights, Trends nem `/products` a partir deste serviço.
-- Insights: um `ChatModel`; payload estruturado (`.entity(...)`). Sem segundo roundtrip tipo `extractJson`. Sem `ChatModel` (`INSIGHTS_PROVIDER=none`) → insights/Ana indisponíveis (Ana: 503). Gemini precisa de `GEMINI_API_KEY` (ou `GOOGLE_API_KEY`) no processo.
+- Insights: payload estruturado (`.entity(...)`). Sem segundo roundtrip tipo `extractJson`. `provider: none` desliga só aquela funcionalidade (Ana: 503). Provider inválido, chave ausente ou `thinking` não suportado pelo modelo derrubam a inicialização com a chave no erro. Gemini precisa de `GEMINI_API_KEY` (ou `GOOGLE_API_KEY`); OpenAI de `OPENAI_API_KEY`. `ANA_PROVIDER`/`TRANSCRIPTION_PROVIDER` caem em `INSIGHTS_PROVIDER` se ausentes.
 - Texto visível de insight: mês por extenso ("mês de agosto de 2026"), nunca `2026-08` nem a palavra `bucket`.
 - `spring.jpa.open-in-view: false`. Associação LAZY só dentro de `@Transactional` (ou EntityGraph / fetch join). Não mapear proxy depois da sessão fechada.
 - Sugestões da Ana saem de fatos do banco (`GroundedQuestionGenerator.groundedQuestions`), sem LLM. O briefing do chat usa o mesmo snapshot (abertos, pickup, estoque, demandas, aviso). Listagens da oficina usam query limitada, não `findAll` da tabela toda.
@@ -57,5 +57,5 @@ Depois de **qualquer** mudança de contrato HTTP (path, método, status, query, 
 - README e `.env.example` ainda citam H2/MySQL; o default real é Postgres (`application-dev.yml`).
 - App real precisa de Redis (cache, memória da Ana, sugestões) e RabbitMQ (notificações).
 - `TokenGateway.generateToken(userId, ...)` recebe o **id** do usuário (vira o `sub` do JWT).
-- `domain` não importa `application`, `infrastructure`, Jackson nem `Resource` (exceção temporária: `GenerateMonthlyInsightsImpl` ainda lê `InsightsProperties`). Porta/gateway no domain, adapter no infrastructure; controllers mapeiam DTO ↔ `Input`/`Output` com MapStruct; sem comentários.
+- `domain` não importa `application`, `infrastructure`, Jackson nem `Resource`. Porta/gateway no domain, adapter no infrastructure; controllers mapeiam DTO ↔ `Input`/`Output` com MapStruct; sem comentários.
 - Chaves do cache Redis têm prefixo de versão (`v2:`); ao mudar o tipo de um valor cacheado, subir a versão em `RedisConfig`.

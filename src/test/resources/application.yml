@@ -25,6 +25,14 @@ spring:
     scheduling:
       enabled: false
   ai:
+    model:
+      chat: none
+      audio:
+        transcription: none
+        speech: none
+      embedding: none
+      image: none
+      moderation: none
     chat:
       client:
         enabled: false
@@ -33,19 +41,21 @@ jwt:
   secret: test-secret-key-for-unit-tests
 
 undercontroll:
-  insights:
-    provider: none
-    prompt-version: "6"
-    cron: "0 0 4 1 * *"
-    max-insights: 7
-    repair-catalog-days: 90
-  transcription:
-    gemini-model: gemini-3.5-flash-lite
-  ana:
-    suggestion-count: 4
-    suggestion-ttl-hours: 12
-    memory-ttl-hours: 24
-    memory-window: 10
+  ai:
+    ana:
+      provider: none
+      suggestion-count: 4
+      suggestion-ttl-hours: 12
+      memory-ttl-hours: 24
+      memory-window: 10
+    insights:
+      provider: none
+      prompt-version: "6"
+      cron: "0 0 4 1 * *"
+      max-insights: 7
+      repair-catalog-days: 90
+    transcription:
+      provider: none
 
 logging:
   level:

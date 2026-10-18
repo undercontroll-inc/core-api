@@ -12,6 +12,9 @@ import com.undercontroll.domain.exception.TranscriptionUnavailableException;
 import com.undercontroll.domain.gateway.AudioTranscriptionGateway;
 import com.undercontroll.domain.model.AudioClip;
 import com.undercontroll.domain.support.Durations;
+import com.undercontroll.infrastructure.ai.config.AiFeatureSettings;
+import com.undercontroll.infrastructure.ai.config.ModelCapabilities;
+import com.undercontroll.infrastructure.ai.config.ThinkingPolicy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.MimeType;
 import org.springframework.util.StringUtils;
@@ -26,14 +29,18 @@ public class GeminiAudioTranscriptionAdapter implements AudioTranscriptionGatewa
 
     private final Models models;
     private final String model;
+    private final ThinkingPolicy thinking;
+    private final ModelCapabilities capabilities;
 
-    public GeminiAudioTranscriptionAdapter(Client client, String model) {
-        this(client.models, model);
+    public GeminiAudioTranscriptionAdapter(Client client, AiFeatureSettings settings) {
+        this(client.models, settings);
     }
 
-    GeminiAudioTranscriptionAdapter(Models models, String model) {
+    GeminiAudioTranscriptionAdapter(Models models, AiFeatureSettings settings) {
         this.models = models;
-        this.model = model;
+        this.model = settings.model();
+        this.thinking = settings.thinking();
+        this.capabilities = settings.capabilities();
     }
 
     @Override
@@ -48,7 +55,7 @@ public class GeminiAudioTranscriptionAdapter implements AudioTranscriptionGatewa
                     mimeType,
                     bytes.length
             );
-            Content content = dedicatedTranscribeModel()
+            Content content = capabilities.dedicatedTranscription()
                     ? Content.fromParts(Part.fromBytes(bytes, mimeType.toString()))
                     : Content.fromParts(
                             Part.fromText(USER_PROMPT),
@@ -87,19 +94,18 @@ public class GeminiAudioTranscriptionAdapter implements AudioTranscriptionGatewa
         }
     }
 
-    private GenerateContentConfig config() {
+    GenerateContentConfig config() {
         GenerateContentConfig.Builder builder = GenerateContentConfig.builder();
-        if (!dedicatedTranscribeModel()) {
-            builder.thinkingConfig(ThinkingConfig.builder()
-                    .thinkingLevel(new ThinkingLevel("MINIMAL"))
-                    .includeThoughts(false)
-                    .build());
+        if (thinking == ThinkingPolicy.DEFAULT) {
+            return builder.build();
         }
-        return builder.build();
-    }
-
-    private boolean dedicatedTranscribeModel() {
-        return model != null && model.toLowerCase(Locale.ROOT).contains("transcribe");
+        ThinkingConfig.Builder thinkingConfig = ThinkingConfig.builder().includeThoughts(false);
+        if (capabilities.thinkingControl() == ModelCapabilities.ThinkingControl.BUDGET) {
+            thinkingConfig.thinkingBudget(thinking.budgetTokens());
+        } else {
+            thinkingConfig.thinkingLevel(new ThinkingLevel(thinking.name()));
+        }
+        return builder.thinkingConfig(thinkingConfig.build()).build();
     }
 
     static MimeType mimeType(String contentType, String filename) {

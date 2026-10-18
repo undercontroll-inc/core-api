@@ -30,7 +30,7 @@ public class RedisChatMemoryRepository implements ChatMemoryRepository {
     public RedisChatMemoryRepository(
             StringRedisTemplate redis,
             ObjectMapper objectMapper,
-            @Value("${undercontroll.ana.memory-ttl-hours:24}") int memoryTtlHours
+            @Value("${undercontroll.ai.ana.memory-ttl-hours:24}") int memoryTtlHours
     ) {
         this.redis = redis;
         this.objectMapper = objectMapper;

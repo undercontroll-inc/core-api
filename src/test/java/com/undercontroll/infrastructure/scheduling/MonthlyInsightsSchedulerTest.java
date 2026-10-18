@@ -1,8 +1,8 @@
 package com.undercontroll.infrastructure.scheduling;
 
+import com.undercontroll.domain.model.insight.InsightGenerationSettings;
 import com.undercontroll.domain.usecase.insights.GenerateMonthlyInsightsPort;
 import com.undercontroll.domain.usecase.insights.InsightGenerationResult;
-import com.undercontroll.infrastructure.config.InsightsProperties;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -18,7 +18,10 @@ class MonthlyInsightsSchedulerTest {
     void delegates() {
         GenerateMonthlyInsightsPort port = mock(GenerateMonthlyInsightsPort.class);
         when(port.execute(false)).thenReturn(InsightGenerationResult.success("2026-08"));
-        MonthlyInsightsScheduler scheduler = new MonthlyInsightsScheduler(port, new InsightsProperties());
+        MonthlyInsightsScheduler scheduler = new MonthlyInsightsScheduler(
+                port,
+                new InsightGenerationSettings("gemini", "gemini-3.6-flash", "6", 7, 90)
+        );
 
         scheduler.generateMonthlyInsights();
 

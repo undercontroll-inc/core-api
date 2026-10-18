@@ -31,7 +31,7 @@ class OpenAiAudioTranscriptionAdapterTest {
         when(transcriptionModel.call(any(AudioTranscriptionPrompt.class)))
                 .thenReturn(new AudioTranscriptionResponse(new AudioTranscription("  Não gela ")));
 
-        String text = new OpenAiAudioTranscriptionAdapter(transcriptionModel)
+        String text = new OpenAiAudioTranscriptionAdapter(transcriptionModel, "whisper-1")
                 .transcribe(audio);
 
         assertEquals("Não gela", text);
@@ -42,7 +42,7 @@ class OpenAiAudioTranscriptionAdapterTest {
     void blankOutput() {
         when(transcriptionModel.call(any(AudioTranscriptionPrompt.class)))
                 .thenReturn(new AudioTranscriptionResponse(new AudioTranscription(" ")));
-        OpenAiAudioTranscriptionAdapter adapter = new OpenAiAudioTranscriptionAdapter(transcriptionModel);
+        OpenAiAudioTranscriptionAdapter adapter = new OpenAiAudioTranscriptionAdapter(transcriptionModel, "whisper-1");
         AudioClip audio = new AudioClip("bytes".getBytes(), "audio/webm", "note.webm");
 
         assertThrows(TranscriptionUnavailableException.class, () ->
@@ -54,7 +54,7 @@ class OpenAiAudioTranscriptionAdapterTest {
     void wrapsErrors() {
         when(transcriptionModel.call(any(AudioTranscriptionPrompt.class)))
                 .thenThrow(new IllegalStateException("whisper down"));
-        OpenAiAudioTranscriptionAdapter adapter = new OpenAiAudioTranscriptionAdapter(transcriptionModel);
+        OpenAiAudioTranscriptionAdapter adapter = new OpenAiAudioTranscriptionAdapter(transcriptionModel, "whisper-1");
         AudioClip audio = new AudioClip("bytes".getBytes(), "audio/webm", "note.webm");
 
         assertThrows(TranscriptionUnavailableException.class, () ->

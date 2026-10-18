@@ -25,7 +25,7 @@ public class RedisAnaSuggestionStore implements AnaSuggestionStore {
     public RedisAnaSuggestionStore(
             StringRedisTemplate redis,
             ObjectMapper objectMapper,
-            @Value("${undercontroll.ana.suggestion-ttl-hours:12}") int suggestionTtlHours
+            @Value("${undercontroll.ai.ana.suggestion-ttl-hours:12}") int suggestionTtlHours
     ) {
         this.redis = redis;
         this.objectMapper = objectMapper;

@@ -11,7 +11,7 @@ import com.undercontroll.domain.model.insight.InsightsPayload;
 import com.undercontroll.domain.model.market.MatchCoverage;
 import com.undercontroll.domain.model.market.RepairCatalogRow;
 import com.undercontroll.domain.usecase.insights.InsightGenerationResult;
-import com.undercontroll.infrastructure.config.InsightsProperties;
+import com.undercontroll.domain.model.insight.InsightGenerationSettings;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -52,20 +52,18 @@ class GenerateMonthlyInsightsImplTest {
     @Mock
     private InsightsLlmGateway llmGateway;
 
-    private final InsightsProperties insightsProperties = new InsightsProperties();
+    private final InsightGenerationSettings settings =
+            new InsightGenerationSettings("openai", "gpt-4.1-mini", "1", 7, 90);
     private GenerateMonthlyInsightsImpl generateMonthlyInsights;
 
     @BeforeEach
     void setUp() {
-        insightsProperties.setProvider("openai");
-        insightsProperties.setPromptVersion("1");
-        insightsProperties.setRepairCatalogDays(90);
         generateMonthlyInsights = new GenerateMonthlyInsightsImpl(
                 marketViewGateway,
                 marketInsightGateway,
                 orderGateway,
                 insightsLlmGateway,
-                insightsProperties
+                settings
         );
     }
 
@@ -145,6 +143,8 @@ class GenerateMonthlyInsightsImplTest {
         assertEquals(InsightGenerationStatus.SUCCESS, captor.getValue().getStatus());
         assertEquals("2026-08", captor.getValue().getBucketKey());
         assertEquals("openai", captor.getValue().getProvider());
+        assertEquals("gpt-4.1-mini", captor.getValue().getModel());
+        assertEquals("1", captor.getValue().getPromptVersion());
 
         ArgumentCaptor<InsightPromptContext> contextCaptor = ArgumentCaptor.forClass(InsightPromptContext.class);
         verify(llmGateway).generate(contextCaptor.capture());

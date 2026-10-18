@@ -22,7 +22,7 @@ public class GetChatSuggestionsImpl implements GetChatSuggestionsPort {
             AnaSuggestionStore anaSuggestionStore,
             ShopSnapshotLoader shopSnapshotLoader,
             CurrentUserIdPort currentUserIdPort,
-            @Value("${undercontroll.ana.suggestion-count:4}") int suggestionCount
+            @Value("${undercontroll.ai.ana.suggestion-count:4}") int suggestionCount
     ) {
         this.anaSuggestionStore = anaSuggestionStore;
         this.shopSnapshotLoader = shopSnapshotLoader;

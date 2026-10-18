@@ -1,8 +1,8 @@
 package com.undercontroll.infrastructure.scheduling;
 
 import com.undercontroll.domain.usecase.insights.GenerateMonthlyInsightsPort;
+import com.undercontroll.domain.model.insight.InsightGenerationSettings;
 import com.undercontroll.domain.usecase.insights.InsightGenerationResult;
-import com.undercontroll.infrastructure.config.InsightsProperties;
 import com.undercontroll.domain.support.Durations;
 import com.undercontroll.infrastructure.logging.MdcKeys;
 import lombok.RequiredArgsConstructor;
@@ -19,14 +19,14 @@ import java.util.UUID;
 public class MonthlyInsightsScheduler {
 
     private final GenerateMonthlyInsightsPort generateMonthlyInsightsPort;
-    private final InsightsProperties insightsProperties;
+    private final InsightGenerationSettings insightGenerationSettings;
 
-    @Scheduled(cron = "${undercontroll.insights.cron:0 0 4 1 * *}")
+    @Scheduled(cron = "${undercontroll.ai.insights.cron:0 0 4 1 * *}")
     public void generateMonthlyInsights() {
         long started = System.nanoTime();
         MDC.put(MdcKeys.CORRELATION_ID, "insights-" + UUID.randomUUID());
         try {
-            log.info("Starting monthly insights job with provider={}", insightsProperties.resolvedProvider());
+            log.info("Starting monthly insights job with provider={}", insightGenerationSettings.provider());
             InsightGenerationResult result = generateMonthlyInsightsPort.execute(false);
             log.info(
                     "Monthly insights job finished status={} bucketKey={} durationMs={}",

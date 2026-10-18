@@ -4,9 +4,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.undercontroll.domain.gateway.InsightsLlmGateway;
 import com.undercontroll.domain.model.insight.InsightMonthLabel;
+import com.undercontroll.domain.model.insight.InsightGenerationSettings;
 import com.undercontroll.domain.model.insight.InsightPromptContext;
 import com.undercontroll.domain.model.insight.InsightsPayload;
-import com.undercontroll.infrastructure.config.InsightsProperties;
 import com.undercontroll.infrastructure.mapper.InsightsPayloadJsonMapper;
 import com.undercontroll.domain.support.Durations;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +21,7 @@ public class SpringAiInsightsLlmAdapter implements InsightsLlmGateway {
     private final ChatClient insightsChatClient;
     private final ObjectMapper objectMapper;
     private final InsightPayloadValidator insightPayloadValidator;
-    private final InsightsProperties insightsProperties;
+    private final InsightGenerationSettings settings;
     private final Resource userPrompt;
     private final InsightGroundingBuilder insightGroundingBuilder;
     private final InsightsPayloadJsonMapper payloadMapper;
@@ -30,7 +30,7 @@ public class SpringAiInsightsLlmAdapter implements InsightsLlmGateway {
             ChatClient insightsChatClient,
             ObjectMapper objectMapper,
             InsightPayloadValidator insightPayloadValidator,
-            InsightsProperties insightsProperties,
+            InsightGenerationSettings settings,
             Resource userPrompt,
             InsightGroundingBuilder insightGroundingBuilder,
             InsightsPayloadJsonMapper payloadMapper
@@ -38,7 +38,7 @@ public class SpringAiInsightsLlmAdapter implements InsightsLlmGateway {
         this.insightsChatClient = insightsChatClient;
         this.objectMapper = objectMapper;
         this.insightPayloadValidator = insightPayloadValidator;
-        this.insightsProperties = insightsProperties;
+        this.settings = settings;
         this.userPrompt = userPrompt;
         this.insightGroundingBuilder = insightGroundingBuilder;
         this.payloadMapper = payloadMapper;
@@ -52,8 +52,8 @@ public class SpringAiInsightsLlmAdapter implements InsightsLlmGateway {
                 "Generating insights bucketKey={} comparison={} provider={} model={}",
                 bucketKey,
                 context.comparisonBucketKey(),
-                insightsProperties.resolvedProvider(),
-                insightsProperties.activeModel()
+                settings.provider(),
+                settings.model()
         );
         try {
             EvidenceIndex evidence = new EvidenceIndex(objectMapper);
@@ -64,7 +64,7 @@ public class SpringAiInsightsLlmAdapter implements InsightsLlmGateway {
                             .param("mesComparacao", InsightMonthLabel.of(context.comparisonBucketKey()))
                             .param("bucketAtual", context.bucketKey())
                             .param("bucketComparacao", context.comparisonBucketKey() == null ? "null" : context.comparisonBucketKey())
-                            .param("maxInsights", insightsProperties.getMaxInsights())
+                            .param("maxInsights", settings.maxInsights())
                             .param("grounding", groundingJson(state)))
                     .call()
                     .entity(InsightsPayloadJson.class);

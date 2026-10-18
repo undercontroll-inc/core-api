@@ -8,6 +8,7 @@ import com.undercontroll.domain.gateway.OrderGateway;
 import com.undercontroll.domain.market.RepairCatalogFactory;
 import com.undercontroll.domain.market.RepairCatalogMatcher;
 import com.undercontroll.domain.model.MarketMonthlyInsight;
+import com.undercontroll.domain.model.insight.InsightGenerationSettings;
 import com.undercontroll.domain.model.insight.InsightPromptContext;
 import com.undercontroll.domain.model.insight.InsightsPayload;
 import com.undercontroll.domain.model.market.MarketCategorySummary;
@@ -16,7 +17,6 @@ import com.undercontroll.domain.model.market.MatchCoverage;
 import com.undercontroll.domain.model.market.RepairCatalogItem;
 import com.undercontroll.domain.usecase.insights.GenerateMonthlyInsightsPort;
 import com.undercontroll.domain.usecase.insights.InsightGenerationResult;
-import com.undercontroll.infrastructure.config.InsightsProperties;
 import com.undercontroll.domain.support.Durations;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,7 +43,7 @@ public class GenerateMonthlyInsightsImpl implements GenerateMonthlyInsightsPort 
     private final MarketInsightGateway marketInsightGateway;
     private final OrderGateway orderGateway;
     private final ObjectProvider<InsightsLlmGateway> insightsLlmGateway;
-    private final InsightsProperties insightsProperties;
+    private final InsightGenerationSettings insightGenerationSettings;
 
     @Override
     @CacheEvict(value = {"marketInsights", "marketAnalytics"}, allEntries = true)
@@ -64,7 +64,7 @@ public class GenerateMonthlyInsightsImpl implements GenerateMonthlyInsightsPort 
         if (llm == null) {
             log.warn(
                     "Skipping insight generation: LLM gateway is not available (provider={})",
-                    insightsProperties.resolvedProvider()
+                    insightGenerationSettings.provider()
             );
             return InsightGenerationResult.noLlm(bucketKey);
         }
@@ -72,7 +72,7 @@ public class GenerateMonthlyInsightsImpl implements GenerateMonthlyInsightsPort 
         String comparison = marketViewGateway.findPreviousBucketKey(bucketKey).orElse(null);
         List<MarketCategorySummary> categories = marketViewGateway.findCategorySummary(bucketKey);
         List<RepairCatalogItem> catalog = RepairCatalogFactory.fromRows(
-                orderGateway.getRepairCatalog(LocalDate.now(ZoneOffset.UTC).minusDays(insightsProperties.getRepairCatalogDays())),
+                orderGateway.getRepairCatalog(LocalDate.now(ZoneOffset.UTC).minusDays(insightGenerationSettings.repairCatalogDays())),
                 categories
         );
         List<MarketProductCurrent> products = marketViewGateway.findAllCurrentProducts();
@@ -160,9 +160,9 @@ public class GenerateMonthlyInsightsImpl implements GenerateMonthlyInsightsPort 
         MarketMonthlyInsight insight = existing == null ? new MarketMonthlyInsight() : existing;
         insight.setBucketKey(bucketKey);
         insight.setComparisonBucketKey(comparison);
-        insight.setProvider(insightsProperties.resolvedProvider());
-        insight.setModel(insightsProperties.activeModel());
-        insight.setPromptVersion(insightsProperties.getPromptVersion());
+        insight.setProvider(insightGenerationSettings.provider());
+        insight.setModel(insightGenerationSettings.model());
+        insight.setPromptVersion(insightGenerationSettings.promptVersion());
         return insight;
     }
 
