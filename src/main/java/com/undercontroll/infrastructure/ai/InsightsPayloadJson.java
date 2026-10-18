@@ -44,6 +44,7 @@ public record InsightsPayloadJson(
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record InsightItem(
+            @JsonProperty("candidate_id") String candidateId,
             @JsonProperty("texto") String texto,
             @JsonProperty("tipo") String tipo,
             @JsonProperty("categoria") String categoria,

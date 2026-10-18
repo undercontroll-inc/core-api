@@ -1,7 +1,11 @@
 package com.undercontroll.infrastructure.ai;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.undercontroll.domain.model.insight.InsightCandidate;
+import com.undercontroll.domain.model.insight.InsightMetric;
 import com.undercontroll.domain.model.insight.InsightPromptContext;
+import com.undercontroll.domain.model.insight.InsightType;
+import com.undercontroll.domain.model.insight.MetricUnit;
+import com.undercontroll.domain.model.insight.RepairRelation;
 import com.undercontroll.domain.model.insight.InsightsPayload;
 import com.undercontroll.domain.model.market.MatchCoverage;
 import org.junit.jupiter.api.DisplayName;
@@ -9,7 +13,6 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -18,30 +21,37 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class InsightPayloadValidatorTest {
 
     private final InsightPayloadValidator validator = new InsightPayloadValidator(7);
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private static final InsightCandidate PRICE = new InsightCandidate(
+            "ALERTA_PRECO:MLB-MICROWAVES", InsightType.ALERTA_PRECO, "Micro-ondas", "MLB-MICROWAVES", "Micro-ondas",
+            "2026-08", "2026-07", "HIGH", RepairRelation.NIVEL_3_CATEGORIA, "vw_market_price_movement",
+            List.of(new InsightMetric("variacao_preco_pct", 10.9, MetricUnit.PERCENT)));
+    private static final InsightCandidate BRAND = new InsightCandidate(
+            "DESTAQUE_MARCA:mondial", InsightType.DESTAQUE_MARCA, "Mondial", null, null,
+            "2026-08", null, "LOW", RepairRelation.SEM_MATCH, "vw_market_brand_summary",
+            List.of(new InsightMetric("produtos_em_alta", 2, MetricUnit.COUNT)));
+    private final InsightPromptContext context =
+            new InsightPromptContext("2026-08", "2026-07", MatchCoverage.empty(), List.of(PRICE, BRAND));
 
     @Test
-    @DisplayName("accepts a payload whose evidence numbers exist in the tool results")
+    @DisplayName("accepts insights that reference known candidates with the same type")
     void acceptsTraceablePayload() {
-        EvidenceIndex evidence = new EvidenceIndex(objectMapper);
-        evidence.ingest(Map.of("price_delta_pct", 11.11, "avg_price_median", 599.0, "product_count", 2));
-        InsightPromptContext context = new InsightPromptContext("2026-08", "2026-07", MatchCoverage.empty(), Set.of());
 
-        assertDoesNotThrow(() -> validator.validate(validPayload(), context, evidence));
+        assertDoesNotThrow(() -> validator.validate(validPayload(), context));
     }
 
     @Test
-    @DisplayName("rejects invented numbers and sales language")
+    @DisplayName("rejects unknown candidates, mismatched types and sales language")
     void rejectsHallucinationAndSalesLanguage() {
-        EvidenceIndex evidence = new EvidenceIndex(objectMapper);
-        evidence.ingest(Map.of("price_delta_pct", 11.11));
-        InsightPromptContext context = new InsightPromptContext("2026-08", "2026-07", MatchCoverage.empty(), Set.of());
+        InsightsPayload unknown = withItem(new InsightsPayload.InsightItem("ALERTA_PRECO:MLB-FANS", pad("ok"),
+                "ALERTA_PRECO", null, null, null, null, null, "Revisar."));
+        assertThrows(IllegalArgumentException.class, () -> validator.validate(unknown, context));
 
-        InsightsPayload invented = withEvidence(Map.of("price_delta_pct", 99.9));
-        assertThrows(IllegalArgumentException.class, () -> validator.validate(invented, context, evidence));
+        InsightsPayload mismatched = withItem(new InsightsPayload.InsightItem(BRAND.id(), pad("ok"),
+                "ALERTA_PRECO", null, null, null, null, null, "Revisar."));
+        assertThrows(IllegalArgumentException.class, () -> validator.validate(mismatched, context));
 
         InsightsPayload sales = withText(pad("A marca vendeu 1000 unidades no mês"));
-        assertThrows(IllegalArgumentException.class, () -> validator.validate(sales, context, evidence));
+        assertThrows(IllegalArgumentException.class, () -> validator.validate(sales, context));
 
         InsightsPayload tooMany = new InsightsPayload(
                 new InsightsPayload.Periodo("2026-08", "2026-07"),
@@ -52,7 +62,7 @@ class InsightPayloadValidatorTest {
                 List.of(),
                 List.of("lim")
         );
-        assertThrows(IllegalArgumentException.class, () -> validator.validate(tooMany, context, evidence));
+        assertThrows(IllegalArgumentException.class, () -> validator.validate(tooMany, context));
 
         InsightsPayload badType = new InsightsPayload(
                 new InsightsPayload.Periodo("2026-08", "2026-07"),
@@ -61,7 +71,7 @@ class InsightPayloadValidatorTest {
                 List.of(),
                 List.of("lim")
         );
-        assertThrows(IllegalArgumentException.class, () -> validator.validate(badType, context, evidence));
+        assertThrows(IllegalArgumentException.class, () -> validator.validate(badType, context));
 
         InsightsPayload legacyType = new InsightsPayload(
                 new InsightsPayload.Periodo("2026-08", "2026-07"),
@@ -70,17 +80,14 @@ class InsightPayloadValidatorTest {
                 List.of(),
                 List.of("lim")
         );
-        assertThrows(IllegalArgumentException.class, () -> validator.validate(legacyType, context, evidence));
+        assertThrows(IllegalArgumentException.class, () -> validator.validate(legacyType, context));
 
-        assertThrows(IllegalArgumentException.class, () -> validator.validate(null, context, evidence));
+        assertThrows(IllegalArgumentException.class, () -> validator.validate(null, context));
     }
 
     @Test
-    @DisplayName("rejects duplicate types and out-of-range text")
+    @DisplayName("rejects duplicate candidates and out-of-range text")
     void rejectsDuplicateTypesAndTextLength() {
-        EvidenceIndex evidence = new EvidenceIndex(objectMapper);
-        evidence.ingest(Map.of("price_delta_pct", 11.11));
-        InsightPromptContext context = new InsightPromptContext("2026-08", "2026-07", MatchCoverage.empty(), Set.of());
 
         InsightsPayload duplicate = new InsightsPayload(
                 new InsightsPayload.Periodo("2026-08", "2026-07"),
@@ -92,18 +99,19 @@ class InsightPayloadValidatorTest {
                 List.of(),
                 List.of("lim")
         );
-        assertThrows(IllegalArgumentException.class, () -> validator.validate(duplicate, context, evidence));
+        assertThrows(IllegalArgumentException.class, () -> validator.validate(duplicate, context));
 
         InsightsPayload shortText = withText("texto curto");
-        assertThrows(IllegalArgumentException.class, () -> validator.validate(shortText, context, evidence));
+        assertThrows(IllegalArgumentException.class, () -> validator.validate(shortText, context));
 
         InsightsPayload longText = withText("x".repeat(1201));
-        assertThrows(IllegalArgumentException.class, () -> validator.validate(longText, context, evidence));
+        assertThrows(IllegalArgumentException.class, () -> validator.validate(longText, context));
 
         InsightsPayload longAction = new InsightsPayload(
                 new InsightsPayload.Periodo("2026-08", "2026-07"),
                 InsightsPayload.CoberturaMatch.from(MatchCoverage.empty()),
                 List.of(new InsightsPayload.InsightItem(
+                        PRICE.id(),
                         pad("ok"),
                         "ALERTA_PRECO",
                         "MLB-MICROWAVES",
@@ -116,26 +124,24 @@ class InsightPayloadValidatorTest {
                 List.of(),
                 List.of("lim")
         );
-        assertThrows(IllegalArgumentException.class, () -> validator.validate(longAction, context, evidence));
+        assertThrows(IllegalArgumentException.class, () -> validator.validate(longAction, context));
     }
 
     @Test
     @DisplayName("rejects internal jargon such as bucket and ISO month codes in visible copy")
     void rejectsTechnicalJargon() {
-        EvidenceIndex evidence = new EvidenceIndex(objectMapper);
-        evidence.ingest(Map.of("price_delta_pct", 11.11));
-        InsightPromptContext context = new InsightPromptContext("2026-08", "2026-07", MatchCoverage.empty(), Set.of());
 
         InsightsPayload bucketInText = withText(pad("No bucket atual os micro-ondas subiram de preço"));
-        assertThrows(IllegalArgumentException.class, () -> validator.validate(bucketInText, context, evidence));
+        assertThrows(IllegalArgumentException.class, () -> validator.validate(bucketInText, context));
 
         InsightsPayload isoMonth = withText(pad("Em 2026-08 os micro-ondas subiram de preço no Mercado Livre"));
-        assertThrows(IllegalArgumentException.class, () -> validator.validate(isoMonth, context, evidence));
+        assertThrows(IllegalArgumentException.class, () -> validator.validate(isoMonth, context));
 
         InsightsPayload bucketInAction = new InsightsPayload(
                 new InsightsPayload.Periodo("2026-08", "2026-07"),
                 InsightsPayload.CoberturaMatch.from(MatchCoverage.empty()),
                 List.of(new InsightsPayload.InsightItem(
+                        PRICE.id(),
                         pad("Micro-ondas subiram de preço neste mês"),
                         "ALERTA_PRECO",
                         "MLB-MICROWAVES",
@@ -148,14 +154,13 @@ class InsightPayloadValidatorTest {
                 List.of(),
                 List.of("lim")
         );
-        assertThrows(IllegalArgumentException.class, () -> validator.validate(bucketInAction, context, evidence));
+        assertThrows(IllegalArgumentException.class, () -> validator.validate(bucketInAction, context));
     }
 
     @Test
     @DisplayName("rejects empty limitations and wrong coverage")
     void rejectsMissingLimitationsAndCoverage() {
-        EvidenceIndex evidence = new EvidenceIndex(objectMapper);
-        InsightPromptContext context = new InsightPromptContext("2026-08", "2026-07", new MatchCoverage(1, 0, 0, 0), Set.of());
+        InsightPromptContext context = new InsightPromptContext("2026-08", "2026-07", new MatchCoverage(1, 0, 0, 0), List.of());
         InsightsPayload payload = new InsightsPayload(
                 new InsightsPayload.Periodo("2026-08", "2026-07"),
                 InsightsPayload.CoberturaMatch.from(MatchCoverage.empty()),
@@ -163,7 +168,7 @@ class InsightPayloadValidatorTest {
                 List.of(),
                 List.of()
         );
-        assertThrows(IllegalArgumentException.class, () -> validator.validate(payload, context, evidence));
+        assertThrows(IllegalArgumentException.class, () -> validator.validate(payload, context));
     }
 
     private InsightsPayload validPayload() {
@@ -177,11 +182,11 @@ class InsightPayloadValidatorTest {
         );
     }
 
-    private InsightsPayload withEvidence(Map<String, Object> campos) {
+    private InsightsPayload withItem(InsightsPayload.InsightItem item) {
         return new InsightsPayload(
                 new InsightsPayload.Periodo("2026-08", "2026-07"),
                 InsightsPayload.CoberturaMatch.from(MatchCoverage.empty()),
-                List.of(insight("ALERTA_PRECO", pad("Micro-ondas subiram de preço"), campos)),
+                List.of(item),
                 List.of(),
                 List.of("Os dados refletem popularidade e preço anunciado, não volume de vendas.")
         );
@@ -199,6 +204,7 @@ class InsightPayloadValidatorTest {
 
     private InsightsPayload.InsightItem insight(String tipo, String texto, Map<String, Object> campos) {
         return new InsightsPayload.InsightItem(
+                PRICE.id(),
                 texto,
                 tipo,
                 "MLB-MICROWAVES",

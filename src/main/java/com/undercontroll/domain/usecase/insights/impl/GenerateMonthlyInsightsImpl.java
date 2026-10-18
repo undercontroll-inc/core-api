@@ -4,18 +4,16 @@ import com.undercontroll.domain.enums.InsightGenerationStatus;
 import com.undercontroll.domain.gateway.InsightsLlmGateway;
 import com.undercontroll.domain.gateway.MarketInsightGateway;
 import com.undercontroll.domain.gateway.MarketViewGateway;
-import com.undercontroll.domain.gateway.OrderGateway;
+import com.undercontroll.domain.insight.InsightCandidateGenerator;
+import com.undercontroll.domain.insight.InsightMarketDataLoader;
 import com.undercontroll.domain.market.MarketEvidence;
-import com.undercontroll.domain.market.RepairCatalogFactory;
 import com.undercontroll.domain.market.RepairCatalogMatcher;
 import com.undercontroll.domain.model.MarketMonthlyInsight;
 import com.undercontroll.domain.model.insight.InsightGenerationSettings;
+import com.undercontroll.domain.model.insight.InsightMarketData;
 import com.undercontroll.domain.model.insight.InsightPromptContext;
 import com.undercontroll.domain.model.insight.InsightsPayload;
-import com.undercontroll.domain.model.market.MarketCategorySummary;
-import com.undercontroll.domain.model.market.MarketProductCurrent;
 import com.undercontroll.domain.model.market.MatchCoverage;
-import com.undercontroll.domain.model.market.RepairCatalogItem;
 import com.undercontroll.domain.usecase.insights.GenerateMonthlyInsightsPort;
 import com.undercontroll.domain.usecase.insights.InsightGenerationResult;
 import com.undercontroll.domain.support.Durations;
@@ -25,10 +23,8 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
@@ -42,7 +38,7 @@ public class GenerateMonthlyInsightsImpl implements GenerateMonthlyInsightsPort 
 
     private final MarketViewGateway marketViewGateway;
     private final MarketInsightGateway marketInsightGateway;
-    private final OrderGateway orderGateway;
+    private final InsightMarketDataLoader insightMarketDataLoader;
     private final ObjectProvider<InsightsLlmGateway> insightsLlmGateway;
     private final InsightGenerationSettings insightGenerationSettings;
 
@@ -70,21 +66,14 @@ public class GenerateMonthlyInsightsImpl implements GenerateMonthlyInsightsPort 
             return InsightGenerationResult.noLlm(bucketKey);
         }
 
-        String comparison = MarketEvidence.comparisonBucket(marketViewGateway.findPriceMovements(bucketKey));
-        List<MarketCategorySummary> categories = marketViewGateway.findCategorySummary(bucketKey);
-        List<RepairCatalogItem> catalog = RepairCatalogFactory.fromRows(
-                orderGateway.getRepairCatalog(LocalDate.now(ZoneOffset.UTC).minusDays(insightGenerationSettings.repairCatalogDays())),
-                categories
-        );
-        List<MarketProductCurrent> products = marketViewGateway.findAllCurrentProducts();
-        MatchCoverage coverage = RepairCatalogMatcher.coverage(products, catalog);
+        InsightMarketData data = insightMarketDataLoader.load(bucketKey, insightGenerationSettings.repairCatalogDays());
+        String comparison = MarketEvidence.comparisonBucket(data.priceMovements());
+        MatchCoverage coverage = RepairCatalogMatcher.coverage(marketViewGateway.findAllCurrentProducts(), data.catalog());
         InsightPromptContext context = new InsightPromptContext(
                 bucketKey,
                 comparison,
                 coverage,
-                RepairCatalogMatcher.clientDomainIds(catalog),
-                catalog,
-                categories
+                InsightCandidateGenerator.generate(data)
         );
 
         Exception lastError = null;

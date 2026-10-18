@@ -26,6 +26,7 @@ class InsightsResponseMapperTest {
                 new InsightsPayload.Periodo("2026-08", "2026-07"),
                 new InsightsPayload.CoberturaMatch(1, 2, 3, 4),
                 List.of(new InsightsPayload.InsightItem(
+                        "ALERTA_PRECO:MLB-MICROWAVES",
                         "Texto",
                         "ALERTA_PRECO",
                         "MLB-MICROWAVES",

@@ -38,6 +38,7 @@ public record InsightsPayload(
     }
 
     public record InsightItem(
+            String candidateId,
             String texto,
             String tipo,
             String categoria,

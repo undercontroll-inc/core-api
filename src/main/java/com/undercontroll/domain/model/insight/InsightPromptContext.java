@@ -1,32 +1,21 @@
 package com.undercontroll.domain.model.insight;
 
-import com.undercontroll.domain.model.market.MarketCategorySummary;
 import com.undercontroll.domain.model.market.MatchCoverage;
-import com.undercontroll.domain.model.market.RepairCatalogItem;
 
 import java.util.List;
-import java.util.Set;
+import java.util.Optional;
 
 public record InsightPromptContext(
         String bucketKey,
         String comparisonBucketKey,
         MatchCoverage coverage,
-        Set<String> clientDomainIds,
-        List<RepairCatalogItem> catalog,
-        List<MarketCategorySummary> categories
+        List<InsightCandidate> candidates
 ) {
     public InsightPromptContext {
-        clientDomainIds = clientDomainIds == null ? Set.of() : Set.copyOf(clientDomainIds);
-        catalog = catalog == null ? List.of() : List.copyOf(catalog);
-        categories = categories == null ? List.of() : List.copyOf(categories);
+        candidates = candidates == null ? List.of() : List.copyOf(candidates);
     }
 
-    public InsightPromptContext(
-            String bucketKey,
-            String comparisonBucketKey,
-            MatchCoverage coverage,
-            Set<String> clientDomainIds
-    ) {
-        this(bucketKey, comparisonBucketKey, coverage, clientDomainIds, List.of(), List.of());
+    public Optional<InsightCandidate> candidate(String id) {
+        return candidates.stream().filter(candidate -> candidate.id().equals(id)).findFirst();
     }
 }

@@ -3,6 +3,7 @@ package com.undercontroll.infrastructure.ai;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.undercontroll.domain.gateway.InsightsLlmGateway;
+import com.undercontroll.domain.model.insight.InsightCandidate;
 import com.undercontroll.domain.model.insight.InsightMonthLabel;
 import com.undercontroll.domain.model.insight.InsightGenerationSettings;
 import com.undercontroll.domain.model.insight.InsightPromptContext;
@@ -14,6 +15,9 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.core.io.Resource;
 
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 @Slf4j
 public class SpringAiInsightsLlmAdapter implements InsightsLlmGateway {
@@ -23,7 +27,6 @@ public class SpringAiInsightsLlmAdapter implements InsightsLlmGateway {
     private final InsightPayloadValidator insightPayloadValidator;
     private final InsightGenerationSettings settings;
     private final Resource userPrompt;
-    private final InsightGroundingBuilder insightGroundingBuilder;
     private final InsightsPayloadJsonMapper payloadMapper;
 
     public SpringAiInsightsLlmAdapter(
@@ -32,7 +35,6 @@ public class SpringAiInsightsLlmAdapter implements InsightsLlmGateway {
             InsightPayloadValidator insightPayloadValidator,
             InsightGenerationSettings settings,
             Resource userPrompt,
-            InsightGroundingBuilder insightGroundingBuilder,
             InsightsPayloadJsonMapper payloadMapper
     ) {
         this.insightsChatClient = insightsChatClient;
@@ -40,7 +42,6 @@ public class SpringAiInsightsLlmAdapter implements InsightsLlmGateway {
         this.insightPayloadValidator = insightPayloadValidator;
         this.settings = settings;
         this.userPrompt = userPrompt;
-        this.insightGroundingBuilder = insightGroundingBuilder;
         this.payloadMapper = payloadMapper;
     }
 
@@ -56,8 +57,6 @@ public class SpringAiInsightsLlmAdapter implements InsightsLlmGateway {
                 settings.model()
         );
         try {
-            EvidenceIndex evidence = new EvidenceIndex(objectMapper);
-            InsightGenerationContext.State state = InsightGenerationContext.State.from(context, evidence);
             InsightsPayloadJson json = insightsChatClient.prompt()
                     .user(user -> user.text(userPrompt, StandardCharsets.UTF_8)
                             .param("mesAtual", InsightMonthLabel.of(context.bucketKey()))
@@ -65,16 +64,16 @@ public class SpringAiInsightsLlmAdapter implements InsightsLlmGateway {
                             .param("bucketAtual", context.bucketKey())
                             .param("bucketComparacao", context.comparisonBucketKey() == null ? "null" : context.comparisonBucketKey())
                             .param("maxInsights", settings.maxInsights())
-                            .param("grounding", groundingJson(state)))
+                            .param("grounding", groundingJson(context)))
                     .call()
                     .entity(InsightsPayloadJson.class);
             if (json == null) {
                 throw new IllegalStateException("LLM returned an empty insights payload");
             }
             InsightsPayload payload = payloadMapper.toDomain(json);
-            insightPayloadValidator.validate(payload, context, evidence);
+            insightPayloadValidator.validate(payload, context);
             log.info("Generated insights bucketKey={} durationMs={}", bucketKey, Durations.millisSince(started));
-            return payload;
+            return bind(payload, context);
         } catch (RuntimeException ex) {
             log.warn(
                     "Insight generation failed bucketKey={} durationMs={} cause={}",
@@ -86,11 +85,35 @@ public class SpringAiInsightsLlmAdapter implements InsightsLlmGateway {
         }
     }
 
-    private String groundingJson(InsightGenerationContext.State state) {
+    private String groundingJson(InsightPromptContext context) {
+        Map<String, Object> grounding = new LinkedHashMap<>();
+        grounding.put("cobertura_match", InsightsPayloadJson.CoberturaMatch.from(context.coverage()));
+        grounding.put("candidatos", context.candidates().stream().map(InsightCandidateJson::from).toList());
         try {
-            return objectMapper.writeValueAsString(insightGroundingBuilder.build(state));
+            return objectMapper.writeValueAsString(grounding);
         } catch (JsonProcessingException ex) {
             throw new IllegalStateException("Failed to serialize insight grounding", ex);
         }
+    }
+
+    static InsightsPayload bind(InsightsPayload payload, InsightPromptContext context) {
+        List<InsightsPayload.InsightItem> insights = payload.insights().stream()
+                .map(item -> {
+                    InsightCandidate candidate = context.candidate(item.candidateId()).orElseThrow();
+                    return new InsightsPayload.InsightItem(
+                            candidate.id(),
+                            item.texto(),
+                            candidate.type().name(),
+                            candidate.domainId(),
+                            candidate.categoryName(),
+                            new InsightsPayload.Evidencia(candidate.evidenceView(), candidate.evidenceFields()),
+                            candidate.confidence(),
+                            candidate.repairRelation().name(),
+                            item.acaoSugerida()
+                    );
+                })
+                .toList();
+        return new InsightsPayload(payload.periodo(), payload.coberturaMatch(), insights, payload.produtosEmAlta(),
+                payload.limitacoes());
     }
 }

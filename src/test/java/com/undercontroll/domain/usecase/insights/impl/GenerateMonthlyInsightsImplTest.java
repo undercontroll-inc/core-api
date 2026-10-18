@@ -4,13 +4,14 @@ import com.undercontroll.domain.enums.InsightGenerationStatus;
 import com.undercontroll.domain.gateway.InsightsLlmGateway;
 import com.undercontroll.domain.gateway.MarketInsightGateway;
 import com.undercontroll.domain.gateway.MarketViewGateway;
-import com.undercontroll.domain.gateway.OrderGateway;
+import com.undercontroll.domain.insight.InsightMarketDataLoader;
+import com.undercontroll.domain.model.insight.InsightMarketData;
+import com.undercontroll.domain.model.market.RepairCatalogItem;
 import com.undercontroll.domain.model.MarketMonthlyInsight;
 import com.undercontroll.domain.model.insight.InsightPromptContext;
 import com.undercontroll.domain.model.insight.InsightsPayload;
 import com.undercontroll.domain.model.market.MarketPriceMovement;
 import com.undercontroll.domain.model.market.MatchCoverage;
-import com.undercontroll.domain.model.market.RepairCatalogRow;
 import com.undercontroll.domain.usecase.insights.InsightGenerationResult;
 import com.undercontroll.domain.model.insight.InsightGenerationSettings;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,7 +46,7 @@ class GenerateMonthlyInsightsImplTest {
     private MarketInsightGateway marketInsightGateway;
 
     @Mock
-    private OrderGateway orderGateway;
+    private InsightMarketDataLoader insightMarketDataLoader;
 
     @Mock
     private ObjectProvider<InsightsLlmGateway> insightsLlmGateway;
@@ -62,7 +63,7 @@ class GenerateMonthlyInsightsImplTest {
         generateMonthlyInsights = new GenerateMonthlyInsightsImpl(
                 marketViewGateway,
                 marketInsightGateway,
-                orderGateway,
+                insightMarketDataLoader,
                 insightsLlmGateway,
                 settings
         );
@@ -149,8 +150,11 @@ class GenerateMonthlyInsightsImplTest {
 
         ArgumentCaptor<InsightPromptContext> contextCaptor = ArgumentCaptor.forClass(InsightPromptContext.class);
         verify(llmGateway).generate(contextCaptor.capture());
-        assertEquals(1, contextCaptor.getValue().catalog().size());
-        assertEquals("Electrolux", contextCaptor.getValue().catalog().get(0).brand());
+        assertEquals("2026-07", contextCaptor.getValue().comparisonBucketKey());
+        assertEquals(List.of("ALERTA_PRECO:MLB-MICROWAVES"), contextCaptor.getValue().candidates().stream()
+                .filter(candidate -> candidate.type().name().equals("ALERTA_PRECO"))
+                .map(candidate -> candidate.id())
+                .toList());
     }
 
     @Test
@@ -159,8 +163,7 @@ class GenerateMonthlyInsightsImplTest {
         when(marketViewGateway.findCurrentBucketKey()).thenReturn(Optional.of("2026-08"));
         when(marketInsightGateway.findByBucketKey("2026-08")).thenReturn(Optional.empty());
         when(insightsLlmGateway.getIfAvailable()).thenReturn(llmGateway);
-        when(marketViewGateway.findCategorySummary("2026-08")).thenReturn(List.of());
-        when(orderGateway.getRepairCatalog(any())).thenReturn(List.of());
+        when(insightMarketDataLoader.load("2026-08", 90)).thenReturn(emptyData("2026-08"));
         when(marketViewGateway.findAllCurrentProducts()).thenReturn(List.of());
         when(llmGateway.generate(any())).thenThrow(new IllegalStateException("model error"));
 
@@ -178,8 +181,7 @@ class GenerateMonthlyInsightsImplTest {
         when(marketViewGateway.findCurrentBucketKey()).thenReturn(Optional.of("2026-08"));
         when(marketInsightGateway.findByBucketKey("2026-08")).thenReturn(Optional.empty());
         when(insightsLlmGateway.getIfAvailable()).thenReturn(llmGateway);
-        when(marketViewGateway.findCategorySummary("2026-08")).thenReturn(List.of());
-        when(orderGateway.getRepairCatalog(any())).thenReturn(List.of());
+        when(insightMarketDataLoader.load("2026-08", 90)).thenReturn(emptyData("2026-08"));
         when(marketViewGateway.findAllCurrentProducts()).thenReturn(List.of());
         when(llmGateway.generate(any())).thenThrow(new IllegalStateException(
                 "Failed to generate content", new TimeoutException("timeout")));
@@ -203,12 +205,18 @@ class GenerateMonthlyInsightsImplTest {
 
     private void stubSuccessfulLlm(String bucketKey) {
         when(insightsLlmGateway.getIfAvailable()).thenReturn(llmGateway);
-        when(marketViewGateway.findPriceMovements(bucketKey)).thenReturn(List.of(
-                new MarketPriceMovement("MLB-MICROWAVES", bucketKey, "2026-07", true, 4, 6, 5, 599.0, 540.0, 10.9)));
-        when(marketViewGateway.findCategorySummary(bucketKey)).thenReturn(List.of());
-        when(orderGateway.getRepairCatalog(any())).thenReturn(
-                List.of(new RepairCatalogRow("Electrolux", "ME23S", "MICROONDAS", 12L))
-        );
+        when(insightMarketDataLoader.load(bucketKey, 90)).thenReturn(new InsightMarketData(
+                bucketKey,
+                List.of(new RepairCatalogItem("Electrolux", "ME23S", "MICROONDAS", 12L, "electrolux",
+                        "electrolux:me23s", "MLB-MICROWAVES")),
+                List.of(),
+                List.of(new MarketPriceMovement("MLB-MICROWAVES", bucketKey, "2026-07", true, 4, 6, 5, 599.0, 540.0, 10.9)),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of()
+        ));
         when(marketViewGateway.findAllCurrentProducts()).thenReturn(List.of());
         InsightsPayload payload = new InsightsPayload(
                 new InsightsPayload.Periodo(bucketKey, "2026-07"),
@@ -218,5 +226,10 @@ class GenerateMonthlyInsightsImplTest {
                 List.of("Os dados refletem popularidade e preço anunciado, não volume de vendas.")
         );
         when(llmGateway.generate(any())).thenReturn(payload);
+    }
+
+    private static InsightMarketData emptyData(String bucketKey) {
+        return new InsightMarketData(bucketKey, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+                List.of(), List.of());
     }
 }

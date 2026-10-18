@@ -237,6 +237,7 @@
                                         <include>com.undercontroll.application.dto.chat</include>
                                         <include>com.undercontroll.infrastructure.ai</include>
                                         <include>com.undercontroll.infrastructure.ai.config</include>
+                                        <include>com.undercontroll.domain.insight</include>
                                         <include>com.undercontroll.domain.market</include>
                                         <include>com.undercontroll.domain.model</include>
                                         <include>com.undercontroll.domain.model.*</include>

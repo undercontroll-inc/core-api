@@ -77,7 +77,6 @@ public class InsightsAiConfig {
             ObjectMapper objectMapper,
             InsightPayloadValidator insightPayloadValidator,
             InsightGenerationSettings settings,
-            InsightGroundingBuilder insightGroundingBuilder,
             InsightsPayloadJsonMapper payloadMapper,
             @Value("classpath:prompts/insights-user-prompt.txt") Resource userPrompt
     ) {
@@ -87,7 +86,6 @@ public class InsightsAiConfig {
                 insightPayloadValidator,
                 settings,
                 userPrompt,
-                insightGroundingBuilder,
                 payloadMapper
         );
     }

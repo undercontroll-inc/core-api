@@ -28,7 +28,6 @@ class AiConfigurationMatrixTest {
             .withBean(RestClient.Builder.class, RestClient::builder)
             .withBean(AnaShopTools.class, () -> mock(AnaShopTools.class))
             .withBean(ObjectMapper.class, ObjectMapper::new)
-            .withBean(InsightGroundingBuilder.class, () -> mock(InsightGroundingBuilder.class))
             .withBean(InsightsPayloadJsonMapper.class, () -> mock(InsightsPayloadJsonMapper.class))
             .withPropertyValues(
                     "undercontroll.ai.gemini.api-key=test-gemini",

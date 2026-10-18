@@ -1,12 +1,11 @@
 package com.undercontroll.infrastructure.ai;
 
-import com.undercontroll.domain.model.insight.InsightType;
+import com.undercontroll.domain.model.insight.InsightCandidate;
 import com.undercontroll.domain.model.insight.InsightsPayload;
 import com.undercontroll.domain.model.insight.InsightPromptContext;
 
 import java.util.HashSet;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -15,13 +14,6 @@ public class InsightPayloadValidator {
     static final int MIN_TEXT_LENGTH = 280;
     static final int MAX_TEXT_LENGTH = 1200;
     static final int MAX_ACTION_LENGTH = 280;
-
-    static final Set<String> ALLOWED_RELATIONS = Set.of(
-            "NIVEL_1_EXATO",
-            "NIVEL_2_MARCA_CATEGORIA",
-            "NIVEL_3_CATEGORIA",
-            "SEM_MATCH"
-    );
 
     private static final Pattern SALES_LANGUAGE = Pattern.compile(
             "vendeu\\s+\\d+|unidades vendidas|l[ií]der de vendas em unidades|volume de vendas",
@@ -46,14 +38,14 @@ public class InsightPayloadValidator {
         this.maxInsights = maxInsights;
     }
 
-    public void validate(InsightsPayload payload, InsightPromptContext context, EvidenceIndex evidence) {
+    public void validate(InsightsPayload payload, InsightPromptContext context) {
         validateHeader(payload, context);
-        Set<String> types = new HashSet<>();
+        Set<String> candidates = new HashSet<>();
         for (InsightsPayload.InsightItem insight : payload.insights()) {
-            if (insight.tipo() != null && !types.add(insight.tipo())) {
-                throw new IllegalArgumentException("Duplicate insight tipo: " + insight.tipo());
+            if (insight.candidateId() != null && !candidates.add(insight.candidateId())) {
+                throw new IllegalArgumentException("Duplicate candidate_id: " + insight.candidateId());
             }
-            validateInsight(insight, evidence);
+            validateInsight(insight, context);
         }
         for (String limitation : payload.limitacoes()) {
             validateReadableLanguage(limitation);
@@ -89,12 +81,12 @@ public class InsightPayloadValidator {
         }
     }
 
-    private void validateInsight(InsightsPayload.InsightItem insight, EvidenceIndex evidence) {
-        if (!InsightType.isAllowed(insight.tipo())) {
-            throw new IllegalArgumentException("Invalid insight tipo: " + insight.tipo());
-        }
-        if (insight.relacaoComConsertos() == null || !ALLOWED_RELATIONS.contains(insight.relacaoComConsertos())) {
-            throw new IllegalArgumentException("Invalid relacao_com_consertos: " + insight.relacaoComConsertos());
+    private void validateInsight(InsightsPayload.InsightItem insight, InsightPromptContext context) {
+        InsightCandidate candidate = context.candidate(insight.candidateId())
+                .orElseThrow(() -> new IllegalArgumentException("Unknown candidate_id: " + insight.candidateId()));
+        if (!candidate.type().name().equals(insight.tipo())) {
+            throw new IllegalArgumentException("Insight tipo " + insight.tipo() + " does not match candidate "
+                    + candidate.id());
         }
         int textLength = insight.texto() == null ? 0 : insight.texto().length();
         if (textLength < MIN_TEXT_LENGTH || textLength > MAX_TEXT_LENGTH) {
@@ -109,22 +101,6 @@ public class InsightPayloadValidator {
         validateSalesLanguage(insight.acaoSugerida());
         validateReadableLanguage(insight.texto());
         validateReadableLanguage(insight.acaoSugerida());
-        validateEvidence(insight, evidence);
-    }
-
-    private void validateEvidence(InsightsPayload.InsightItem insight, EvidenceIndex evidence) {
-        if (insight.evidencia() == null || insight.evidencia().campos() == null || insight.evidencia().campos().isEmpty()) {
-            throw new IllegalArgumentException("Insight evidence is required");
-        }
-        for (Map.Entry<String, Object> field : insight.evidencia().campos().entrySet()) {
-            if (!evidence.contains(field.getValue())
-                    && !evidence.contains(field.getKey())
-                    && field.getValue() != null
-                    && !evidence.contains(String.valueOf(field.getValue()))) {
-                throw new IllegalArgumentException(
-                        "Evidence field is not traceable: " + field.getKey() + "=" + field.getValue());
-            }
-        }
     }
 
     private void validateSalesLanguage(String text) {
