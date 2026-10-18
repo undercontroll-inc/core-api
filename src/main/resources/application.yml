@@ -134,9 +134,13 @@ undercontroll:
       api-key: ${GEMINI_API_KEY:${GOOGLE_API_KEY:}}
       project-id: ${GEMINI_PROJECT_ID:}
       location: ${GEMINI_LOCATION:}
+      chat-model: ${GEMINI_CHAT_MODEL:gemini-3.6-flash}
+      transcription-model: ${GEMINI_TRANSCRIBE_MODEL:gemini-3.5-flash-lite}
     openai:
       api-key: ${OPENAI_API_KEY:}
       base-url: ${OPENAI_BASE_URL:https://api.openai.com}
+      chat-model: ${OPENAI_CHAT_MODEL:gpt-4.1-mini}
+      transcription-model: ${OPENAI_TRANSCRIBE_MODEL:whisper-1}
     ana:
       provider: ${ANA_PROVIDER:${INSIGHTS_PROVIDER:none}}
       model: ${ANA_MODEL:}

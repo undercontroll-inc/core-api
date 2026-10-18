@@ -30,6 +30,17 @@ public enum AiProvider {
         };
     }
 
+    public String modelOrDefault(String configured, String geminiDefault, String openAiDefault) {
+        if (configured != null && !configured.isBlank()) {
+            return configured;
+        }
+        return switch (this) {
+            case GEMINI -> geminiDefault;
+            case OPENAI -> openAiDefault;
+            case NONE -> configured;
+        };
+    }
+
     public String defaultChatModel() {
         return defaultChatModel;
     }

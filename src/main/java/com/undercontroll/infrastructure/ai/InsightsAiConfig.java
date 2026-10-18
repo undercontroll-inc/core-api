@@ -7,6 +7,7 @@ import com.undercontroll.domain.model.insight.InsightGenerationSettings;
 import com.undercontroll.domain.model.insight.InsightJobSettings;
 import com.undercontroll.domain.support.Sleeper;
 import com.undercontroll.infrastructure.ai.config.AiFeatureSettings;
+import com.undercontroll.infrastructure.ai.config.AiProvider;
 import com.undercontroll.infrastructure.ai.config.ChatModelFactory;
 import com.undercontroll.infrastructure.ai.config.ConditionalOnAiFeature;
 import com.undercontroll.infrastructure.metrics.AiMetrics;
@@ -35,12 +36,15 @@ public class InsightsAiConfig {
     AiFeatureSettings insightsAiSettings(
             @Value("${undercontroll.ai.insights.provider:none}") String provider,
             @Value("${undercontroll.ai.insights.model:}") String model,
+            @Value("${undercontroll.ai.gemini.chat-model:gemini-3.6-flash}") String geminiModel,
+            @Value("${undercontroll.ai.openai.chat-model:gpt-4.1-mini}") String openAiModel,
             @Value("${undercontroll.ai.insights.timeout:60s}") Duration timeout,
             @Value("${undercontroll.ai.insights.temperature:0.2}") Double temperature,
             @Value("${undercontroll.ai.insights.max-output-tokens:4096}") Integer maxOutputTokens,
             @Value("${undercontroll.ai.insights.thinking:low}") String thinking
     ) {
-        return AiFeatureSettings.chat("insights", provider, model, timeout, temperature, maxOutputTokens, thinking);
+        return AiFeatureSettings.chat("insights", provider,
+                AiProvider.parse("insights", provider).modelOrDefault(model, geminiModel, openAiModel), timeout, temperature, maxOutputTokens, thinking);
     }
 
     @Bean

@@ -113,6 +113,30 @@ class AiConfigurationMatrixTest {
     }
 
     @Test
+    @DisplayName("blank feature model falls back to the provider model keys")
+    void providerModelFallback() {
+        runner.withPropertyValues(
+                "undercontroll.ai.ana.provider=gemini",
+                "undercontroll.ai.insights.provider=openai",
+                "undercontroll.ai.transcription.provider=gemini",
+                "undercontroll.ai.gemini.chat-model=gemini-3.8-flash",
+                "undercontroll.ai.openai.chat-model=gpt-4.1",
+                "undercontroll.ai.gemini.transcription-model=gemini-3.5-flash"
+        ).run(context -> {
+            assertThat(context).hasNotFailed();
+            assertThat(context.getBean("anaAiSettings", AiFeatureSettings.class).model()).isEqualTo("gemini-3.8-flash");
+            assertThat(context.getBean(InsightGenerationSettings.class).model()).isEqualTo("gpt-4.1");
+            assertThat(context.getBean("transcriptionAiSettings", AiFeatureSettings.class).model()).isEqualTo("gemini-3.5-flash");
+        });
+        runner.withPropertyValues(
+                "undercontroll.ai.ana.provider=gemini",
+                "undercontroll.ai.ana.model=gemini-2.5-flash",
+                "undercontroll.ai.gemini.chat-model=gemini-3.8-flash"
+        ).run(context -> assertThat(context.getBean("anaAiSettings", AiFeatureSettings.class).model())
+                .isEqualTo("gemini-2.5-flash"));
+    }
+
+    @Test
     @DisplayName("typo in a provider fails startup naming the key")
     void invalidProvider() {
         runner.withPropertyValues("undercontroll.ai.ana.provider=gemni").run(context -> {
