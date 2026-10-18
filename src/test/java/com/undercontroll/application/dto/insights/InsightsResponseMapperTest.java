@@ -45,7 +45,6 @@ class InsightsResponseMapperTest {
                         4,
                         81.3,
                         599.0,
-                        11.11,
                         18,
                         "HIGH",
                         true
@@ -61,6 +60,7 @@ class InsightsResponseMapperTest {
         assertEquals("ALERTA_PRECO", response.insights().get(0).type());
         assertEquals("Texto", response.insights().get(0).text());
         assertEquals("Electrolux", response.risingProducts().get(0).brand());
+        assertEquals(18, response.risingProducts().get(0).validPriceCount());
         assertEquals("limitação", response.limitations().get(0));
         assertEquals("2026-08-01T04:00", response.generatedAt());
     }

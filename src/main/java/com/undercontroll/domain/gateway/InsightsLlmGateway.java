@@ -1,9 +1,9 @@
 package com.undercontroll.domain.gateway;
 
-import com.undercontroll.domain.model.insight.InsightPromptContext;
-import com.undercontroll.domain.model.insight.InsightsPayload;
+import com.undercontroll.domain.model.insight.InsightDraft;
+import com.undercontroll.domain.model.insight.InsightDraftRequest;
 
 public interface InsightsLlmGateway {
 
-    InsightsPayload generate(InsightPromptContext context);
+    InsightDraft draft(InsightDraftRequest request);
 }

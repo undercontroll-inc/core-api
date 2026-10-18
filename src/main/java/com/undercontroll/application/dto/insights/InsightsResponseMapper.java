@@ -82,8 +82,7 @@ public final class InsightsResponseMapper {
                 product.variacaoPosicao(),
                 product.score(),
                 product.precoMediano(),
-                product.variacaoPrecoPct(),
-                product.ofertas(),
+                product.precosValidos(),
                 product.confianca(),
                 product.atendidoPeloCliente()
         );

@@ -4,16 +4,19 @@ import com.undercontroll.domain.enums.InsightGenerationStatus;
 import com.undercontroll.domain.gateway.InsightsLlmGateway;
 import com.undercontroll.domain.gateway.MarketInsightGateway;
 import com.undercontroll.domain.gateway.MarketViewGateway;
-import com.undercontroll.domain.insight.InsightCandidateGenerator;
+import com.undercontroll.domain.exception.LlmOutputException;
+import com.undercontroll.domain.insight.InsightContract;
+import com.undercontroll.domain.insight.InsightDraftValidator;
+import com.undercontroll.domain.insight.InsightInputs;
+import com.undercontroll.domain.insight.InsightNarrativeRenderer;
 import com.undercontroll.domain.insight.InsightMarketDataLoader;
-import com.undercontroll.domain.market.MarketEvidence;
-import com.undercontroll.domain.market.RepairCatalogMatcher;
 import com.undercontroll.domain.model.MarketMonthlyInsight;
 import com.undercontroll.domain.model.insight.InsightGenerationSettings;
 import com.undercontroll.domain.model.insight.InsightMarketData;
-import com.undercontroll.domain.model.insight.InsightPromptContext;
+import com.undercontroll.domain.model.insight.InsightDraft;
+import com.undercontroll.domain.model.insight.InsightDraftRequest;
+import com.undercontroll.domain.model.insight.InsightGenerationInput;
 import com.undercontroll.domain.model.insight.InsightsPayload;
-import com.undercontroll.domain.model.market.MatchCoverage;
 import com.undercontroll.domain.usecase.insights.GenerateMonthlyInsightsPort;
 import com.undercontroll.domain.usecase.insights.InsightGenerationResult;
 import com.undercontroll.domain.support.Durations;
@@ -25,6 +28,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
@@ -41,6 +45,7 @@ public class GenerateMonthlyInsightsImpl implements GenerateMonthlyInsightsPort 
     private final InsightMarketDataLoader insightMarketDataLoader;
     private final ObjectProvider<InsightsLlmGateway> insightsLlmGateway;
     private final InsightGenerationSettings insightGenerationSettings;
+    private final InsightContract insightContract;
 
     @Override
     @CacheEvict(value = {"marketInsights", "marketAnalytics"}, allEntries = true)
@@ -67,21 +72,20 @@ public class GenerateMonthlyInsightsImpl implements GenerateMonthlyInsightsPort 
         }
 
         InsightMarketData data = insightMarketDataLoader.load(bucketKey, insightGenerationSettings.repairCatalogDays());
-        String comparison = MarketEvidence.comparisonBucket(data.priceMovements());
-        MatchCoverage coverage = RepairCatalogMatcher.coverage(marketViewGateway.findAllCurrentProducts(), data.catalog());
-        InsightPromptContext context = new InsightPromptContext(
-                bucketKey,
-                comparison,
-                coverage,
-                InsightCandidateGenerator.generate(data)
-        );
+        InsightGenerationInput input = InsightInputs.build(data, marketViewGateway.findAllCurrentProducts(), false);
+        String comparison = input.comparisonBucketKey();
 
         Exception lastError = null;
         long started = System.nanoTime();
         for (int attempt = 1; attempt <= 2; attempt++) {
             long attemptStarted = System.nanoTime();
             try {
-                InsightsPayload payload = llm.generate(context);
+                InsightDraft draft = llm.draft(InsightDraftRequest.first(input, insightContract));
+                List<String> errors = InsightDraftValidator.validate(draft, input.candidates(), insightContract);
+                if (!errors.isEmpty()) {
+                    throw new LlmOutputException("Insight draft failed validation: " + String.join("; ", errors));
+                }
+                InsightsPayload payload = InsightNarrativeRenderer.renderPayload(draft, input);
                 persistSuccess(existing.orElse(null), bucketKey, comparison, payload);
                 log.info(
                         "Generated monthly insights bucketKey={} attempt={} durationMs={}",

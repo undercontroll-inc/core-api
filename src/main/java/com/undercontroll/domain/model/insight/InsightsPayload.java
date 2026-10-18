@@ -65,8 +65,7 @@ public record InsightsPayload(
             Integer variacaoPosicao,
             Double score,
             Double precoMediano,
-            Double variacaoPrecoPct,
-            Integer ofertas,
+            Integer precosValidos,
             String confianca,
             Boolean atendidoPeloCliente
     ) {

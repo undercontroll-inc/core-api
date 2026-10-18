@@ -1,12 +1,8 @@
-Gere os insights do <mesAtual> (comparação: <mesComparacao>).
-O JSON abaixo é o contexto obrigatório (cobertura e candidatos calculados pelo servidor).
-Copie cobertura_match desse JSON — não recalcule.
-Não chame tools. Escreva só a partir desse JSON.
-Gere no máximo <maxInsights> insights, cada um ligado a um candidate_id da lista e com o mesmo tipo.
-Use só as métricas do candidato escolhido e a relacao_com_consertos dele.
-JSON interno: periodo.bucket_atual = <bucketAtual>; periodo.bucket_comparacao = <bucketComparacao>.
-No texto visível (texto, acao_sugerida, limitacoes) escreva <mesAtual> e <mesComparacao> por extenso — nunca códigos AAAA-MM nem a palavra bucket.
-Seja direto e útil: o que mudou, por que importa para a oficina, e o que fazer.
+Escreva os insights do <mesAtual>.
+Escolha no máximo <maxInsights> candidatos da lista abaixo e escreva um insight para cada um.
+Use em cada texto só os placeholders daquele candidato.
 
-CONTEXTO_OBRIGATORIO:
-<grounding>
+CANDIDATOS:
+<candidatos>
+
+<correcao>

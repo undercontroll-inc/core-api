@@ -2,118 +2,128 @@ package com.undercontroll.infrastructure.ai;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.undercontroll.domain.exception.LlmOutputException;
 import com.undercontroll.domain.gateway.InsightsLlmGateway;
+import com.undercontroll.domain.insight.InsightContract;
 import com.undercontroll.domain.model.insight.InsightCandidate;
-import com.undercontroll.domain.model.insight.InsightMonthLabel;
+import com.undercontroll.domain.model.insight.InsightDraft;
+import com.undercontroll.domain.model.insight.InsightDraftRequest;
+import com.undercontroll.domain.model.insight.InsightGenerationInput;
 import com.undercontroll.domain.model.insight.InsightGenerationSettings;
-import com.undercontroll.domain.model.insight.InsightPromptContext;
-import com.undercontroll.domain.model.insight.InsightsPayload;
-import com.undercontroll.infrastructure.mapper.InsightsPayloadJsonMapper;
+import com.undercontroll.domain.model.insight.InsightMonthLabel;
 import com.undercontroll.domain.support.Durations;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.prompt.ChatOptions;
+import org.springframework.ai.model.tool.StructuredOutputChatOptions;
 import org.springframework.core.io.Resource;
 
 import java.nio.charset.StandardCharsets;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 public class SpringAiInsightsLlmAdapter implements InsightsLlmGateway {
 
-    private final ChatClient insightsChatClient;
+    private static final Set<String> TRUNCATED = Set.of("MAX_TOKENS", "LENGTH");
+
+    private final ChatClient chatClient;
+    private final ChatOptions defaultOptions;
     private final ObjectMapper objectMapper;
-    private final InsightPayloadValidator insightPayloadValidator;
     private final InsightGenerationSettings settings;
     private final Resource userPrompt;
-    private final InsightsPayloadJsonMapper payloadMapper;
 
     public SpringAiInsightsLlmAdapter(
-            ChatClient insightsChatClient,
+            ChatClient chatClient,
+            ChatOptions defaultOptions,
             ObjectMapper objectMapper,
-            InsightPayloadValidator insightPayloadValidator,
             InsightGenerationSettings settings,
-            Resource userPrompt,
-            InsightsPayloadJsonMapper payloadMapper
+            Resource userPrompt
     ) {
-        this.insightsChatClient = insightsChatClient;
+        if (!(defaultOptions instanceof StructuredOutputChatOptions)) {
+            throw new IllegalStateException("undercontroll.ai.insights.provider=" + settings.provider()
+                    + " does not support native structured output");
+        }
+        this.chatClient = chatClient;
+        this.defaultOptions = defaultOptions;
         this.objectMapper = objectMapper;
-        this.insightPayloadValidator = insightPayloadValidator;
         this.settings = settings;
         this.userPrompt = userPrompt;
-        this.payloadMapper = payloadMapper;
     }
 
     @Override
-    public InsightsPayload generate(InsightPromptContext context) {
+    public InsightDraft draft(InsightDraftRequest request) {
+        InsightGenerationInput input = request.input();
+        if (input.candidates().isEmpty()) {
+            return new InsightDraft(List.of());
+        }
         long started = System.nanoTime();
-        String bucketKey = context.bucketKey();
-        log.info(
-                "Generating insights bucketKey={} comparison={} provider={} model={}",
-                bucketKey,
-                context.comparisonBucketKey(),
-                settings.provider(),
-                settings.model()
-        );
-        try {
-            InsightsPayloadJson json = insightsChatClient.prompt()
-                    .user(user -> user.text(userPrompt, StandardCharsets.UTF_8)
-                            .param("mesAtual", InsightMonthLabel.of(context.bucketKey()))
-                            .param("mesComparacao", InsightMonthLabel.of(context.comparisonBucketKey()))
-                            .param("bucketAtual", context.bucketKey())
-                            .param("bucketComparacao", context.comparisonBucketKey() == null ? "null" : context.comparisonBucketKey())
-                            .param("maxInsights", settings.maxInsights())
-                            .param("grounding", groundingJson(context)))
-                    .call()
-                    .entity(InsightsPayloadJson.class);
-            if (json == null) {
-                throw new IllegalStateException("LLM returned an empty insights payload");
-            }
-            InsightsPayload payload = payloadMapper.toDomain(json);
-            insightPayloadValidator.validate(payload, context);
-            log.info("Generated insights bucketKey={} durationMs={}", bucketKey, Durations.millisSince(started));
-            return bind(payload, context);
-        } catch (RuntimeException ex) {
-            log.warn(
-                    "Insight generation failed bucketKey={} durationMs={} cause={}",
-                    bucketKey,
-                    Durations.millisSince(started),
-                    ex.toString()
-            );
-            throw ex;
+        ChatResponse response = chatClient.prompt()
+                .options(structuredOptions(request))
+                .user(user -> user.text(userPrompt, StandardCharsets.UTF_8).params(params(request)))
+                .call()
+                .chatResponse();
+        String finishReason = finishReason(response);
+        log.info("Insight draft bucketKey={} repair={} provider={} model={} finishReason={} durationMs={}",
+                input.bucketKey(), request.repairing(), settings.provider(), settings.model(), finishReason,
+                Durations.millisSince(started));
+        if (finishReason != null && TRUNCATED.contains(finishReason.toUpperCase(Locale.ROOT))) {
+            throw new LlmOutputException("Insight draft was truncated (finish reason " + finishReason + ")");
         }
-    }
-
-    private String groundingJson(InsightPromptContext context) {
-        Map<String, Object> grounding = new LinkedHashMap<>();
-        grounding.put("cobertura_match", InsightsPayloadJson.CoberturaMatch.from(context.coverage()));
-        grounding.put("candidatos", context.candidates().stream().map(InsightCandidateJson::from).toList());
+        String content = response == null || response.getResult() == null
+                ? null
+                : response.getResult().getOutput().getText();
+        if (content == null || content.isBlank()) {
+            throw new LlmOutputException("Insight draft is empty");
+        }
         try {
-            return objectMapper.writeValueAsString(grounding);
+            return objectMapper.readValue(content, InsightDraftJson.class).toDomain();
         } catch (JsonProcessingException ex) {
-            throw new IllegalStateException("Failed to serialize insight grounding", ex);
+            throw new LlmOutputException("Insight draft is not valid JSON for " + InsightContract.VERSION, ex);
         }
     }
 
-    static InsightsPayload bind(InsightsPayload payload, InsightPromptContext context) {
-        List<InsightsPayload.InsightItem> insights = payload.insights().stream()
-                .map(item -> {
-                    InsightCandidate candidate = context.candidate(item.candidateId()).orElseThrow();
-                    return new InsightsPayload.InsightItem(
-                            candidate.id(),
-                            item.texto(),
-                            candidate.type().name(),
-                            candidate.domainId(),
-                            candidate.categoryName(),
-                            new InsightsPayload.Evidencia(candidate.evidenceView(), candidate.evidenceFields()),
-                            candidate.confidence(),
-                            candidate.repairRelation().name(),
-                            item.acaoSugerida()
-                    );
-                })
-                .toList();
-        return new InsightsPayload(payload.periodo(), payload.coberturaMatch(), insights, payload.produtosEmAlta(),
-                payload.limitacoes());
+    ChatOptions structuredOptions(InsightDraftRequest request) {
+        ChatOptions options = defaultOptions.copy();
+        List<String> ids = request.input().candidates().stream().map(InsightCandidate::id).toList();
+        ((StructuredOutputChatOptions) options).setOutputSchema(
+                InsightDraftSchema.json(objectMapper, request.contract(), ids));
+        return options;
+    }
+
+    Map<String, Object> params(InsightDraftRequest request) {
+        InsightGenerationInput input = request.input();
+        Map<String, Object> params = new HashMap<>();
+        params.put("mesAtual", InsightMonthLabel.of(input.bucketKey()));
+        params.put("maxInsights", request.contract().maxInsights());
+        params.put("candidatos", json(input.candidates().stream().map(InsightCandidateJson::from).toList()));
+        params.put("correcao", request.repairing() ? correction(request) : "");
+        return params;
+    }
+
+    private String correction(InsightDraftRequest request) {
+        return "CORREÇÃO OBRIGATÓRIA\n"
+                + "Sua resposta anterior foi rejeitada. Corrija todos os erros abaixo e devolva o JSON completo.\n"
+                + "Resposta anterior: " + json(InsightDraftJson.from(request.previousDraft())) + "\n"
+                + "Erros:\n- " + String.join("\n- ", request.errors()) + "\n";
+    }
+
+    private String json(Object value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (JsonProcessingException ex) {
+            throw new IllegalStateException("Failed to serialize insight prompt data", ex);
+        }
+    }
+
+    private static String finishReason(ChatResponse response) {
+        if (response == null || response.getResult() == null || response.getResult().getMetadata() == null) {
+            return null;
+        }
+        return response.getResult().getMetadata().getFinishReason();
     }
 }

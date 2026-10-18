@@ -62,8 +62,7 @@ public record MarketInsightsResponse(
             Integer positionDelta,
             Double score,
             Double medianPrice,
-            Double priceDeltaPct,
-            Integer offers,
+            Integer validPriceCount,
             String confidence,
             Boolean servedByClient
     ) {

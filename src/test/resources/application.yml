@@ -52,7 +52,7 @@ undercontroll:
       memory-window: 10
     insights:
       provider: none
-      prompt-version: "6"
+      prompt-version: "7"
       cron: "0 0 4 1 * *"
       max-insights: 7
       repair-catalog-days: 90

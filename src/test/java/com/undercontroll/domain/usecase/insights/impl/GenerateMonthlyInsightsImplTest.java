@@ -8,10 +8,10 @@ import com.undercontroll.domain.insight.InsightMarketDataLoader;
 import com.undercontroll.domain.model.insight.InsightMarketData;
 import com.undercontroll.domain.model.market.RepairCatalogItem;
 import com.undercontroll.domain.model.MarketMonthlyInsight;
-import com.undercontroll.domain.model.insight.InsightPromptContext;
-import com.undercontroll.domain.model.insight.InsightsPayload;
+import com.undercontroll.domain.insight.InsightContract;
+import com.undercontroll.domain.model.insight.InsightDraft;
+import com.undercontroll.domain.model.insight.InsightDraftRequest;
 import com.undercontroll.domain.model.market.MarketPriceMovement;
-import com.undercontroll.domain.model.market.MatchCoverage;
 import com.undercontroll.domain.usecase.insights.InsightGenerationResult;
 import com.undercontroll.domain.model.insight.InsightGenerationSettings;
 import org.junit.jupiter.api.BeforeEach;
@@ -65,7 +65,8 @@ class GenerateMonthlyInsightsImplTest {
                 marketInsightGateway,
                 insightMarketDataLoader,
                 insightsLlmGateway,
-                settings
+                settings,
+                new InsightContract(7)
         );
     }
 
@@ -94,7 +95,7 @@ class GenerateMonthlyInsightsImplTest {
         generateMonthlyInsights.execute(false);
 
         verify(insightsLlmGateway, never()).getIfAvailable();
-        verify(llmGateway, never()).generate(any());
+        verify(llmGateway, never()).draft(any());
     }
 
     @Test
@@ -127,7 +128,7 @@ class GenerateMonthlyInsightsImplTest {
 
         generateMonthlyInsights.execute(false);
 
-        verify(llmGateway, never()).generate(any());
+        verify(llmGateway, never()).draft(any());
         verify(marketInsightGateway, never()).save(any());
     }
 
@@ -148,10 +149,10 @@ class GenerateMonthlyInsightsImplTest {
         assertEquals("gpt-4.1-mini", captor.getValue().getModel());
         assertEquals("1", captor.getValue().getPromptVersion());
 
-        ArgumentCaptor<InsightPromptContext> contextCaptor = ArgumentCaptor.forClass(InsightPromptContext.class);
-        verify(llmGateway).generate(contextCaptor.capture());
-        assertEquals("2026-07", contextCaptor.getValue().comparisonBucketKey());
-        assertEquals(List.of("ALERTA_PRECO:MLB-MICROWAVES"), contextCaptor.getValue().candidates().stream()
+        ArgumentCaptor<InsightDraftRequest> contextCaptor = ArgumentCaptor.forClass(InsightDraftRequest.class);
+        verify(llmGateway).draft(contextCaptor.capture());
+        assertEquals("2026-07", contextCaptor.getValue().input().comparisonBucketKey());
+        assertEquals(List.of("ALERTA_PRECO:MLB-MICROWAVES"), contextCaptor.getValue().input().candidates().stream()
                 .filter(candidate -> candidate.type().name().equals("ALERTA_PRECO"))
                 .map(candidate -> candidate.id())
                 .toList());
@@ -165,11 +166,11 @@ class GenerateMonthlyInsightsImplTest {
         when(insightsLlmGateway.getIfAvailable()).thenReturn(llmGateway);
         when(insightMarketDataLoader.load("2026-08", 90)).thenReturn(emptyData("2026-08"));
         when(marketViewGateway.findAllCurrentProducts()).thenReturn(List.of());
-        when(llmGateway.generate(any())).thenThrow(new IllegalStateException("model error"));
+        when(llmGateway.draft(any())).thenThrow(new IllegalStateException("model error"));
 
         generateMonthlyInsights.execute(false);
 
-        verify(llmGateway, times(2)).generate(any());
+        verify(llmGateway, times(2)).draft(any());
         ArgumentCaptor<MarketMonthlyInsight> captor = ArgumentCaptor.forClass(MarketMonthlyInsight.class);
         verify(marketInsightGateway).save(captor.capture());
         assertEquals(InsightGenerationStatus.FAILED, captor.getValue().getStatus());
@@ -183,12 +184,12 @@ class GenerateMonthlyInsightsImplTest {
         when(insightsLlmGateway.getIfAvailable()).thenReturn(llmGateway);
         when(insightMarketDataLoader.load("2026-08", 90)).thenReturn(emptyData("2026-08"));
         when(marketViewGateway.findAllCurrentProducts()).thenReturn(List.of());
-        when(llmGateway.generate(any())).thenThrow(new IllegalStateException(
+        when(llmGateway.draft(any())).thenThrow(new IllegalStateException(
                 "Failed to generate content", new TimeoutException("timeout")));
 
         generateMonthlyInsights.execute(false);
 
-        verify(llmGateway, times(1)).generate(any());
+        verify(llmGateway, times(1)).draft(any());
         ArgumentCaptor<MarketMonthlyInsight> captor = ArgumentCaptor.forClass(MarketMonthlyInsight.class);
         verify(marketInsightGateway).save(captor.capture());
         assertEquals(InsightGenerationStatus.FAILED, captor.getValue().getStatus());
@@ -218,14 +219,7 @@ class GenerateMonthlyInsightsImplTest {
                 List.of()
         ));
         when(marketViewGateway.findAllCurrentProducts()).thenReturn(List.of());
-        InsightsPayload payload = new InsightsPayload(
-                new InsightsPayload.Periodo(bucketKey, "2026-07"),
-                InsightsPayload.CoberturaMatch.from(MatchCoverage.empty()),
-                List.of(),
-                List.of(),
-                List.of("Os dados refletem popularidade e preço anunciado, não volume de vendas.")
-        );
-        when(llmGateway.generate(any())).thenReturn(payload);
+        when(llmGateway.draft(any())).thenReturn(new InsightDraft(List.of()));
     }
 
     private static InsightMarketData emptyData(String bucketKey) {

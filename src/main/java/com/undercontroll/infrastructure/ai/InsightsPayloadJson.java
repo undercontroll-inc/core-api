@@ -2,7 +2,6 @@ package com.undercontroll.infrastructure.ai;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.undercontroll.domain.model.market.MatchCoverage;
 
 import java.util.List;
 import java.util.Map;
@@ -29,17 +28,6 @@ public record InsightsPayloadJson(
             @JsonProperty("nivel_3_categoria") int nivel3Categoria,
             @JsonProperty("sem_match") int semMatch
     ) {
-        public static CoberturaMatch from(MatchCoverage coverage) {
-            if (coverage == null) {
-                return new CoberturaMatch(0, 0, 0, 0);
-            }
-            return new CoberturaMatch(
-                    coverage.exact(),
-                    coverage.brandCategory(),
-                    coverage.category(),
-                    coverage.none()
-            );
-        }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -73,8 +61,7 @@ public record InsightsPayloadJson(
             @JsonProperty("variacao_posicao") Integer variacaoPosicao,
             @JsonProperty("score") Double score,
             @JsonProperty("preco_mediano") Double precoMediano,
-            @JsonProperty("variacao_preco_pct") Double variacaoPrecoPct,
-            @JsonProperty("ofertas") Integer ofertas,
+            @JsonProperty("precos_validos") Integer precosValidos,
             @JsonProperty("confianca") String confianca,
             @JsonProperty("atendido_pelo_cliente") Boolean atendidoPeloCliente
     ) {
