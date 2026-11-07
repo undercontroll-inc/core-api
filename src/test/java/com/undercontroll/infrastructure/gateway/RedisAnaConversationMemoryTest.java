@@ -27,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -143,5 +144,38 @@ class RedisAnaConversationMemoryTest {
         Duration ttl = Duration.ofSeconds(90);
 
         assertThrows(ConversationMemoryUnavailableException.class, () -> memory.tryLock(KEY, ttl));
+    }
+
+    @Test
+    @DisplayName("seed replaces the window atomically with the stored history")
+    void seeds() {
+        memory.seed(KEY, List.of(ChatMessage.user("Oi"), ChatMessage.assistant("Olá")));
+
+        verify(redis).execute(
+                eq(RedisAnaConversationMemory.SEED),
+                eq(List.of("ana:memory:7:kitchen")),
+                eq("10"),
+                eq(String.valueOf(Duration.ofHours(24).toMillis())),
+                eq("{\"role\":\"USER\",\"text\":\"Oi\"}"),
+                eq("{\"role\":\"ASSISTANT\",\"text\":\"Olá\"}")
+        );
+    }
+
+    @Test
+    @DisplayName("seed with nothing to store does not touch Redis; clear deletes the window")
+    void seedEmptyAndClear() {
+        memory.seed(KEY, List.of());
+        memory.clear(KEY);
+
+        verify(redis).delete("ana:memory:7:kitchen");
+        verify(redis, never()).execute(eq(RedisAnaConversationMemory.SEED), any(), any(Object[].class));
+    }
+
+    @Test
+    @DisplayName("Redis failures on seed and clear surface as memory unavailable")
+    void seedAndClearFailures() {
+        when(redis.delete("ana:memory:7:kitchen")).thenThrow(new IllegalStateException("down"));
+
+        assertThrows(ConversationMemoryUnavailableException.class, () -> memory.clear(KEY));
     }
 }

@@ -60,6 +60,22 @@ class SendChatMessageImplTest {
     }
 
     @Test
+    @DisplayName("returns the stored ids of both messages")
+    void returnsIds() {
+        AnaChatSession persisted = new AnaChatSession(SESSION.key(), SESSION.turn(), null, true, 55L, 100L);
+        AnaReply reply = AnaReply.completed("Tem 2.");
+        when(preparer.prepare("Oi", "kitchen")).thenReturn(persisted);
+        when(preparer.gateway()).thenReturn(gateway);
+        when(gateway.reply(persisted.turn())).thenReturn(reply);
+        when(preparer.finish(persisted, reply)).thenReturn(101L);
+
+        SendChatMessagePort.Output output = useCase.execute(new SendChatMessagePort.Input("Oi", "kitchen"));
+
+        assertEquals(100L, output.userMessageId());
+        assertEquals(101L, output.assistantMessageId());
+    }
+
+    @Test
     @DisplayName("a failed reply still releases the conversation")
     void failureReleases() {
         when(preparer.prepare("Oi", "kitchen")).thenReturn(SESSION);

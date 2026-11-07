@@ -73,8 +73,8 @@ class StreamChatMessageImplTest {
     }
 
     @Test
-    @DisplayName("partial, failed and cancelled streams only release the conversation once")
-    void nonCompletedAreNotRecorded() {
+    @DisplayName("partial replies are stored as partial; errors and cancels without content only release once")
+    void nonCompletedReplies() {
         RecordingSink partialSink = new RecordingSink();
         stream(partialSink).partial("Tem", "max_tokens");
         RecordingSink errorSink = new RecordingSink();
@@ -86,8 +86,53 @@ class StreamChatMessageImplTest {
 
         assertEquals("partial:max_tokens:Tem", partialSink.events.getLast());
         assertEquals("error:CHAT_UNAVAILABLE", errorSink.events.getLast());
-        verify(preparer, times(3)).abandon(SESSION);
-        verify(preparer, never()).finish(any(), any());
+        verify(preparer).finish(SESSION, AnaReply.partial("Tem", "max_tokens"));
+        verify(preparer, times(2)).abandon(SESSION);
+    }
+
+    @Test
+    @DisplayName("a cancel or error after streamed text stores what the user already saw as partial")
+    void streamedTextIsKept() {
+        RecordingSink cancelSink = new RecordingSink();
+        ChatStreamSink canceled = stream(cancelSink);
+        canceled.delta("Tem ");
+        canceled.delta("dois");
+        cancelSink.cancel.run();
+        RecordingSink errorSink = new RecordingSink();
+        ChatStreamSink failed = stream(errorSink);
+        failed.delta("Parcial");
+        failed.error("CHAT_TIMEOUT", "x");
+
+        verify(preparer).finish(SESSION, AnaReply.partial("Tem dois", "canceled"));
+        verify(preparer).finish(SESSION, AnaReply.partial("Parcial", "chat_timeout"));
+        verify(preparer, never()).abandon(any());
+    }
+
+    @Test
+    @DisplayName("stored ids reach the client on start and done")
+    void idsReachClient() {
+        AnaChatSession persisted = new AnaChatSession(SESSION.key(), SESSION.turn(), null, true, 55L, 100L);
+        when(preparer.gateway()).thenReturn(gateway);
+        when(preparer.finish(persisted, AnaReply.completed("Tem 2."))).thenReturn(101L);
+        List<String> events = new ArrayList<>();
+        ChatStreamSink client = new RecordingSink() {
+            @Override
+            public void start(String conversationId, Long userMessageId) {
+                events.add("start:" + userMessageId);
+            }
+
+            @Override
+            public void complete(String fullContent, Long messageId) {
+                events.add("done:" + messageId);
+            }
+        };
+        ArgumentCaptor<ChatStreamSink> wrapped = ArgumentCaptor.forClass(ChatStreamSink.class);
+
+        useCase.stream(persisted, client);
+        verify(gateway).streamReply(eq(persisted.turn()), wrapped.capture());
+        wrapped.getValue().complete("Tem 2.");
+
+        assertEquals(List.of("start:100", "done:101"), events);
     }
 
     @Test
@@ -112,7 +157,7 @@ class StreamChatMessageImplTest {
         return last;
     }
 
-    private static final class RecordingSink implements ChatStreamSink {
+    private static class RecordingSink implements ChatStreamSink {
 
         private final List<String> events = new ArrayList<>();
         private Runnable cancel = () -> {

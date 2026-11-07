@@ -1,0 +1,44 @@
+type: http_request
+model: http_request
+id: rq_uc00000063
+createdAt: 2026-11-07T12:00:00.000000
+updatedAt: 2026-11-07T12:00:00.000000
+workspaceId: wk_ucCoreApi1
+folderId: fl_ucChatHist1
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "title": "Estoque de motores"
+    }
+bodyType: application/json
+description: "title 1-120 characters (trimmed). 400 VALIDATION_ERROR otherwise."
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: ct000063
+method: PATCH
+name: Rename conversation
+sortPriority: 4000.0
+url: ${[ base_url ]}/v1/api/chats/conversations/${[ conversation_id ]}
+urlParameters: []
+settingSendCookies:
+  enabled: false
+  value: true
+settingStoreCookies:
+  enabled: false
+  value: true
+settingValidateCertificates:
+  enabled: false
+  value: true
+settingFollowRedirects:
+  enabled: false
+  value: true
+settingRequestTimeout:
+  enabled: false
+  value: 0
+settingHttpVersion:
+  enabled: false
+  value: auto

@@ -32,7 +32,9 @@ public class ChatController implements ChatApi {
                 output.conversationId(),
                 reply.content(),
                 reply.state().name().toLowerCase(Locale.ROOT),
-                reply.reason()
+                reply.reason(),
+                output.userMessageId(),
+                output.assistantMessageId()
         ));
     }
 

@@ -7,6 +7,8 @@ import com.undercontroll.domain.exception.ConversationMemoryUnavailableException
 import com.undercontroll.domain.gateway.AnaChatGateway;
 import com.undercontroll.domain.gateway.AnaConversationMemory;
 import com.undercontroll.domain.gateway.AnaConversationMemory.ConversationLock;
+import com.undercontroll.domain.gateway.ConversationGateway;
+import com.undercontroll.domain.gateway.ConversationListVersion;
 import com.undercontroll.domain.gateway.CurrentUserIdPort;
 import com.undercontroll.domain.gateway.OrderGateway;
 import com.undercontroll.domain.gateway.ShopSnapshotLoader;
@@ -15,6 +17,9 @@ import com.undercontroll.domain.model.OrderItem;
 import com.undercontroll.domain.model.User;
 import com.undercontroll.domain.model.chat.AnaReply;
 import com.undercontroll.domain.model.chat.AnaTurnRequest;
+import com.undercontroll.domain.model.chat.AppendedMessage;
+import com.undercontroll.domain.model.chat.Conversation;
+import com.undercontroll.domain.model.chat.StoredChatMessage;
 import com.undercontroll.domain.support.Deadline;
 import com.undercontroll.domain.model.chat.ChatMessage;
 import com.undercontroll.domain.model.chat.ConversationKey;
@@ -28,7 +33,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.ObjectProvider;
 
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -38,6 +46,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -50,6 +60,9 @@ class AnaTurnPreparerTest {
 
     private static final ConversationKey KEY = new ConversationKey(7, "kitchen");
     private static final Duration LOCK_TTL = Duration.ofSeconds(90);
+    private static final Instant NOW = Instant.parse("2026-11-07T12:00:00Z");
+    private static final Conversation CONVERSATION = new Conversation(
+            55L, 7, "kitchen", "Oi", Conversation.TitleSource.AUTO, "Oi", 1, 1, NOW, NOW, NOW);
 
     @Mock
     private ObjectProvider<AnaChatGateway> anaChatGateway;
@@ -65,12 +78,17 @@ class AnaTurnPreparerTest {
     private AnaConversationMemory memory;
     @Mock
     private ConversationLock lock;
+    @Mock
+    private ConversationGateway conversations;
+    @Mock
+    private ConversationListVersion listVersion;
 
     private AnaTurnPreparer preparer;
 
     @BeforeEach
     void setUp() {
-        preparer = new AnaTurnPreparer(anaChatGateway, currentUserIdPort, shopSnapshotLoader, orderGateway, memory, LOCK_TTL, Duration.ofSeconds(60));
+        preparer = new AnaTurnPreparer(anaChatGateway, currentUserIdPort, shopSnapshotLoader, orderGateway, memory,
+                conversations, listVersion, Clock.fixed(NOW, ZoneOffset.UTC), LOCK_TTL, Duration.ofSeconds(60), 10);
     }
 
     @Test
@@ -210,10 +228,132 @@ class AnaTurnPreparerTest {
         verify(memory, never()).tryLock(any(), any());
     }
 
+    @Test
+    @DisplayName("the user message is stored before the model runs and the session carries its ids")
+    void storesUserMessage() {
+        ready();
+        when(memory.tryLock(KEY, LOCK_TTL)).thenReturn(Optional.of(lock));
+        when(memory.load(KEY)).thenReturn(List.of());
+
+        AnaChatSession session = preparer.prepare("Oi", "kitchen");
+
+        verify(conversations).appendUserMessage(KEY, "Oi", NOW);
+        verify(listVersion).bump(7);
+        assertEquals(55L, session.conversationPk());
+        assertEquals(100L, session.userMessageId());
+        verify(conversations, never()).messagesBefore(any(), any(), anyInt());
+    }
+
+    @Test
+    @DisplayName("expired Redis memory is rebuilt from stored completed pairs and seeded back")
+    void hydratesFromStoredHistory() {
+        ready();
+        stored(7);
+        when(memory.tryLock(KEY, LOCK_TTL)).thenReturn(Optional.of(lock));
+        when(memory.load(KEY)).thenReturn(List.of());
+        when(conversations.messagesBefore(55L, 7, 20)).thenReturn(List.of(
+                message(6, ChatMessage.Role.ASSISTANT, "Parcial", AnaReply.State.PARTIAL),
+                message(5, ChatMessage.Role.USER, "Pergunta sem resposta completa"),
+                message(4, ChatMessage.Role.ASSISTANT, "Tem 2.", AnaReply.State.COMPLETED),
+                message(3, ChatMessage.Role.USER, "Quantos motores?"),
+                message(2, ChatMessage.Role.ASSISTANT, "Olá!", AnaReply.State.COMPLETED),
+                message(1, ChatMessage.Role.USER, "Oi")));
+
+        AnaChatSession session = preparer.prepare("E fusíveis?", "kitchen");
+
+        List<ChatMessage> expected = List.of(
+                ChatMessage.user("Oi"), ChatMessage.assistant("Olá!"),
+                ChatMessage.user("Quantos motores?"), ChatMessage.assistant("Tem 2."));
+        assertEquals(expected, session.turn().history());
+        verify(memory).seed(KEY, expected);
+    }
+
+    @Test
+    @DisplayName("with Redis down the stored history is still used, without seeding")
+    void storedHistoryWhenRedisDown() {
+        ready();
+        stored(3);
+        when(memory.tryLock(KEY, LOCK_TTL)).thenThrow(new ConversationMemoryUnavailableException(new IllegalStateException("redis")));
+        when(conversations.messagesBefore(55L, 3, 20)).thenReturn(List.of(
+                message(2, ChatMessage.Role.ASSISTANT, "Olá!", AnaReply.State.COMPLETED),
+                message(1, ChatMessage.Role.USER, "Oi")));
+
+        AnaChatSession session = preparer.prepare("Tudo bem?", "kitchen");
+
+        assertEquals(2, session.turn().history().size());
+        verify(memory, never()).seed(any(), any());
+    }
+
+    @Test
+    @DisplayName("finish stores the reply, bumps the list version and returns the stored id")
+    void finishStoresReply() {
+        AnaChatSession session = persistedSession();
+        when(conversations.appendAssistantMessage(55L, "Tem 2.", AnaReply.State.COMPLETED, null, NOW))
+                .thenReturn(new AppendedMessage(CONVERSATION, 101L, 2));
+
+        assertEquals(101L, preparer.finish(session, AnaReply.completed("Tem 2.")));
+
+        verify(listVersion).bump(7);
+        verify(memory).append(KEY, ChatMessage.user("Oi"), ChatMessage.assistant("Tem 2."));
+        verify(lock).release();
+    }
+
+    @Test
+    @DisplayName("partial replies are stored with their reason but stay out of the Redis window")
+    void finishStoresPartial() {
+        AnaChatSession session = persistedSession();
+        when(conversations.appendAssistantMessage(55L, "Tem", AnaReply.State.PARTIAL, "max_tokens", NOW))
+                .thenReturn(new AppendedMessage(CONVERSATION, 102L, 2));
+
+        assertEquals(102L, preparer.finish(session, AnaReply.partial("Tem", "max_tokens")));
+
+        verify(memory, never()).append(any(), any(), any());
+        verify(lock).release();
+    }
+
+    @Test
+    @DisplayName("a failed reply write is logged, the Redis window still updates and the lock is released")
+    void finishStoreFailure() {
+        AnaChatSession session = persistedSession();
+        when(conversations.appendAssistantMessage(eq(55L), any(), any(), any(), any()))
+                .thenThrow(new IllegalStateException("db"));
+
+        assertNull(preparer.finish(session, AnaReply.completed("Tem 2.")));
+
+        verify(memory).append(KEY, ChatMessage.user("Oi"), ChatMessage.assistant("Tem 2."));
+        verify(lock).release();
+    }
+
     private void ready() {
         when(anaChatGateway.getIfAvailable()).thenReturn(gateway);
         when(currentUserIdPort.require()).thenReturn(7);
         lenient().when(shopSnapshotLoader.load()).thenReturn(ShopSnapshot.empty());
+        lenient().when(conversations.appendUserMessage(any(), any(), any()))
+                .thenReturn(new AppendedMessage(CONVERSATION, 100L, 1));
+    }
+
+    private void stored(int seq) {
+        when(conversations.appendUserMessage(any(), any(), any()))
+                .thenReturn(new AppendedMessage(CONVERSATION, 100L, seq));
+    }
+
+    private static StoredChatMessage message(int seq, ChatMessage.Role role, String content) {
+        return message(seq, role, content, AnaReply.State.COMPLETED);
+    }
+
+    private static StoredChatMessage message(int seq, ChatMessage.Role role, String content, AnaReply.State state) {
+        return new StoredChatMessage((long) seq, seq, role, content, state, null, NOW);
+    }
+
+    private AnaChatSession persistedSession() {
+        return new AnaChatSession(
+                KEY,
+                new AnaTurnRequest("kitchen", "Oi", "b", List.of(), false, Deadline.after(Duration.ofSeconds(60))),
+                lock,
+                true,
+                55L,
+                100L
+        );
     }
 
     private AnaChatSession session(boolean memoryAvailable) {

@@ -148,6 +148,7 @@ undercontroll:
       suggestion-ttl-hours: 12
       memory-ttl-hours: 24
       memory-window: 10
+      deleted-retention: 30d
       lock-ttl: 90s
       turn-timeout: ${ANA_TURN_TIMEOUT:60s}
       first-token-timeout: 30s

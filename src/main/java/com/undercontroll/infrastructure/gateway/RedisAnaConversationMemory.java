@@ -31,6 +31,16 @@ public class RedisAnaConversationMemory implements AnaConversationMemory {
             return redis.call('LLEN', KEYS[1])
             """, Long.class);
 
+    static final RedisScript<Long> SEED = new DefaultRedisScript<>("""
+            redis.call('DEL', KEYS[1])
+            for i = 3, #ARGV do
+              redis.call('RPUSH', KEYS[1], ARGV[i])
+            end
+            redis.call('LTRIM', KEYS[1], -tonumber(ARGV[1]), -1)
+            redis.call('PEXPIRE', KEYS[1], ARGV[2])
+            return redis.call('LLEN', KEYS[1])
+            """, Long.class);
+
     static final RedisScript<Long> RELEASE = new DefaultRedisScript<>("""
             if redis.call('GET', KEYS[1]) == ARGV[1] then
               return redis.call('DEL', KEYS[1])
@@ -84,6 +94,33 @@ public class RedisAnaConversationMemory implements AnaConversationMemory {
                     String.valueOf(ttl.toMillis())
             );
         } catch (JsonProcessingException | RuntimeException ex) {
+            throw new ConversationMemoryUnavailableException(ex);
+        }
+    }
+
+    @Override
+    public void seed(ConversationKey key, List<ChatMessage> messages) {
+        if (messages.isEmpty()) {
+            return;
+        }
+        try {
+            List<String> args = new ArrayList<>(messages.size() + 2);
+            args.add(String.valueOf(window));
+            args.add(String.valueOf(ttl.toMillis()));
+            for (ChatMessage message : messages) {
+                args.add(objectMapper.writeValueAsString(message));
+            }
+            redis.execute(SEED, List.of(memoryKey(key)), args.toArray());
+        } catch (JsonProcessingException | RuntimeException ex) {
+            throw new ConversationMemoryUnavailableException(ex);
+        }
+    }
+
+    @Override
+    public void clear(ConversationKey key) {
+        try {
+            redis.delete(memoryKey(key));
+        } catch (RuntimeException ex) {
             throw new ConversationMemoryUnavailableException(ex);
         }
     }

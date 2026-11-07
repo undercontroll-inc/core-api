@@ -59,6 +59,10 @@ variables:
   value: default
   id: vg00000099
 - enabled: true
+  name: chat_cursor
+  value: ''
+  id: vg00000021
+- enabled: true
   name: base_url
   value: http://localhost:8080
   id: vg00000011

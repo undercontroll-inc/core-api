@@ -9,6 +9,10 @@ public interface SendChatMessagePort {
     record Input(String message, String conversationId) {
     }
 
-    record Output(String conversationId, AnaReply reply) {
+    record Output(String conversationId, AnaReply reply, Long userMessageId, Long assistantMessageId) {
+
+        public Output(String conversationId, AnaReply reply) {
+            this(conversationId, reply, null, null);
+        }
     }
 }

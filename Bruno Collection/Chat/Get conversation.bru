@@ -1,0 +1,15 @@
+meta {
+  name: Get conversation
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/v1/api/chats/conversations/{{conversationId}}
+  body: none
+  auth: inherit
+}
+
+docs {
+  Summary of one conversation. 404 CONVERSATION_NOT_FOUND when it does not exist, is deleted or belongs to another user.
+}

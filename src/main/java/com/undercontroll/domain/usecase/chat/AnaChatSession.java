@@ -8,8 +8,14 @@ public record AnaChatSession(
         ConversationKey key,
         AnaTurnRequest turn,
         ConversationLock lock,
-        boolean memoryAvailable
+        boolean memoryAvailable,
+        Long conversationPk,
+        Long userMessageId
 ) {
+
+    public AnaChatSession(ConversationKey key, AnaTurnRequest turn, ConversationLock lock, boolean memoryAvailable) {
+        this(key, turn, lock, memoryAvailable, null, null);
+    }
 
     public String conversationId() {
         return key.conversationId();

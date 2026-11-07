@@ -48,8 +48,13 @@ public class SseChatStreamSink implements ChatStreamSink {
 
     @Override
     public void start(String conversationId) {
+        start(conversationId, null);
+    }
+
+    @Override
+    public void start(String conversationId, Long userMessageId) {
         startHeartbeat();
-        send("start", new ChatStreamStartEvent(conversationId));
+        send("start", new ChatStreamStartEvent(conversationId, userMessageId));
     }
 
     @Override
@@ -64,13 +69,23 @@ public class SseChatStreamSink implements ChatStreamSink {
 
     @Override
     public void complete(String fullContent) {
-        send("done", ChatStreamDoneEvent.completed(fullContent));
+        complete(fullContent, null);
+    }
+
+    @Override
+    public void complete(String fullContent, Long messageId) {
+        send("done", ChatStreamDoneEvent.completed(fullContent, messageId));
         emitter.complete();
     }
 
     @Override
     public void partial(String content, String reason) {
-        send("partial", ChatStreamPartialEvent.of(content, reason));
+        partial(content, reason, null);
+    }
+
+    @Override
+    public void partial(String content, String reason, Long messageId) {
+        send("partial", ChatStreamPartialEvent.of(content, reason, messageId));
         emitter.complete();
     }
 

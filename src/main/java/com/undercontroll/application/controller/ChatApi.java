@@ -55,6 +55,14 @@ public interface ChatApi {
                     )
             ),
             @ApiResponse(
+                    responseCode = "404",
+                    description = "The conversationId was deleted; start a new one (code CONVERSATION_NOT_FOUND)",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)
+                    )
+            ),
+            @ApiResponse(
                     responseCode = "409",
                     description = "Another message of this conversation is still being answered (code CHAT_CONVERSATION_BUSY)",
                     content = @Content(
@@ -103,6 +111,14 @@ public interface ChatApi {
             @ApiResponse(
                     responseCode = "403",
                     description = "Forbidden",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "The conversationId was deleted; start a new one (code CONVERSATION_NOT_FOUND)",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ErrorResponse.class)

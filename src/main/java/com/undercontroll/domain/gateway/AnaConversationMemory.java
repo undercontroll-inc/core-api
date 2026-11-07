@@ -13,6 +13,10 @@ public interface AnaConversationMemory {
 
     void append(ConversationKey key, ChatMessage user, ChatMessage assistant);
 
+    void seed(ConversationKey key, List<ChatMessage> messages);
+
+    void clear(ConversationKey key);
+
     Optional<ConversationLock> tryLock(ConversationKey key, Duration ttl);
 
     interface ConversationLock {
