@@ -2,8 +2,10 @@ package com.undercontroll.domain.usecase.dashboard;
 
 import com.undercontroll.domain.enums.PeriodFilter;
 import com.undercontroll.domain.enums.StatusFilter;
-import com.undercontroll.application.dto.dashboard.CustomerTypeResponse;
+import com.undercontroll.domain.model.dashboard.CustomerTypePoint;
+
+import java.util.List;
 
 public interface GetCustomerTypeEvolutionPort {
-    CustomerTypeResponse execute(PeriodFilter period, StatusFilter status);
+    List<CustomerTypePoint> execute(PeriodFilter period, StatusFilter status);
 }

@@ -1,0 +1,21 @@
+meta {
+  name: Rename conversation
+  type: http
+  seq: 8
+}
+
+patch {
+  url: {{baseUrl}}/v1/api/chats/conversations/{{conversationId}}
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "title": "Estoque de motores"
+  }
+}
+
+docs {
+  title 1-120 characters (trimmed). 400 VALIDATION_ERROR otherwise.
+}

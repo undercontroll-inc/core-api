@@ -10,14 +10,18 @@ import com.google.genai.types.ThinkingConfig;
 import com.google.genai.types.ThinkingLevel;
 import com.undercontroll.domain.exception.TranscriptionUnavailableException;
 import com.undercontroll.domain.gateway.AudioTranscriptionGateway;
-import com.undercontroll.infrastructure.logging.LogTiming;
+import com.undercontroll.domain.model.AudioClip;
+import com.undercontroll.domain.model.AudioFormat;
+import com.undercontroll.domain.support.Durations;
+import com.undercontroll.infrastructure.metrics.FeatureMetrics;
+import com.undercontroll.infrastructure.ai.config.AiFeatureSettings;
+import com.undercontroll.infrastructure.ai.config.ModelCapabilities;
+import com.undercontroll.infrastructure.ai.config.ThinkingPolicy;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.io.Resource;
-import org.springframework.util.MimeType;
 import org.springframework.util.StringUtils;
 
-import java.io.IOException;
-import java.util.Locale;
+import java.util.EnumSet;
+import java.util.Set;
 
 @Slf4j
 public class GeminiAudioTranscriptionAdapter implements AudioTranscriptionGateway {
@@ -25,35 +29,43 @@ public class GeminiAudioTranscriptionAdapter implements AudioTranscriptionGatewa
     static final String USER_PROMPT =
             "Transcreva fielmente o áudio em português do Brasil. Responda só com o texto falado, sem aspas nem comentários.";
 
+    static final Set<AudioFormat> SUPPORTED = Set.copyOf(EnumSet.allOf(AudioFormat.class));
+
     private final Models models;
     private final String model;
+    private final ThinkingPolicy thinking;
+    private final ModelCapabilities capabilities;
+    private final FeatureMetrics metrics;
 
-    public GeminiAudioTranscriptionAdapter(Client client, String model) {
-        this(client.models, model);
+    public GeminiAudioTranscriptionAdapter(Client client, AiFeatureSettings settings, FeatureMetrics metrics) {
+        this(client.models, settings, metrics);
     }
 
-    GeminiAudioTranscriptionAdapter(Models models, String model) {
+    GeminiAudioTranscriptionAdapter(Models models, AiFeatureSettings settings, FeatureMetrics metrics) {
         this.models = models;
-        this.model = model;
+        this.model = settings.model();
+        this.thinking = settings.thinking();
+        this.capabilities = settings.capabilities();
+        this.metrics = metrics;
     }
 
     @Override
-    public String transcribe(Resource audio, String contentType, String filename) {
+    public String transcribe(AudioClip audio) {
         long started = System.nanoTime();
         try {
-            MimeType mimeType = mimeType(contentType, filename);
-            byte[] bytes = audio.getContentAsByteArray();
+            String mimeType = mimeType(audio.format());
+            byte[] bytes = audio.content();
             log.info(
                     "Gemini transcription started model={} mime={} byteSize={}",
                     model,
                     mimeType,
                     bytes.length
             );
-            Content content = dedicatedTranscribeModel()
-                    ? Content.fromParts(Part.fromBytes(bytes, mimeType.toString()))
+            Content content = capabilities.dedicatedTranscription()
+                    ? Content.fromParts(Part.fromBytes(bytes, mimeType))
                     : Content.fromParts(
                             Part.fromText(USER_PROMPT),
-                            Part.fromBytes(bytes, mimeType.toString()));
+                            Part.fromBytes(bytes, mimeType));
             GenerateContentResponse response = models.generateContent(model, content, config());
             String text = response == null ? null : response.text();
             if (!StringUtils.hasText(text)) {
@@ -62,8 +74,9 @@ public class GeminiAudioTranscriptionAdapter implements AudioTranscriptionGatewa
                         model,
                         mimeType,
                         bytes.length,
-                        LogTiming.millisSince(started)
+                        Durations.millisSince(started)
                 );
+                metrics.record("empty", null, started);
                 throw new TranscriptionUnavailableException();
             }
             log.info(
@@ -72,66 +85,44 @@ public class GeminiAudioTranscriptionAdapter implements AudioTranscriptionGatewa
                     mimeType,
                     bytes.length,
                     text.trim().length(),
-                    LogTiming.millisSince(started)
+                    Durations.millisSince(started)
             );
+            metrics.record("success", null, started);
             return text.trim();
         } catch (TranscriptionUnavailableException ex) {
             throw ex;
-        } catch (IOException | RuntimeException ex) {
+        } catch (RuntimeException ex) {
             log.warn(
                     "Gemini transcription failed model={} durationMs={} cause={}",
                     model,
-                    LogTiming.millisSince(started),
+                    Durations.millisSince(started),
                     ex.toString()
             );
+            metrics.record(LlmErrorClassifier.classify(ex).kind().name(), null, started);
             throw new TranscriptionUnavailableException(ex);
         }
     }
 
-    private GenerateContentConfig config() {
+    GenerateContentConfig config() {
         GenerateContentConfig.Builder builder = GenerateContentConfig.builder();
-        if (!dedicatedTranscribeModel()) {
-            builder.thinkingConfig(ThinkingConfig.builder()
-                    .thinkingLevel(new ThinkingLevel("MINIMAL"))
-                    .includeThoughts(false)
-                    .build());
+        if (thinking == ThinkingPolicy.DEFAULT) {
+            return builder.build();
         }
-        return builder.build();
+        ThinkingConfig.Builder thinkingConfig = ThinkingConfig.builder().includeThoughts(false);
+        if (capabilities.thinkingControl() == ModelCapabilities.ThinkingControl.BUDGET) {
+            thinkingConfig.thinkingBudget(thinking.budgetTokens());
+        } else {
+            thinkingConfig.thinkingLevel(new ThinkingLevel(thinking.name()));
+        }
+        return builder.thinkingConfig(thinkingConfig.build()).build();
     }
 
-    private boolean dedicatedTranscribeModel() {
-        return model != null && model.toLowerCase(Locale.ROOT).contains("transcribe");
+    @Override
+    public Set<AudioFormat> supportedFormats() {
+        return SUPPORTED;
     }
 
-    static MimeType mimeType(String contentType, String filename) {
-        String type = mediaType(contentType);
-        if (type != null) {
-            return MimeType.valueOf(type);
-        }
-        String name = filename == null ? "" : filename.toLowerCase(Locale.ROOT);
-        if (name.endsWith(".mp3") || name.endsWith(".mpeg")) {
-            return MimeType.valueOf("audio/mpeg");
-        }
-        if (name.endsWith(".mp4") || name.endsWith(".m4a")) {
-            return MimeType.valueOf("audio/mp4");
-        }
-        if (name.endsWith(".wav")) {
-            return MimeType.valueOf("audio/wav");
-        }
-        if (name.endsWith(".ogg")) {
-            return MimeType.valueOf("audio/ogg");
-        }
-        return MimeType.valueOf("audio/webm");
-    }
-
-    private static String mediaType(String contentType) {
-        if (!StringUtils.hasText(contentType)) {
-            return null;
-        }
-        String type = contentType.split(";", 2)[0].trim().toLowerCase(Locale.ROOT);
-        if (type.isEmpty() || "application/octet-stream".equals(type)) {
-            return null;
-        }
-        return type;
+    static String mimeType(AudioFormat format) {
+        return format == AudioFormat.MP3 ? "audio/mp3" : format.mimeType();
     }
 }

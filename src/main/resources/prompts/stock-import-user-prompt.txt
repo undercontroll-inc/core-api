@@ -1,0 +1,1 @@
+Extraia os dados da nota fiscal anexada seguindo o schema de resposta.

@@ -32,8 +32,11 @@ public record MarketProductCurrent(
         Double priceMax,
         Double priceDeltaPct,
         Double discountPct,
-        Integer offerCount,
-        Integer sellerCount,
+        Integer availableOfferCount,
+        Integer observedOfferCount,
+        Integer validPriceCount,
+        Boolean sampleComplete,
+        Integer observedSellerCount,
         Double relevance,
         String domainReason,
         String permalink

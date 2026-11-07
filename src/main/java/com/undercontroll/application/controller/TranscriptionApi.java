@@ -1,7 +1,7 @@
 package com.undercontroll.application.controller;
 
 import com.undercontroll.application.dto.transcription.TranscribeAudioResponse;
-import com.undercontroll.infrastructure.config.ApiResponseDocumentation.ErrorResponse;
+import com.undercontroll.application.controller.doc.ApiResponseDocumentation.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -32,7 +32,8 @@ public interface TranscriptionApi {
     )
     @ApiResponse(
             responseCode = "400",
-            description = "Missing, empty, too large, or unsupported audio",
+            description = "Missing, empty, over 8MB, unrecognized content, declared MIME that contradicts the content, "
+                    + "WAV longer than the maximum duration, or a format the provider does not accept (code TRANSCRIPTION_INVALID)",
             content = @Content(
                     mediaType = MediaType.APPLICATION_JSON_VALUE,
                     schema = @Schema(implementation = ErrorResponse.class)

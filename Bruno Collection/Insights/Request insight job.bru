@@ -1,0 +1,16 @@
+meta {
+  name: Request insight job
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/v1/api/market/insights/jobs
+  body: none
+  auth: inherit
+}
+
+docs {
+  ADMINISTRATOR only, every profile. Creates the job for the published snapshot (idempotent per snapshot, prompt version and model configuration) or requeues it when it failed. 202 with the job; the worker runs it in the background, poll GET /v1/api/insights.
+  409 AWAITING_DATA before the first ETL publication; 503 INSIGHTS_DISABLED when undercontroll.ai.insights.provider=none.
+}

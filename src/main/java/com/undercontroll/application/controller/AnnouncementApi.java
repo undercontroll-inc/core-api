@@ -1,6 +1,6 @@
 package com.undercontroll.application.controller;
 
-import com.undercontroll.infrastructure.config.ApiResponseDocumentation.*;
+import com.undercontroll.application.controller.doc.ApiResponseDocumentation.*;
 import com.undercontroll.application.dto.announcement.AnnouncementDto;
 import com.undercontroll.application.dto.announcement.CreateAnnouncementRequest;
 import com.undercontroll.application.dto.announcement.CreateAnnouncementResponse;

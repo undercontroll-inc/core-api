@@ -30,6 +30,11 @@ public interface OrderJpaRepository extends JpaRepository<OrderJpaEntity, Intege
     @EntityGraph(attributePaths = {"user", "orderItems"})
     List<OrderJpaEntity> findByStatusIn(Collection<OrderStatus> statuses, Pageable pageable);
 
+    long countByStatusIn(Collection<OrderStatus> statuses);
+
+    @EntityGraph(attributePaths = {"user"})
+    Page<OrderJpaEntity> findPageByStatusIn(Collection<OrderStatus> statuses, Pageable pageable);
+
     @EntityGraph(attributePaths = {"user", "orderItems"})
     @Query("SELECT o FROM OrderJpaEntity o WHERE o.id = :id")
     Optional<OrderJpaEntity> findDetailById(@Param("id") Integer id);
@@ -39,32 +44,6 @@ public interface OrderJpaRepository extends JpaRepository<OrderJpaEntity, Intege
 
     @Query("SELECT o FROM OrderJpaEntity o JOIN o.orderItems oi WHERE oi.id = :orderItemId")
     Optional<OrderJpaEntity> findOrderByOrderItemId(@Param("orderItemId") Integer orderItemId);
-
-    @Query(value = """
-    SELECT COALESCE(SUM(c.price * d.quantity), 0.0)
-    FROM orders o
-    INNER JOIN demand d ON o.id = d.order_id
-    INNER JOIN component c ON d.component_id = c.id
-    WHERE o.id = :orderId
-    """, nativeQuery = true)
-    Double calculatePartsTotalByOrderId(@Param("orderId") Integer orderId);
-
-    @Query(value = """
-    SELECT
-        c.id,
-        c.name,
-        c.description,
-        c.brand,
-        c.price,
-        c.supplier,
-        c.category,
-        d.quantity
-    FROM orders o
-    INNER JOIN demand d ON o.id = d.order_id
-    INNER JOIN component c ON d.component_id = c.id
-    WHERE o.id = :orderId
-    """, nativeQuery = true)
-    List<Object[]> findAllPartsByOrderIdNative(@Param("orderId") Integer orderId);
 
     @Query(value = """
     SELECT COALESCE(SUM(o.total), 0.0)

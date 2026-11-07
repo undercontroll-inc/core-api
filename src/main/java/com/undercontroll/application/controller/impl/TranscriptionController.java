@@ -18,6 +18,7 @@ public class TranscriptionController implements TranscriptionApi {
 
     @Override
     public ResponseEntity<TranscribeAudioResponse> transcribe(MultipartFile audio) {
-        return ResponseEntity.ok(transcribeAudioPort.execute(transcriptionDtoMapper.toRequest(audio)));
+        String text = transcribeAudioPort.execute(transcriptionDtoMapper.toClip(audio));
+        return ResponseEntity.ok(transcriptionDtoMapper.toResponse(text));
     }
 }

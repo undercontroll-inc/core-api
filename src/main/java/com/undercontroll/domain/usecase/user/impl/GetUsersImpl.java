@@ -1,8 +1,7 @@
 package com.undercontroll.domain.usecase.user.impl;
 
-import com.undercontroll.application.dto.user.UserDto;
-import com.undercontroll.application.mapper.UserDtoMapper;
 import com.undercontroll.domain.usecase.user.GetUsersPort;
+import com.undercontroll.domain.usecase.user.UserOutput;
 import com.undercontroll.domain.enums.UserType;
 import com.undercontroll.domain.gateway.UserGateway;
 import com.undercontroll.domain.model.User;
@@ -15,23 +14,24 @@ import java.util.List;
 @RequiredArgsConstructor
 public class GetUsersImpl implements GetUsersPort {
 
+    static final int LIST_LIMIT = 500;
+
     private final UserGateway userGateway;
-    private final UserDtoMapper userDtoMapper;
 
     @Override
-    public List<UserDto> execute(UserType type, Boolean hasEmail) {
+    public List<UserOutput> execute(UserType type, Boolean hasEmail) {
         List<User> users;
 
         if (UserType.CUSTOMER.equals(type)) {
             users = Boolean.TRUE.equals(hasEmail)
-                    ? userGateway.findAllCustomersThatHaveEmail()
-                    : userGateway.findAllCustomers();
+                    ? userGateway.findCustomersWithEmail(LIST_LIMIT)
+                    : userGateway.findCustomers(LIST_LIMIT);
         } else {
-            users = userGateway.findAll();
+            users = userGateway.findAll(LIST_LIMIT);
         }
 
         return users.stream()
-                .map(userDtoMapper::toDto)
+                .map(UserOutput::from)
                 .toList();
     }
 }

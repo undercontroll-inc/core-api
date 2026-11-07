@@ -6,11 +6,14 @@ import com.undercontroll.application.dto.chat.SendChatMessageRequest;
 import com.undercontroll.application.dto.chat.SendChatMessageResponse;
 import com.undercontroll.domain.usecase.chat.GetChatSuggestionsPort;
 import com.undercontroll.domain.usecase.chat.SendChatMessagePort;
-import com.undercontroll.infrastructure.web.AnaChatSseSupport;
+import com.undercontroll.application.controller.sse.AnaChatSseSupport;
+import com.undercontroll.domain.model.chat.AnaReply;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import java.util.Locale;
 
 @RestController
 @RequiredArgsConstructor
@@ -22,7 +25,17 @@ public class ChatController implements ChatApi {
 
     @Override
     public ResponseEntity<SendChatMessageResponse> sendMessage(SendChatMessageRequest message) {
-        return ResponseEntity.ok(sendChatMessagePort.execute(message));
+        SendChatMessagePort.Output output = sendChatMessagePort.execute(
+                new SendChatMessagePort.Input(message.content(), message.conversationId()));
+        AnaReply reply = output.reply();
+        return ResponseEntity.ok(new SendChatMessageResponse(
+                output.conversationId(),
+                reply.content(),
+                reply.state().name().toLowerCase(Locale.ROOT),
+                reply.reason(),
+                output.userMessageId(),
+                output.assistantMessageId()
+        ));
     }
 
     @Override
@@ -32,11 +45,11 @@ public class ChatController implements ChatApi {
 
     @Override
     public ResponseEntity<ChatSuggestionsResponse> getSuggestions() {
-        return ResponseEntity.ok(getChatSuggestionsPort.execute(false));
+        return ResponseEntity.ok(new ChatSuggestionsResponse(getChatSuggestionsPort.execute(false)));
     }
 
     @Override
     public ResponseEntity<ChatSuggestionsResponse> refreshSuggestions() {
-        return ResponseEntity.ok(getChatSuggestionsPort.execute(true));
+        return ResponseEntity.ok(new ChatSuggestionsResponse(getChatSuggestionsPort.execute(true)));
     }
 }

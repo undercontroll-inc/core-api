@@ -1,0 +1,21 @@
+meta {
+  name: Create import
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/v1/api/stock-imports
+  body: multipartForm
+  auth: inherit
+}
+
+body:multipart-form {
+  file: @file(nota.jpg)
+}
+
+docs {
+  multipart field file: JPEG, PNG, WEBP, PDF (up to 5 pages) or NF-e XML, max 10MB. Returns 202 with status PROCESSING;
+  poll Get import until status leaves PROCESSING (stage RECEIVED -> EXTRACTING -> MATCHING). HEIC is rejected (send JPEG).
+  503 STOCK_IMPORT_UNAVAILABLE when the AI provider is none (XML still works). ADMINISTRATOR only.
+}

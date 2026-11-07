@@ -1,11 +1,10 @@
 package com.undercontroll.domain.usecase.chat;
 
-import com.undercontroll.application.dto.chat.SendChatMessageRequest;
 import com.undercontroll.domain.gateway.ChatStreamSink;
 
 public interface StreamChatMessagePort {
 
-    StreamChatSession prepare(SendChatMessageRequest request);
+    AnaChatSession prepare(String message, String conversationId);
 
-    void stream(StreamChatSession session, ChatStreamSink sink);
+    void stream(AnaChatSession session, ChatStreamSink sink);
 }

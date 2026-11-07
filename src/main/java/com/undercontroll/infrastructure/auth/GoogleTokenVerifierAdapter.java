@@ -1,6 +1,6 @@
 package com.undercontroll.infrastructure.auth;
 
-import com.undercontroll.infrastructure.service.GoogleAuthService;
+import com.undercontroll.domain.gateway.GoogleAuthGateway;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseToken;
@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class GoogleTokenVerifierAdapter implements GoogleAuthService {
+public class GoogleTokenVerifierAdapter implements GoogleAuthGateway {
 
     @Override
     public boolean verify(String idToken, String expectedEmail) {

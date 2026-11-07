@@ -1,6 +1,6 @@
 package com.undercontroll.application.controller;
 
-import com.undercontroll.infrastructure.config.ApiResponseDocumentation.*;
+import com.undercontroll.application.controller.doc.ApiResponseDocumentation.*;
 import com.undercontroll.application.dto.order.CreateOrderRequest;
 import com.undercontroll.application.dto.order.GetAllOrdersResponse;
 import com.undercontroll.application.dto.order.GetOrderByIdResponse;

@@ -4,9 +4,13 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.undercontroll.domain.usecase.chat.impl.ConversationReadQuery;
 import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.cache.annotation.CachingConfigurer;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.interceptor.CacheErrorHandler;
+import org.springframework.cache.interceptor.LoggingCacheErrorHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
@@ -21,9 +25,10 @@ import java.time.Duration;
 @EnableCaching
 @Configuration
 @EnableConfigurationProperties(RedisProperties.class)
-public class RedisConfig {
+public class RedisConfig implements CachingConfigurer {
 
     private static final int TTL_MINUTES = 10;
+    private static final String CACHE_KEY_VERSION = "v4:";
 
 
     @Bean
@@ -47,13 +52,21 @@ public class RedisConfig {
         return RedisCacheManager.builder(redisConnectionFactory)
                 .cacheDefaults(defaults)
                 .withCacheConfiguration("anaShopSnapshot", defaults.entryTtl(Duration.ofSeconds(60)))
+                .withCacheConfiguration(ConversationReadQuery.MESSAGE_PAGES, defaults.entryTtl(Duration.ofMinutes(30)))
+                .withCacheConfiguration(ConversationReadQuery.CONVERSATION_PAGES, defaults.entryTtl(Duration.ofMinutes(10)))
                 .build();
+    }
+
+    @Override
+    public CacheErrorHandler errorHandler() {
+        return new LoggingCacheErrorHandler();
     }
 
     @Bean
     public RedisCacheConfiguration cacheConfiguration() {
         return RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofMinutes(TTL_MINUTES))
+                .prefixCacheNameWith(CACHE_KEY_VERSION)
                 .disableCachingNullValues()
                 .serializeKeysWith(
                         RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer())

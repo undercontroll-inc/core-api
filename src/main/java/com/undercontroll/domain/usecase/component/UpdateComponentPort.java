@@ -1,8 +1,16 @@
 package com.undercontroll.domain.usecase.component;
 
-import com.undercontroll.application.dto.component.ComponentDto;
-import com.undercontroll.application.dto.component.UpdateComponentRequest;
-
 public interface UpdateComponentPort {
-    ComponentDto execute(Integer componentId, UpdateComponentRequest request);
+
+    ComponentOutput execute(Integer componentId, Input input);
+
+    record Input(
+            String item,
+            String description,
+            String brand,
+            Double price,
+            String supplier,
+            String category
+    ) {
+    }
 }

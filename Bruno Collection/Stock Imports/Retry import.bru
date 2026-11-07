@@ -1,0 +1,15 @@
+meta {
+  name: Retry import
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/v1/api/stock-imports/{{stockImportId}}/retry
+  body: none
+  auth: inherit
+}
+
+docs {
+  Only FAILED. Returns 202 and runs extraction again.
+}

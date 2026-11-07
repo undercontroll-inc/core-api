@@ -73,7 +73,7 @@ public class Order {
     public Double calculatePartsTotal(){
         return this.demands
                 .stream()
-                .mapToDouble(d -> d.getQuantity() + d.getComponent().getPrice())
+                .mapToDouble(d -> d.getQuantity() * d.getComponent().getPrice())
                 .sum();
     }
 

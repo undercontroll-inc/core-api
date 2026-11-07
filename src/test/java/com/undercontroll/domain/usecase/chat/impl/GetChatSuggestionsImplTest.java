@@ -1,6 +1,6 @@
 package com.undercontroll.domain.usecase.chat.impl;
 
-import com.undercontroll.application.dto.chat.ChatSuggestionsResponse;
+import com.undercontroll.domain.gateway.ShopSnapshotLoader;
 import com.undercontroll.domain.enums.OrderStatus;
 import com.undercontroll.domain.gateway.AnaSuggestionStore;
 import com.undercontroll.domain.gateway.AnnouncementGateway;
@@ -15,8 +15,9 @@ import com.undercontroll.domain.model.Order;
 import com.undercontroll.domain.model.OrderItem;
 import com.undercontroll.domain.model.User;
 import com.undercontroll.domain.model.chat.ShopSnapshot;
-import com.undercontroll.domain.model.chat.ShopSuggestionComposer;
-import com.undercontroll.infrastructure.config.AnaProperties;
+import com.undercontroll.domain.model.chat.ShopSnapshotFactory;
+import com.undercontroll.domain.model.chat.GroundedQuestionGenerator;
+import com.undercontroll.infrastructure.gateway.ShopSnapshotLoaderImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -61,9 +62,7 @@ class GetChatSuggestionsImplTest {
 
     @BeforeEach
     void setUp() {
-        AnaProperties properties = new AnaProperties();
-        properties.setSuggestionCount(4);
-        ShopSnapshotLoader loader = new ShopSnapshotLoader(
+        ShopSnapshotLoader loader = new ShopSnapshotLoaderImpl(
                 orderGateway,
                 componentGateway,
                 demandGateway,
@@ -72,8 +71,8 @@ class GetChatSuggestionsImplTest {
         useCase = new GetChatSuggestionsImpl(
                 anaSuggestionStore,
                 loader,
-                properties,
-                currentUserIdPort
+                currentUserIdPort,
+                4
         );
         when(currentUserIdPort.require()).thenReturn(3);
     }
@@ -83,9 +82,9 @@ class GetChatSuggestionsImplTest {
     void cacheHit() {
         when(anaSuggestionStore.findByUserId(3)).thenReturn(Optional.of(List.of("Pergunta cache")));
 
-        ChatSuggestionsResponse response = useCase.execute(false);
+        List<String> response = useCase.execute(false);
 
-        assertEquals(List.of("Pergunta cache"), response.suggestions());
+        assertEquals(List.of("Pergunta cache"), response);
         verify(orderGateway, never()).findOpenRepairs(anyInt());
     }
 
@@ -95,63 +94,63 @@ class GetChatSuggestionsImplTest {
         stubShop();
         when(anaSuggestionStore.findByUserId(3)).thenReturn(Optional.empty());
 
-        ChatSuggestionsResponse response = useCase.execute(false);
+        List<String> response = useCase.execute(false);
 
-        assertEquals(4, response.suggestions().size());
-        String joined = String.join(" ", response.suggestions());
+        assertEquals(4, response.size());
+        String joined = String.join(" ", response);
         assertTrue(joined.contains("Maria"));
         assertTrue(joined.contains("Resistência"));
         assertTrue(joined.contains("Capacitor"));
         assertTrue(joined.contains("Feriado"));
         verify(orderGateway, never()).findAll();
-        verify(componentGateway, never()).findAll();
+        verify(componentGateway, never()).findAll(anyInt());
         verify(demandGateway, never()).findAll();
-        verify(anaSuggestionStore).save(3, response.suggestions());
+        verify(anaSuggestionStore).save(3, response);
     }
 
     @Test
     @DisplayName("refresh regenerates a different lot from unused shop facts")
     void refresh() {
         stubRichShop();
-        List<String> previous = ShopSuggestionComposer.groundedQuestions(richSnapshot(), 4);
+        List<String> previous = GroundedQuestionGenerator.groundedQuestions(richSnapshot(), 4);
         when(anaSuggestionStore.findByUserId(3)).thenReturn(Optional.of(previous));
 
-        ChatSuggestionsResponse response = useCase.execute(true);
+        List<String> response = useCase.execute(true);
 
-        assertEquals(4, response.suggestions().size());
-        assertFalse(response.suggestions().equals(previous));
-        String joined = String.join(" ", response.suggestions());
+        assertEquals(4, response.size());
+        assertFalse(response.equals(previous));
+        String joined = String.join(" ", response);
         assertTrue(joined.contains("Ana")
                 || joined.contains("Compressor")
                 || joined.contains("Motor")
                 || joined.contains("Pedro"));
         for (String shown : previous) {
-            assertFalse(response.suggestions().contains(shown), () -> "repeated " + shown);
+            assertFalse(response.contains(shown), () -> "repeated " + shown);
         }
         verify(orderGateway, never()).findAll();
-        verify(anaSuggestionStore).save(3, response.suggestions());
+        verify(anaSuggestionStore).save(3, response);
     }
 
     @Test
     @DisplayName("falls back to generic questions when the shop has no facts")
     void emptyShop() {
-        when(orderGateway.findOpenRepairs(ShopSuggestionComposer.OPEN_LIMIT)).thenReturn(List.of());
-        when(orderGateway.findReadyForPickup(ShopSuggestionComposer.PICKUP_LIMIT)).thenReturn(List.of());
+        when(orderGateway.findOpenRepairs(ShopSnapshotFactory.OPEN_LIMIT)).thenReturn(List.of());
+        when(orderGateway.findReadyForPickup(ShopSnapshotFactory.PICKUP_LIMIT)).thenReturn(List.of());
         when(componentGateway.findLowStock(
-                ShopSuggestionComposer.LOW_STOCK_MAX,
-                ShopSuggestionComposer.STOCK_LIMIT
+                ShopSnapshotFactory.LOW_STOCK_MAX,
+                ShopSnapshotFactory.STOCK_LIMIT
         )).thenReturn(List.of());
-        when(demandGateway.findRecent(ShopSuggestionComposer.DEMAND_LIMIT)).thenReturn(List.of());
+        when(demandGateway.findRecent(ShopSnapshotFactory.DEMAND_LIMIT)).thenReturn(List.of());
         when(announcementGateway.findLastAnnouncement()).thenReturn(Optional.empty());
         when(anaSuggestionStore.findByUserId(3)).thenReturn(Optional.empty());
 
-        ChatSuggestionsResponse response = useCase.execute(false);
+        List<String> response = useCase.execute(false);
 
-        assertEquals(ShopSuggestionComposer.groundedQuestions(ShopSnapshot.empty(), 4), response.suggestions());
+        assertEquals(GroundedQuestionGenerator.groundedQuestions(ShopSnapshot.empty(), 4), response);
     }
 
     private void stubShop() {
-        when(orderGateway.findOpenRepairs(ShopSuggestionComposer.OPEN_LIMIT)).thenReturn(List.of(
+        when(orderGateway.findOpenRepairs(ShopSnapshotFactory.OPEN_LIMIT)).thenReturn(List.of(
                 Order.builder()
                         .id(12)
                         .status(OrderStatus.PENDING)
@@ -161,14 +160,14 @@ class GetChatSuggestionsImplTest {
                         ))
                         .build()
         ));
-        when(orderGateway.findReadyForPickup(ShopSuggestionComposer.PICKUP_LIMIT)).thenReturn(List.of());
+        when(orderGateway.findReadyForPickup(ShopSnapshotFactory.PICKUP_LIMIT)).thenReturn(List.of());
         when(componentGateway.findLowStock(
-                ShopSuggestionComposer.LOW_STOCK_MAX,
-                ShopSuggestionComposer.STOCK_LIMIT
+                ShopSnapshotFactory.LOW_STOCK_MAX,
+                ShopSnapshotFactory.STOCK_LIMIT
         )).thenReturn(List.of(
                 ComponentPart.builder().name("Resistência").quantity(2L).build()
         ));
-        when(demandGateway.findRecent(ShopSuggestionComposer.DEMAND_LIMIT)).thenReturn(List.of(
+        when(demandGateway.findRecent(ShopSnapshotFactory.DEMAND_LIMIT)).thenReturn(List.of(
                 Demand.builder()
                         .quantity(1L)
                         .component(ComponentPart.builder().name("Capacitor").build())
@@ -181,13 +180,13 @@ class GetChatSuggestionsImplTest {
     }
 
     private void stubRichShop() {
-        when(orderGateway.findOpenRepairs(ShopSuggestionComposer.OPEN_LIMIT)).thenReturn(richOpenRepairs());
-        when(orderGateway.findReadyForPickup(ShopSuggestionComposer.PICKUP_LIMIT)).thenReturn(richPickups());
+        when(orderGateway.findOpenRepairs(ShopSnapshotFactory.OPEN_LIMIT)).thenReturn(richOpenRepairs());
+        when(orderGateway.findReadyForPickup(ShopSnapshotFactory.PICKUP_LIMIT)).thenReturn(richPickups());
         when(componentGateway.findLowStock(
-                ShopSuggestionComposer.LOW_STOCK_MAX,
-                ShopSuggestionComposer.STOCK_LIMIT
+                ShopSnapshotFactory.LOW_STOCK_MAX,
+                ShopSnapshotFactory.STOCK_LIMIT
         )).thenReturn(richStock());
-        when(demandGateway.findRecent(ShopSuggestionComposer.DEMAND_LIMIT)).thenReturn(richDemands());
+        when(demandGateway.findRecent(ShopSnapshotFactory.DEMAND_LIMIT)).thenReturn(richDemands());
         when(announcementGateway.findLastAnnouncement()).thenReturn(Optional.of(
                 Announcement.builder().title("Feriado").build()
         ));
@@ -197,7 +196,7 @@ class GetChatSuggestionsImplTest {
         List<Order> orders = new ArrayList<>();
         orders.addAll(richOpenRepairs());
         orders.addAll(richPickups());
-        return ShopSuggestionComposer.from(
+        return ShopSnapshotFactory.from(
                 orders,
                 richStock(),
                 richDemands(),

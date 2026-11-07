@@ -1,20 +1,18 @@
 package com.undercontroll.domain.usecase.order.impl;
 
-import com.undercontroll.infrastructure.service.StorageService;
+import com.undercontroll.domain.gateway.StorageGateway;
 import com.undercontroll.domain.usecase.order.ExportOrderPort;
 import com.undercontroll.domain.model.Order;
 import com.undercontroll.domain.exception.OrderNotFoundException;
 import com.undercontroll.domain.gateway.OrderGateway;
-import com.undercontroll.infrastructure.service.PdfExportService;
-import com.undercontroll.application.dto.order.ExportOrderRequest;
+import com.undercontroll.domain.gateway.PdfExportGateway;
+import com.undercontroll.domain.model.ServiceOrderDocument;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Optional;
 
 @Slf4j
 @Service
@@ -22,11 +20,8 @@ import java.util.Optional;
 public class ExportOrderImpl implements ExportOrderPort {
 
     private final OrderGateway orderGateway;
-    private final PdfExportService pdfExportService;
-    private final StorageService storageService;
-
-    @Value("${aws.s3.export-bucket}")
-    private String pdfBucket;
+    private final PdfExportGateway pdfExportGateway;
+    private final StorageGateway storageGateway;
 
     @Override
     public byte[] execute(Integer orderId) {
@@ -38,16 +33,16 @@ public class ExportOrderImpl implements ExportOrderPort {
                 .orElseThrow(() -> new OrderNotFoundException(
                         String.format("Order with id %d not found", orderId)));
 
-        List<ExportOrderRequest.ProductInfo> produtos = order.getOrderItems().stream()
-                .map(item -> new ExportOrderRequest.ProductInfo(
+        List<ServiceOrderDocument.ProductInfo> produtos = order.getOrderItems().stream()
+                .map(item -> new ServiceOrderDocument.ProductInfo(
                         item.getType() + " " + item.getBrand() + " " + item.getModel(),
                         item.getVolt(),
                         item.getSeries()
                 ))
                 .toList();
 
-        List<ExportOrderRequest.PartInfo> pecas = order.getDemands().stream()
-                .map(part -> new ExportOrderRequest.PartInfo(
+        List<ServiceOrderDocument.PartInfo> pecas = order.getDemands().stream()
+                .map(part -> new ServiceOrderDocument.PartInfo(
                         part.getQuantity(),
                         part.getComponent().getName(),
                         String.format("R$ %.2f", part.getComponent().getPrice() * part.getQuantity())
@@ -57,7 +52,7 @@ public class ExportOrderImpl implements ExportOrderPort {
         final var receivedAt = order.getReceived_at() != null ? dtf.format(order.getReceived_at()) : null;
         final var completedAt = order.getCompletedTime() != null ? dtf.format(order.getCompletedTime()) : null;
 
-        ExportOrderRequest exportRequest = new ExportOrderRequest(
+        ServiceOrderDocument document = new ServiceOrderDocument(
                 order.getId().toString(),
                 order.getId().toString(),
                 order.getNf(),
@@ -73,16 +68,22 @@ public class ExportOrderImpl implements ExportOrderPort {
                 completedAt,
                 "Técnico",
                 order.isFabricGuarantee(),
-                null, // orcamento - adicionar este campo ao Order se necessário
+                null,
                 order.isReturnGuarantee()
         );
 
-        byte[] pdfData = pdfExportService.exportOS(exportRequest);
+        byte[] pdfData = pdfExportGateway.exportOS(document);
 
-        final var key = String.format(order.getId().toString(), order.getNf(), ".pdf");
-
-        storageService.putObject(pdfBucket, key, pdfData, Optional.of("application/pdf"));
+        storageGateway.storeOrderExport(exportKey(order), pdfData);
 
         return pdfData;
+    }
+
+    static String exportKey(Order order) {
+        String nf = order.getNf();
+        if (nf == null || nf.isBlank()) {
+            return order.getId() + ".pdf";
+        }
+        return order.getId() + "-" + nf.trim().replaceAll("[^A-Za-z0-9._-]", "_") + ".pdf";
     }
 }

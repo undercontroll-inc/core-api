@@ -1,0 +1,69 @@
+type: http_request
+model: http_request
+id: rq_uc00000056
+createdAt: 2026-11-06T12:00:00.000000
+updatedAt: 2026-11-06T12:00:00.000000
+workspaceId: wk_ucCoreApi1
+folderId: fl_ucStock001
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "supplier": {"name": "Distribuidora de Pecas Eletro LTDA", "cnpj": "12345678000195"},
+      "invoice": {"number": "1234", "series": "1", "issuedAt": "2026-11-03T10:15:00-03:00"},
+      "items": [
+        {
+          "id": 1,
+          "description": "Resistencia 10k Ohm 1/4W",
+          "quantity": 100,
+          "unit": "UN",
+          "unitPrice": 0.15,
+          "action": "ADD_TO_EXISTING",
+          "componentId": 1,
+          "updatePrice": false,
+          "newComponent": null
+        },
+        {
+          "id": null,
+          "description": "Motor liquidificador 220V",
+          "quantity": 2,
+          "unit": "PC",
+          "unitPrice": 89.90,
+          "action": "CREATE_NEW",
+          "componentId": null,
+          "updatePrice": false,
+          "newComponent": {"name": "Motor liquidificador 220V", "brand": "Arno", "category": "Motores", "description": null}
+        }
+      ]
+    }
+bodyType: application/json
+description: "Only READY. Full item list; items left out become IGNORE; id null adds an item. 400 VALIDATION_ERROR with errors[].field."
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: ct000056
+method: PUT
+name: Save review draft
+sortPriority: 4000.0
+url: ${[ base_url ]}/v1/api/stock-imports/${[ stock_import_id ]}
+urlParameters: []
+settingSendCookies:
+  enabled: false
+  value: true
+settingStoreCookies:
+  enabled: false
+  value: true
+settingValidateCertificates:
+  enabled: false
+  value: true
+settingFollowRedirects:
+  enabled: false
+  value: true
+settingRequestTimeout:
+  enabled: false
+  value: 0
+settingHttpVersion:
+  enabled: false
+  value: auto

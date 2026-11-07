@@ -1,8 +1,15 @@
 package com.undercontroll.domain.usecase.auth;
 
-import com.undercontroll.application.dto.auth.AuthUserRequest;
-import com.undercontroll.application.dto.auth.AuthUserResponse;
+import com.undercontroll.domain.enums.AuthProvider;
+import com.undercontroll.domain.usecase.user.UserOutput;
 
 public interface AuthUserPort {
-    AuthUserResponse execute(AuthUserRequest request);
+
+    Output execute(Input input);
+
+    record Input(AuthProvider provider, String email, String password, String token) {
+    }
+
+    record Output(String accessToken, String refreshToken, UserOutput user) {
+    }
 }

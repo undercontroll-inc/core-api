@@ -1,5 +1,6 @@
 package com.undercontroll.infrastructure.logging;
 
+import com.undercontroll.domain.support.Durations;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -45,7 +46,7 @@ public class RequestMdcFilter extends OncePerRequestFilter {
                         request.getMethod(),
                         request.getRequestURI(),
                         response.getStatus(),
-                        LogTiming.millisSince(started)
+                        Durations.millisSince(started)
                 );
             }
             MDC.clear();

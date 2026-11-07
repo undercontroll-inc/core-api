@@ -1,38 +1,54 @@
 package com.undercontroll.application.mapper;
 
-import com.undercontroll.application.dto.transcription.TranscribeAudioRequest;
 import com.undercontroll.application.dto.transcription.TranscribeAudioResponse;
+import com.undercontroll.domain.exception.TranscriptionUnavailableException;
+import com.undercontroll.domain.model.AudioClip;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class TranscriptionDtoMapperTest {
 
     private final TranscriptionDtoMapper mapper = new TranscriptionDtoMapper();
 
     @Test
-    @DisplayName("maps a multipart file to a transcription request")
-    void toRequest() {
+    @DisplayName("maps a multipart file to an audio clip")
+    void toClip() {
         MockMultipartFile audio = new MockMultipartFile(
                 "audio", "note.webm", "audio/webm", "voice".getBytes()
         );
 
-        TranscribeAudioRequest request = mapper.toRequest(audio);
+        AudioClip clip = mapper.toClip(audio);
 
-        assertNotNull(request.audio());
-        assertEquals("audio/webm", request.contentType());
-        assertEquals("note.webm", request.filename());
-        assertEquals(5, request.size());
+        assertArrayEquals("voice".getBytes(), clip.content());
+        assertEquals("audio/webm", clip.contentType());
+        assertEquals("note.webm", clip.filename());
+        assertEquals(5, clip.size());
     }
 
     @Test
-    @DisplayName("maps null audio to a null request")
-    void toRequestNull() {
-        assertNull(mapper.toRequest(null));
+    @DisplayName("maps null audio to a null clip")
+    void toClipNull() {
+        assertNull(mapper.toClip(null));
+    }
+
+    @Test
+    @DisplayName("reports unreadable uploads as transcription unavailable")
+    void unreadableUpload() throws IOException {
+        MultipartFile audio = mock(MultipartFile.class);
+        when(audio.getBytes()).thenThrow(new IOException("disk"));
+
+        assertThrows(TranscriptionUnavailableException.class, () -> mapper.toClip(audio));
     }
 
     @Test

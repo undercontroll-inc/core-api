@@ -1,18 +1,19 @@
 package com.undercontroll.application.controller.impl;
 
-import com.undercontroll.domain.usecase.announcement.CreateAnnouncementPort;
-import com.undercontroll.domain.usecase.announcement.DeleteAnnouncementPort;
-import com.undercontroll.domain.usecase.announcement.GetAnnouncementsPort;
-import com.undercontroll.domain.usecase.announcement.GetLastAnnouncementPort;
-import com.undercontroll.domain.usecase.announcement.UpdateAnnouncementPort;
-import com.undercontroll.application.dto.announcement.AnnouncementDto;
 import com.undercontroll.application.controller.AnnouncementApi;
+import com.undercontroll.application.dto.announcement.AnnouncementDto;
 import com.undercontroll.application.dto.announcement.CreateAnnouncementRequest;
 import com.undercontroll.application.dto.announcement.CreateAnnouncementResponse;
 import com.undercontroll.application.dto.announcement.GetPaginatedAnnouncementResponse;
 import com.undercontroll.application.dto.announcement.UpdateAnnouncementRequest;
 import com.undercontroll.application.dto.announcement.UpdateAnnouncementResponse;
+import com.undercontroll.application.mapper.AnnouncementDtoMapper;
 import com.undercontroll.domain.enums.AnnouncementType;
+import com.undercontroll.domain.usecase.announcement.CreateAnnouncementPort;
+import com.undercontroll.domain.usecase.announcement.DeleteAnnouncementPort;
+import com.undercontroll.domain.usecase.announcement.GetAnnouncementsPort;
+import com.undercontroll.domain.usecase.announcement.GetLastAnnouncementPort;
+import com.undercontroll.domain.usecase.announcement.UpdateAnnouncementPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
@@ -26,6 +27,7 @@ public class AnnouncementController implements AnnouncementApi {
     private final UpdateAnnouncementPort updateAnnouncement;
     private final DeleteAnnouncementPort deleteAnnouncement;
     private final GetLastAnnouncementPort getLastAnnouncement;
+    private final AnnouncementDtoMapper mapper;
 
     @Override
     public ResponseEntity<CreateAnnouncementResponse> createAnnouncement(
@@ -33,7 +35,8 @@ public class AnnouncementController implements AnnouncementApi {
             String auth
     ) {
         String token = auth.split("Bearer ")[1];
-        return ResponseEntity.status(201).body(createAnnouncement.execute(request, token));
+        return ResponseEntity.status(201)
+                .body(mapper.toResponse(createAnnouncement.execute(mapper.toInput(request), token)));
     }
 
     @Override
@@ -42,7 +45,7 @@ public class AnnouncementController implements AnnouncementApi {
             Integer size,
             AnnouncementType type
     ) {
-        return ResponseEntity.ok(getAnnouncements.execute(page, size, type));
+        return ResponseEntity.ok(mapper.toResponse(getAnnouncements.execute(page, size, type)));
     }
 
     @Override
@@ -50,7 +53,7 @@ public class AnnouncementController implements AnnouncementApi {
             UpdateAnnouncementRequest request,
             Integer announcementId
     ) {
-        return ResponseEntity.ok(updateAnnouncement.execute(announcementId, request));
+        return ResponseEntity.ok(mapper.toResponse(updateAnnouncement.execute(announcementId, mapper.toInput(request))));
     }
 
     @Override
@@ -62,6 +65,7 @@ public class AnnouncementController implements AnnouncementApi {
     @Override
     public ResponseEntity<AnnouncementDto> getLatestAnnouncement() {
         return getLastAnnouncement.execute()
+                .map(mapper::toDto)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }

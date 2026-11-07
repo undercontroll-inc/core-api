@@ -1,0 +1,44 @@
+type: http_request
+model: http_request
+id: rq_uc00000062
+createdAt: 2026-11-07T12:00:00.000000
+updatedAt: 2026-11-07T12:00:00.000000
+workspaceId: wk_ucCoreApi1
+folderId: fl_ucChatHist1
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: "Latest page first; items are oldest first within the page. nextCursor walks to older messages. Returns an ETag; send it as If-None-Match to get 304 when nothing changed."
+headers: []
+method: GET
+name: List conversation messages
+sortPriority: 3000.0
+url: ${[ base_url ]}/v1/api/chats/conversations/${[ conversation_id ]}/messages
+urlParameters: 
+- enabled: true
+  name: limit
+  value: '50'
+  id: qp0000620
+- enabled: false
+  name: cursor
+  value: '${[ chat_cursor ]}'
+  id: qp0000621
+settingSendCookies:
+  enabled: false
+  value: true
+settingStoreCookies:
+  enabled: false
+  value: true
+settingValidateCertificates:
+  enabled: false
+  value: true
+settingFollowRedirects:
+  enabled: false
+  value: true
+settingRequestTimeout:
+  enabled: false
+  value: 0
+settingHttpVersion:
+  enabled: false
+  value: auto

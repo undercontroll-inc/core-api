@@ -1,12 +1,8 @@
 package com.undercontroll.domain.usecase.order.impl;
 
-import com.undercontroll.application.dto.order.CreateOrderRequest;
-import com.undercontroll.application.dto.demand.CreateDemandRequest;
-import com.undercontroll.application.dto.order.OrderEnrichedDto;
-import com.undercontroll.application.dto.orderitem.CreateOrderItemRequest;
-import com.undercontroll.application.mapper.OrderDtoMapper;
 import com.undercontroll.domain.usecase.order.CreateOrderPort;
-import com.undercontroll.domain.usecase.order_item.CreateOrderItemPort;
+import com.undercontroll.domain.usecase.order.OrderOutput;
+import com.undercontroll.domain.usecase.order.OrderPartInput;
 import com.undercontroll.domain.usecase.demand.CreateDemandPort;
 import com.undercontroll.domain.model.Order;
 import com.undercontroll.domain.model.OrderItem;
@@ -17,8 +13,8 @@ import com.undercontroll.domain.gateway.OrderGateway;
 import com.undercontroll.domain.gateway.UserGateway;
 import com.undercontroll.domain.gateway.StockManagementGateway;
 import com.undercontroll.domain.gateway.CurrentUserAdminPort;
-import com.undercontroll.infrastructure.service.MetricsService;
-import com.undercontroll.application.dto.order.PartDto;
+import com.undercontroll.domain.gateway.MetricName;
+import com.undercontroll.domain.gateway.MetricsGateway;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -40,16 +36,14 @@ public class CreateOrderImpl implements CreateOrderPort {
     private final OrderGateway orderGateway;
     private final UserGateway userGateway;
     private final StockManagementGateway stockManagementGateway;
-    private final CreateOrderItemPort createOrderItemPort;
     private final CreateDemandPort createDemandPort;
-    private final MetricsService metricsService;
-    private final OrderDtoMapper orderDtoMapper;
+    private final MetricsGateway metricsGateway;
     private final CurrentUserAdminPort currentUserAdminPort;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     @CacheEvict(value = {"orders", "ordersByUser", "order", "orderParts", "dashboardMetrics"}, allEntries = true)
-    public OrderEnrichedDto execute(CreateOrderRequest request) {
+    public OrderOutput execute(Input request) {
         long startTime = System.currentTimeMillis();
         log.info("Creating new order for user {}", request.userId());
 
@@ -59,7 +53,7 @@ public class CreateOrderImpl implements CreateOrderPort {
         Map<Integer, ComponentPart> validatedComponents = new HashMap<>();
         double partsTotal = 0.0;
 
-        for (PartDto part : request.parts()) {
+        for (OrderPartInput part : request.parts()) {
             ComponentPart component = stockManagementGateway.findComponentById(part.componentId())
                     .orElseThrow(() -> new RuntimeException("Component not found"));
             stockManagementGateway.validateStockAvailability(component, part.quantity());
@@ -73,25 +67,15 @@ public class CreateOrderImpl implements CreateOrderPort {
 
         for (var appliance : request.appliances()) {
             Double labor = appliance.laborValue() == null ? 0.0 : appliance.laborValue();
-
-            var orderItemCreated = createOrderItemPort.execute(new CreateOrderItemRequest(
-                    appliance.brand(),
-                    appliance.model(),
-                    appliance.type(),
-                    null,
-                    appliance.voltage(),
-                    appliance.serial(),
-                    labor
-            ));
-
             orderItems.add(OrderItem.builder()
-                    .id(orderItemCreated.id())
-                    .brand(orderItemCreated.brand())
-                    .model(orderItemCreated.model())
-                    .type(orderItemCreated.type())
-                    .laborValue(orderItemCreated.laborValue())
+                    .brand(appliance.brand())
+                    .model(appliance.model())
+                    .type(appliance.type())
+                    .volt(appliance.voltage())
+                    .series(appliance.serial())
+                    .laborValue(labor)
                     .build());
-            laborTotal += orderItemCreated.laborValue();
+            laborTotal += labor;
         }
 
         User user = userGateway.findById(request.userId())
@@ -120,10 +104,10 @@ public class CreateOrderImpl implements CreateOrderPort {
 
         log.info("Order {} created successfully", savedOrder.getId());
 
-        for (PartDto part : request.parts()) {
+        for (OrderPartInput part : request.parts()) {
             ComponentPart component = validatedComponents.get(part.componentId());
 
-            createDemandPort.execute(savedOrder.getId(), new CreateDemandRequest(
+            createDemandPort.execute(savedOrder.getId(), new CreateDemandPort.Input(
                     component.getId(),
                     Long.valueOf(part.quantity())
             ));
@@ -131,13 +115,13 @@ public class CreateOrderImpl implements CreateOrderPort {
             stockManagementGateway.decreaseStock(component.getId(), part.quantity());
         }
 
-        metricsService.incrementOrderCreated();
-        metricsService.recordOrderProcessingTime(startTime);
+        metricsGateway.increment(MetricName.ORDER_CREATED);
+        metricsGateway.recordOrderProcessingTime(startTime);
 
         log.info("Order {} created with {} demands", savedOrder.getId(), request.parts().size());
 
         Order finalOrder = orderGateway.findById(savedOrder.getId()).orElse(savedOrder);
-        return orderDtoMapper.toEnrichedDto(finalOrder, currentUserAdminPort.isAdministrator());
+        return OrderOutput.from(finalOrder, currentUserAdminPort.isAdministrator());
     }
 
     private LocalDate formatOrderDate(String dateStr) {

@@ -1,6 +1,6 @@
 package com.undercontroll.domain.usecase.demand.impl;
 
-import com.undercontroll.application.dto.demand.DemandDto;
+import com.undercontroll.domain.usecase.demand.DemandOutput;
 import com.undercontroll.domain.usecase.demand.GetDemandsPort;
 import com.undercontroll.domain.model.Demand;
 import com.undercontroll.domain.model.Order;
@@ -20,7 +20,7 @@ public class GetDemandsImpl implements GetDemandsPort {
     private final OrderGateway orderGateway;
 
     @Override
-    public List<DemandDto> execute(Integer orderId, Integer componentId) {
+    public List<DemandOutput> execute(Integer orderId, Integer componentId) {
         Order order = orderGateway.findById(orderId)
                 .orElseThrow(() -> new InvalidDemandException("Order not found with id: " + orderId));
 
@@ -29,12 +29,7 @@ public class GetDemandsImpl implements GetDemandsPort {
                 : demandGateway.findByOrderAndComponentId(order, componentId).stream().toList();
 
         return demands.stream()
-                .map(demand -> new DemandDto(
-                        demand.getId(),
-                        demand.getComponent().getId(),
-                        demand.getOrder().getId(),
-                        demand.getQuantity()
-                ))
+                .map(DemandOutput::from)
                 .toList();
     }
 }

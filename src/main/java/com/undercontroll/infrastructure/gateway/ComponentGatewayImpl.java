@@ -7,6 +7,7 @@ import com.undercontroll.infrastructure.persistence.entity.ComponentPartJpaEntit
 import com.undercontroll.infrastructure.persistence.repository.ComponentJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +31,24 @@ public class ComponentGatewayImpl implements ComponentGateway {
     }
 
     @Override
+    public boolean existsById(Integer id) {
+        return id != null && componentJpaRepository.existsById(id);
+    }
+
+    @Override
+    @Transactional
+    public Optional<ComponentPart> addStock(Integer id, long quantity, Double price) {
+        return componentJpaRepository.findByIdForUpdate(id).map(entity -> {
+            long current = entity.getQuantity() == null ? 0L : entity.getQuantity();
+            entity.setQuantity(current + quantity);
+            if (price != null) {
+                entity.setPrice(price);
+            }
+            return componentPartMapper.toDomain(entity);
+        });
+    }
+
+    @Override
     @Transactional
     public void deleteById(Integer id) {
         componentJpaRepository.deleteById(id);
@@ -41,8 +60,8 @@ public class ComponentGatewayImpl implements ComponentGateway {
     }
 
     @Override
-    public List<ComponentPart> findAll() {
-        return componentJpaRepository.findAll().stream()
+    public List<ComponentPart> findAll(int limit) {
+        return componentJpaRepository.findSlice(firstPage(limit)).stream()
                 .map(componentPartMapper::toDomain)
                 .toList();
     }
@@ -62,8 +81,8 @@ public class ComponentGatewayImpl implements ComponentGateway {
     }
 
     @Override
-    public List<ComponentPart> findByName(String name) {
-        return componentJpaRepository.findByName(name).stream()
+    public List<ComponentPart> findByName(String name, int limit) {
+        return componentJpaRepository.findByName(name, firstPage(limit)).stream()
                 .map(componentPartMapper::toDomain)
                 .toList();
     }
@@ -80,8 +99,8 @@ public class ComponentGatewayImpl implements ComponentGateway {
     }
 
     @Override
-    public List<ComponentPart> findByCategory(String category) {
-        return componentJpaRepository.findByCategory(category).stream()
+    public List<ComponentPart> findByCategory(String category, int limit) {
+        return componentJpaRepository.findByCategory(category, firstPage(limit)).stream()
                 .map(componentPartMapper::toDomain)
                 .toList();
     }
@@ -95,6 +114,10 @@ public class ComponentGatewayImpl implements ComponentGateway {
         return componentJpaRepository.searchByCategory(term, PageRequest.of(0, Math.max(1, limit))).stream()
                 .map(componentPartMapper::toDomain)
                 .toList();
+    }
+
+    private static PageRequest firstPage(int limit) {
+        return PageRequest.of(0, Math.max(1, limit), Sort.by(Sort.Direction.ASC, "id"));
     }
 
     private static String sanitizeLike(String value) {

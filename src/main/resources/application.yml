@@ -22,11 +22,16 @@ spring:
 
   servlet:
     multipart:
-      max-file-size: 8MB
-      max-request-size: 8MB
+      max-file-size: 10MB
+      max-request-size: 11MB
   mvc:
     async:
       request-timeout: 120s
+
+  task:
+    scheduling:
+      pool:
+        size: 2
 
   http:
     client:
@@ -34,29 +39,17 @@ spring:
       read-timeout: 25s
 
   ai:
-    retry:
-      max-attempts: 1
+    model:
+      chat: none
+      audio:
+        transcription: none
+        speech: none
+      embedding: none
+      image: none
+      moderation: none
     chat:
       client:
         enabled: false
-    openai:
-      api-key: ${OPENAI_API_KEY:}
-      chat:
-        options:
-          model: ${OPENAI_CHAT_MODEL:gpt-4.1-mini}
-          temperature: 0.2
-      audio:
-        transcription:
-          options:
-            model: whisper-1
-            language: pt
-            temperature: 0
-    google:
-      genai:
-        api-key: ${GEMINI_API_KEY:${GOOGLE_API_KEY:}}
-        chat:
-          options:
-            model: ${GEMINI_CHAT_MODEL:gemini-3.8-flash}
   autoconfigure:
     exclude:
       - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration
@@ -98,10 +91,11 @@ management:
     enable:
       jvm: true
     distribution:
-      sla:
-        http:
-          server:
-            requests: 50ms, 100ms, 200ms, 300ms, 500ms, 1s
+      slo:
+        "[http.server.requests]": 50ms, 100ms, 200ms, 300ms, 500ms, 1s, 2s, 5s, 10s, 30s, 60s, 120s
+        "[gen_ai.client.operation]": 500ms, 1s, 2s, 5s, 10s, 20s, 30s, 60s, 90s, 120s
+        "[spring.ai.chat.client]": 500ms, 1s, 2s, 5s, 10s, 20s, 30s, 60s, 90s, 120s
+        "[spring.ai.tool]": 50ms, 100ms, 250ms, 500ms, 1s, 2s, 5s, 10s, 20s
     tags:
       application: undercontroll-core-service
   prometheus:
@@ -135,21 +129,65 @@ rate-limit:
   general-requests-per-minute: ${RATE_LIMIT_GENERAL_RPM:100}
 
 undercontroll:
-  insights:
-    provider: ${INSIGHTS_PROVIDER:none}
-    prompt-version: "6"
-    cron: "0 0 4 1 * *"
-    openai-model: ${OPENAI_CHAT_MODEL:gpt-4.1-mini}
-    gemini-model: ${GEMINI_CHAT_MODEL:gemini-3.8-flash}
-    max-insights: 7
-    repair-catalog-days: 90
-  transcription:
-    gemini-model: ${GEMINI_TRANSCRIBE_MODEL:gemini-3.5-flash-lite}
-  ana:
-    suggestion-count: 4
-    suggestion-ttl-hours: 12
-    memory-ttl-hours: 24
-    memory-window: 10
+  ai:
+    gemini:
+      api-key: ${GEMINI_API_KEY:${GOOGLE_API_KEY:}}
+      project-id: ${GEMINI_PROJECT_ID:}
+      location: ${GEMINI_LOCATION:}
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      base-url: ${OPENAI_BASE_URL:https://api.openai.com}
+    ana:
+      provider: ${ANA_PROVIDER:${INSIGHTS_PROVIDER:none}}
+      model: ${ANA_MODEL:gemini-3.6-flash}
+      timeout: ${ANA_TIMEOUT:60s}
+      temperature: 0.2
+      max-output-tokens: 1024
+      thinking: ${ANA_THINKING:default}
+      suggestion-count: 4
+      suggestion-ttl-hours: 12
+      memory-ttl-hours: 24
+      memory-window: 10
+      deleted-retention: 30d
+      lock-ttl: 90s
+      turn-timeout: ${ANA_TURN_TIMEOUT:60s}
+      first-token-timeout: 30s
+      idle-timeout: 20s
+      max-tool-rounds: 2
+      max-web-searches: 1
+    insights:
+      provider: ${INSIGHTS_PROVIDER:none}
+      model: ${INSIGHTS_MODEL:gemini-3.6-flash}
+      timeout: ${INSIGHTS_TIMEOUT:60s}
+      temperature: 0.2
+      max-output-tokens: 4096
+      thinking: ${INSIGHTS_THINKING:low}
+      prompt-version: "7"
+      poll-interval: ${INSIGHTS_POLL_INTERVAL:5m}
+      worker-interval: ${INSIGHTS_WORKER_INTERVAL:30s}
+      job-deadline: ${INSIGHTS_JOB_DEADLINE:5m}
+      lease-duration: 10m
+      max-job-attempts: 3
+      reschedule-delay: 5m
+      max-insights: 7
+      repair-catalog-days: 90
+    transcription:
+      provider: ${TRANSCRIPTION_PROVIDER:${INSIGHTS_PROVIDER:none}}
+      model: ${TRANSCRIPTION_MODEL:gemini-3.5-flash-lite}
+      timeout: ${TRANSCRIPTION_TIMEOUT:60s}
+      thinking: ${TRANSCRIPTION_THINKING:minimal}
+      max-duration: 180s
+    stock-import:
+      provider: ${STOCK_IMPORT_PROVIDER:${INSIGHTS_PROVIDER:none}}
+      model: ${STOCK_IMPORT_MODEL:gemini-3.6-flash}
+      timeout: ${STOCK_IMPORT_TIMEOUT:60s}
+      temperature: 0.0
+      max-output-tokens: 16384
+      thinking: ${STOCK_IMPORT_THINKING:low}
+      job-deadline: 90s
+      lease-duration: 3m
+      worker-interval: 5s
+      file-retention: 30d
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
 aws:

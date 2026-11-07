@@ -1,0 +1,21 @@
+meta {
+  name: List conversation messages
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/v1/api/chats/conversations/{{conversationId}}/messages
+  body: none
+  auth: inherit
+}
+
+params:query {
+  limit: 50
+  ~cursor: {{chatCursor}}
+}
+
+docs {
+  Latest page first; items are oldest first within the page. nextCursor walks to older messages.
+  Returns an ETag; send it as If-None-Match to get 304 when nothing changed.
+}

@@ -1,5 +1,6 @@
 package com.undercontroll.domain.market;
 
+import com.undercontroll.domain.model.insight.RepairRelation;
 import com.undercontroll.domain.model.market.MarketProductCurrent;
 import com.undercontroll.domain.model.market.MatchCoverage;
 import com.undercontroll.domain.model.market.RepairCatalogItem;
@@ -17,20 +18,24 @@ public final class RepairCatalogMatcher {
         if (products == null || products.isEmpty()) {
             return MatchCoverage.empty();
         }
-        CatalogIndex index = CatalogIndex.from(catalog);
+        CatalogIndex index = index(catalog);
         int exact = 0;
         int brandCategory = 0;
         int category = 0;
         int none = 0;
         for (MarketProductCurrent product : products) {
-            switch (index.matchLevel(product)) {
-                case EXACT -> exact++;
-                case BRAND_CATEGORY -> brandCategory++;
-                case CATEGORY -> category++;
+            switch (index.relation(product.productKey(), product.brandSlug(), product.domainId())) {
+                case NIVEL_1_EXATO -> exact++;
+                case NIVEL_2_MARCA_CATEGORIA -> brandCategory++;
+                case NIVEL_3_CATEGORIA -> category++;
                 default -> none++;
             }
         }
         return new MatchCoverage(exact, brandCategory, category, none);
+    }
+
+    public static CatalogIndex index(List<RepairCatalogItem> catalog) {
+        return CatalogIndex.from(catalog);
     }
 
     public static Set<String> clientDomainIds(List<RepairCatalogItem> catalog) {
@@ -46,25 +51,22 @@ public final class RepairCatalogMatcher {
         return domains;
     }
 
-    private enum MatchLevel {
-        EXACT,
-        BRAND_CATEGORY,
-        CATEGORY,
-        NONE
-    }
-
-    private record CatalogIndex(Set<String> productKeys, Set<String> brandDomains, Set<String> domains) {
+    public record CatalogIndex(Set<String> productKeys, Set<String> brandDomains, Set<String> brands, Set<String> domains) {
 
         static CatalogIndex from(List<RepairCatalogItem> catalog) {
             Set<String> productKeys = new HashSet<>();
             Set<String> brandDomains = new HashSet<>();
+            Set<String> brands = new HashSet<>();
             Set<String> domains = new HashSet<>();
             if (catalog == null) {
-                return new CatalogIndex(productKeys, brandDomains, domains);
+                return new CatalogIndex(productKeys, brandDomains, brands, domains);
             }
             for (RepairCatalogItem item : catalog) {
                 if (item.productKey() != null) {
                     productKeys.add(item.productKey());
+                }
+                if (item.brandSlug() != null) {
+                    brands.add(item.brandSlug());
                 }
                 if (item.brandSlug() != null && item.domainId() != null) {
                     brandDomains.add(item.brandSlug() + "|" + item.domainId());
@@ -73,22 +75,26 @@ public final class RepairCatalogMatcher {
                     domains.add(item.domainId());
                 }
             }
-            return new CatalogIndex(productKeys, brandDomains, domains);
+            return new CatalogIndex(productKeys, brandDomains, brands, domains);
         }
 
-        MatchLevel matchLevel(MarketProductCurrent product) {
-            if (product.productKey() != null && productKeys.contains(product.productKey())) {
-                return MatchLevel.EXACT;
+        public RepairRelation relation(String productKey, String brandSlug, String domainId) {
+            if (productKey != null && productKeys.contains(productKey)) {
+                return RepairRelation.NIVEL_1_EXATO;
             }
-            if (product.brandSlug() != null
-                    && product.domainId() != null
-                    && brandDomains.contains(product.brandSlug() + "|" + product.domainId())) {
-                return MatchLevel.BRAND_CATEGORY;
+            if (brandSlug != null && domainId != null && brandDomains.contains(brandSlug + "|" + domainId)) {
+                return RepairRelation.NIVEL_2_MARCA_CATEGORIA;
             }
-            if (product.domainId() != null && domains.contains(product.domainId())) {
-                return MatchLevel.CATEGORY;
+            if (domainId != null && domains.contains(domainId)) {
+                return RepairRelation.NIVEL_3_CATEGORIA;
             }
-            return MatchLevel.NONE;
+            return RepairRelation.SEM_MATCH;
+        }
+
+        public RepairRelation brandRelation(String brandSlug) {
+            return brandSlug != null && brands.contains(brandSlug)
+                    ? RepairRelation.NIVEL_2_MARCA_CATEGORIA
+                    : RepairRelation.SEM_MATCH;
         }
     }
 }

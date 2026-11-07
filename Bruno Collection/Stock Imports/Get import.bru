@@ -1,0 +1,15 @@
+meta {
+  name: Get import
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/v1/api/stock-imports/{{stockImportId}}
+  body: none
+  auth: inherit
+}
+
+docs {
+  Full import with items, match suggestions (ALIAS|FUZZY|NONE) and the reviewed choices.
+}

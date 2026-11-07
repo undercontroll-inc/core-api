@@ -9,21 +9,25 @@ public interface ComponentGateway {
 
     ComponentPart save(ComponentPart component);
 
+    boolean existsById(Integer id);
+
+    Optional<ComponentPart> addStock(Integer id, long quantity, Double price);
+
     void deleteById(Integer id);
 
     Optional<ComponentPart> findById(Integer id);
 
-    List<ComponentPart> findAll();
+    List<ComponentPart> findAll(int limit);
 
     List<ComponentPart> findLowStock(long maxQuantity, int limit);
 
     List<ComponentPart> findLowestStock(int limit);
 
-    List<ComponentPart> findByName(String name);
+    List<ComponentPart> findByName(String name, int limit);
 
     List<ComponentPart> searchByName(String name, int limit);
 
-    List<ComponentPart> findByCategory(String category);
+    List<ComponentPart> findByCategory(String category, int limit);
 
     List<ComponentPart> searchByCategory(String category, int limit);
 

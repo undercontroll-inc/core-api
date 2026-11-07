@@ -1,0 +1,45 @@
+type: http_request
+model: http_request
+id: rq_uc00000053
+createdAt: 2026-11-06T12:00:00.000000
+updatedAt: 2026-11-06T12:00:00.000000
+workspaceId: wk_ucCoreApi1
+folderId: fl_ucStock001
+authentication: {}
+authenticationType: null
+body:
+  form:
+  - enabled: true
+    file: ''
+    id: fl000053
+    name: file
+bodyType: multipart/form-data
+description: "multipart field file: JPEG, PNG, WEBP, PDF (up to 5 pages) or NF-e XML, max 10MB. Returns 202 with status PROCESSING; poll Get import until status leaves PROCESSING (stage RECEIVED -> EXTRACTING -> MATCHING). HEIC is rejected (send JPEG). 503 STOCK_IMPORT_UNAVAILABLE when the AI provider is none (XML still works). ADMINISTRATOR only."
+headers:
+- enabled: true
+  name: Content-Type
+  value: multipart/form-data
+  id: ct000053
+method: POST
+name: Create import
+sortPriority: 1000.0
+url: ${[ base_url ]}/v1/api/stock-imports
+urlParameters: []
+settingSendCookies:
+  enabled: false
+  value: true
+settingStoreCookies:
+  enabled: false
+  value: true
+settingValidateCertificates:
+  enabled: false
+  value: true
+settingFollowRedirects:
+  enabled: false
+  value: true
+settingRequestTimeout:
+  enabled: false
+  value: 0
+settingHttpVersion:
+  enabled: false
+  value: auto

@@ -1,9 +1,8 @@
 package com.undercontroll.domain.usecase.order_item.impl;
 
-import com.undercontroll.application.dto.orderitem.OrderItemDto;
-import com.undercontroll.application.mapper.OrderItemDtoMapper;
 import com.undercontroll.domain.usecase.order_item.GetOrderItemByIdPort;
 import com.undercontroll.domain.model.Order;
+import com.undercontroll.domain.usecase.order_item.OrderItemOutput;
 import com.undercontroll.domain.gateway.OrderGateway;
 import com.undercontroll.domain.gateway.OrderItemGateway;
 import lombok.RequiredArgsConstructor;
@@ -17,15 +16,14 @@ public class GetOrderItemByIdImpl implements GetOrderItemByIdPort {
 
     private final OrderItemGateway orderItemGateway;
     private final OrderGateway orderGateway;
-    private final OrderItemDtoMapper orderItemDtoMapper;
 
     @Override
-    public Optional<OrderItemDto> execute(Integer orderId, Integer orderItemId) {
+    public Optional<OrderItemOutput> execute(Integer orderId, Integer orderItemId) {
         Optional<Order> owner = orderGateway.findOrderByOrderItemId(orderItemId);
         if (owner.isEmpty() || !orderId.equals(owner.get().getId())) {
             return Optional.empty();
         }
         return orderItemGateway.findById(orderItemId)
-                .map(orderItemDtoMapper::toDto);
+                .map(OrderItemOutput::from);
     }
 }

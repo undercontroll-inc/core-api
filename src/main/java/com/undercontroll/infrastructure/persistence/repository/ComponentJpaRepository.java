@@ -2,18 +2,28 @@ package com.undercontroll.infrastructure.persistence.repository;
 
 import com.undercontroll.infrastructure.persistence.entity.ComponentPartJpaEntity;
 import org.springframework.data.domain.Pageable;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ComponentJpaRepository extends JpaRepository<ComponentPartJpaEntity, Integer> {
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT c FROM ComponentPartJpaEntity c WHERE c.id = :id")
+    Optional<ComponentPartJpaEntity> findByIdForUpdate(@Param("id") Integer id);
+
+    @Query("SELECT c FROM ComponentPartJpaEntity c")
+    List<ComponentPartJpaEntity> findSlice(Pageable pageable);
+
     @Query("SELECT c FROM ComponentPartJpaEntity c WHERE c.name = :name")
-    List<ComponentPartJpaEntity> findByName(@Param("name") String name);
+    List<ComponentPartJpaEntity> findByName(@Param("name") String name, Pageable pageable);
 
     @Query("""
             SELECT c FROM ComponentPartJpaEntity c
@@ -23,7 +33,7 @@ public interface ComponentJpaRepository extends JpaRepository<ComponentPartJpaEn
     List<ComponentPartJpaEntity> searchByName(@Param("name") String name, Pageable pageable);
 
     @Query("SELECT c FROM ComponentPartJpaEntity c WHERE c.category = :category")
-    List<ComponentPartJpaEntity> findByCategory(@Param("category") String category);
+    List<ComponentPartJpaEntity> findByCategory(@Param("category") String category, Pageable pageable);
 
     @Query("""
             SELECT c FROM ComponentPartJpaEntity c

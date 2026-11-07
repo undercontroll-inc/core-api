@@ -1,8 +1,18 @@
 package com.undercontroll.domain.usecase.chat;
 
-import com.undercontroll.application.dto.chat.SendChatMessageRequest;
-import com.undercontroll.application.dto.chat.SendChatMessageResponse;
+import com.undercontroll.domain.model.chat.AnaReply;
 
 public interface SendChatMessagePort {
-    SendChatMessageResponse execute(SendChatMessageRequest request);
+
+    Output execute(Input input);
+
+    record Input(String message, String conversationId) {
+    }
+
+    record Output(String conversationId, AnaReply reply, Long userMessageId, Long assistantMessageId) {
+
+        public Output(String conversationId, AnaReply reply) {
+            this(conversationId, reply, null, null);
+        }
+    }
 }

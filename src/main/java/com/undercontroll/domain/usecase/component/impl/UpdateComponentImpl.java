@@ -1,14 +1,13 @@
 package com.undercontroll.domain.usecase.component.impl;
 
-import com.undercontroll.application.dto.component.ComponentDto;
-import com.undercontroll.application.dto.component.UpdateComponentRequest;
-import com.undercontroll.application.mapper.ComponentPartDtoMapper;
 import com.undercontroll.domain.usecase.component.UpdateComponentPort;
+import com.undercontroll.domain.usecase.component.ComponentOutput;
 import com.undercontroll.domain.model.ComponentPart;
 import com.undercontroll.domain.exception.ComponentNotFoundException;
 import com.undercontroll.domain.exception.InvalidUpdateComponentException;
 import com.undercontroll.domain.gateway.ComponentGateway;
-import com.undercontroll.infrastructure.service.MetricsService;
+import com.undercontroll.domain.gateway.MetricName;
+import com.undercontroll.domain.gateway.MetricsGateway;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -20,12 +19,11 @@ import org.springframework.stereotype.Service;
 public class UpdateComponentImpl implements UpdateComponentPort {
 
     private final ComponentGateway componentGateway;
-    private final MetricsService metricsService;
-    private final ComponentPartDtoMapper componentPartDtoMapper;
+    private final MetricsGateway metricsGateway;
 
     @Override
     @CacheEvict(value = {"components", "componentsByCategory", "componentsByName", "component"}, allEntries = true)
-    public ComponentDto execute(Integer componentId, UpdateComponentRequest request) {
+    public ComponentOutput execute(Integer componentId, Input request) {
         validateUpdate(componentId);
 
         ComponentPart component = componentGateway.findById(componentId)
@@ -56,9 +54,9 @@ public class UpdateComponentImpl implements UpdateComponentPort {
         }
 
         ComponentPart savedComponent = componentGateway.save(component);
-        metricsService.incrementComponentUpdated();
+        metricsGateway.increment(MetricName.COMPONENT_UPDATED);
         log.info("Component updated id={}", savedComponent.getId());
-        return componentPartDtoMapper.toDto(savedComponent);
+        return ComponentOutput.from(savedComponent);
     }
 
     private void validateUpdate(Integer componentId) {

@@ -5,13 +5,12 @@ import com.undercontroll.application.dto.order.GetAllOrdersResponse;
 import com.undercontroll.application.dto.order.GetOrderByIdResponse;
 import com.undercontroll.application.dto.order.OrderEnrichedDto;
 import com.undercontroll.application.dto.order.UpdateOrderRequest;
+import com.undercontroll.application.mapper.OrderDtoMapper;
 import com.undercontroll.domain.usecase.order.*;
 import com.undercontroll.application.controller.OrderApi;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -24,44 +23,28 @@ public class OrderController implements OrderApi {
     private final GetOrderByIdPort getOrderByIdPort;
     private final DeleteOrderPort deleteOrderPort;
     private final ExportOrderPort exportOrderPort;
+    private final OrderDtoMapper mapper;
 
     @Override
     public ResponseEntity<OrderEnrichedDto> createOrder(CreateOrderRequest request) {
-        return ResponseEntity.status(201).body(createOrderPort.execute(request));
+        return ResponseEntity.status(201).body(mapper.toDto(createOrderPort.execute(mapper.toInput(request))));
     }
 
     @Override
     public ResponseEntity<Void> updateOrder(Integer orderId, UpdateOrderRequest request) {
-        updateOrderPort.execute(orderId, request);
+        updateOrderPort.execute(orderId, mapper.toInput(request));
         return ResponseEntity.ok().build();
     }
 
     @Override
     public ResponseEntity<GetAllOrdersResponse> getOrders(Integer userId, Integer page, Integer size) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-
-        boolean isAdmin = auth.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMINISTRATOR"));
-
-        if (!isAdmin) {
-            Integer authenticatedUserId;
-            try {
-                authenticatedUserId = Integer.parseInt(auth.getName());
-            } catch (NumberFormatException ex) {
-                return ResponseEntity.status(403).build();
-            }
-
-            if (userId == null || !authenticatedUserId.equals(userId)) {
-                return ResponseEntity.status(403).build();
-            }
-        }
-
-        return ResponseEntity.ok(getOrdersPort.execute(userId, page, size));
+        return ResponseEntity.ok(mapper.toResponse(getOrdersPort.execute(userId, page, size)));
     }
 
     @Override
     public ResponseEntity<GetOrderByIdResponse> getOrderById(Integer orderId) {
         return getOrderByIdPort.execute(orderId)
+                .map(order -> new GetOrderByIdResponse(mapper.toDto(order)))
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }

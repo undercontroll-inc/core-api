@@ -1,0 +1,47 @@
+meta {
+  name: Confirm import
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/v1/api/stock-imports/{{stockImportId}}/confirm
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "supplier": {"name": "Distribuidora de Pecas Eletro LTDA", "cnpj": "12345678000195"},
+    "invoice": {"number": "1234", "series": "1", "issuedAt": "2026-11-03T10:15:00-03:00"},
+    "items": [
+      {
+        "id": 1,
+        "description": "Resistencia 10k Ohm 1/4W",
+        "quantity": 100,
+        "unit": "UN",
+        "unitPrice": 0.15,
+        "action": "ADD_TO_EXISTING",
+        "componentId": 1,
+        "updatePrice": false,
+        "newComponent": null
+      },
+      {
+        "id": null,
+        "description": "Motor liquidificador 220V",
+        "quantity": 2,
+        "unit": "PC",
+        "unitPrice": 89.90,
+        "action": "CREATE_NEW",
+        "componentId": null,
+        "updatePrice": false,
+        "newComponent": {"name": "Motor liquidificador 220V", "brand": "Arno", "category": "Motores", "description": null}
+      }
+    ]
+  }
+}
+
+docs {
+  Only READY. One transaction: ADD_TO_EXISTING increments stock, CREATE_NEW creates a component, IGNORE skips.
+  Quantities must be whole numbers. 422 COMPONENT_NOT_FOUND for unknown componentId; 409 when already confirmed.
+}

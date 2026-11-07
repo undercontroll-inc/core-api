@@ -1,36 +1,56 @@
 package com.undercontroll.infrastructure.ai;
 
+import com.undercontroll.infrastructure.metrics.AiMetrics;
+import com.undercontroll.infrastructure.metrics.TestMetrics;
+import io.micrometer.core.instrument.Tag;
+import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.util.Set;
+import java.util.stream.Collectors;
 import com.undercontroll.domain.exception.AnaUnavailableException;
 import com.undercontroll.domain.gateway.ChatStreamSink;
+import com.undercontroll.domain.model.chat.AnaReply;
+import com.undercontroll.domain.model.chat.AnaTurnRequest;
+import com.undercontroll.domain.support.Deadline;
+import com.undercontroll.domain.model.chat.ChatMessage;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
-import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.chat.metadata.ChatGenerationMetadata;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.model.tool.ToolCallingChatOptions;
 import reactor.core.publisher.Flux;
+import reactor.test.StepVerifier;
+import reactor.test.scheduler.VirtualTimeScheduler;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class SpringAiAnaChatAdapterTest {
 
-    @Mock
-    private ChatMemory chatMemory;
+    private final SimpleMeterRegistry registry = new SimpleMeterRegistry();
+
+    private static final AnaTurnRequest TURN = new AnaTurnRequest("7", "Oi", "briefing", List.of(), false, Deadline.after(Duration.ofSeconds(60)));
 
     @Mock
     private AnaWebSearchTool webSearchTool;
@@ -39,116 +59,307 @@ class SpringAiAnaChatAdapterTest {
     private AnaShopTools shopTools;
 
     @Test
-    @DisplayName("reads conversation texts so follow-ups can reuse cited orders")
-    void recentConversationTexts() {
-        when(chatMemory.get("7")).thenReturn(List.of(
-                new UserMessage("Me fala do pedido 12"),
-                new AssistantMessage("O liquidificador da Maria ainda não foi olhado.")
-        ));
-        SpringAiAnaChatAdapter adapter = new SpringAiAnaChatAdapter(
-                ChatClient.builder(new StubChatModel(List.of("ok"), null)).build(),
-                chatMemory,
-                webSearchTool,
-                shopTools
-        );
+    @DisplayName("history becomes user and assistant messages between the system prompt and the new question")
+    void historyGoesIntoPrompt() {
+        List<Prompt> prompts = new ArrayList<>();
+        ChatModel model = new StubChatModel(List.of("ok"), "STOP", null) {
+            @Override
+            public Flux<ChatResponse> stream(Prompt prompt) {
+                prompts.add(prompt);
+                return super.stream(prompt);
+            }
+        };
+        AnaTurnRequest turn = new AnaTurnRequest("7", "E agora?", "briefing", List.of(
+                ChatMessage.user("Me fala do pedido 12"),
+                ChatMessage.assistant("Está em análise."),
+                ChatMessage.assistant(" ")
+        ), false, Deadline.after(Duration.ofSeconds(60)));
 
-        assertEquals(
-                List.of("Me fala do pedido 12", "O liquidificador da Maria ainda não foi olhado."),
-                adapter.recentConversationTexts("7"));
-        assertEquals(List.of(), adapter.recentConversationTexts(" "));
+        adapter(model).reply(turn);
+
+        List<Message> messages = prompts.getFirst().getInstructions();
+        assertEquals(List.of(MessageType.USER, MessageType.ASSISTANT, MessageType.USER),
+                messages.stream().map(Message::getMessageType).toList());
+        assertEquals("Me fala do pedido 12", messages.get(0).getText());
+        assertEquals("E agora?", messages.get(2).getText());
     }
 
     @Test
-    @DisplayName("streams token deltas and completes with the full reply")
+    @DisplayName("streams token deltas and completes when the provider reports STOP")
     void streamReply() throws InterruptedException {
-        when(chatMemory.get("7")).thenReturn(List.of());
-        SpringAiAnaChatAdapter adapter = adapter(new StubChatModel(List.of("Tem ", "2."), null));
-        RecordingSink sink = new RecordingSink();
+        RecordingSink sink = stream(new StubChatModel(List.of("Tem ", "2."), "STOP", null));
 
-        adapter.streamReply("7", "Oi", "briefing", sink);
-
-        assertTrue(sink.await());
         assertEquals(List.of("delta:Tem ", "delta:2.", "done:Tem 2."), sink.events);
     }
 
     @Test
     @DisplayName("emits an error event when the streamed reply is blank")
     void streamBlank() throws InterruptedException {
-        when(chatMemory.get("7")).thenReturn(List.of());
-        SpringAiAnaChatAdapter adapter = adapter(new StubChatModel(List.of(), null));
-        RecordingSink sink = new RecordingSink();
+        RecordingSink sink = stream(new StubChatModel(List.of(), "STOP", null));
 
-        adapter.streamReply("7", "Oi", "briefing", sink);
-
-        assertTrue(sink.await());
         assertEquals(List.of("error:" + AnaUnavailableException.CODE), sink.events);
     }
 
     @Test
-    @DisplayName("emits an error event when the stream fails")
+    @DisplayName("emits an error event when the stream fails before any text")
     void streamFails() throws InterruptedException {
-        when(chatMemory.get("7")).thenReturn(List.of());
-        SpringAiAnaChatAdapter adapter = adapter(new StubChatModel(List.of(), new IllegalStateException("down")));
-        RecordingSink sink = new RecordingSink();
+        RecordingSink sink = stream(new StubChatModel(List.of(), null, new IllegalStateException("down")));
 
-        adapter.streamReply("7", "Oi", "briefing", sink);
-
-        assertTrue(sink.await());
         assertEquals(List.of("error:" + AnaUnavailableException.CODE), sink.events);
     }
 
     @Test
-    @DisplayName("completes with the streamed text when Gemini fails after emitting deltas")
-    void streamRecoversAfterDeltas() throws InterruptedException {
-        when(chatMemory.get("7")).thenReturn(List.of());
-        SpringAiAnaChatAdapter adapter = adapter(new StubChatModel(
+    @DisplayName("a failure after deltas ends as partial, never as done")
+    void streamFailsAfterDeltas() throws InterruptedException {
+        RecordingSink sink = stream(new StubChatModel(
                 List.of("Tem ", "2."),
+                null,
                 new IllegalStateException("Failed to parse the JSON string.")
         ));
-        RecordingSink sink = new RecordingSink();
 
-        adapter.streamReply("7", "Oi", "briefing", sink);
+        assertEquals(List.of("delta:Tem ", "delta:2.", "partial:interrupted:Tem 2."), sink.events);
+    }
+
+    @Test
+    @DisplayName("MAX_TOKENS finish reason ends as partial")
+    void streamTruncated() throws InterruptedException {
+        RecordingSink sink = stream(new StubChatModel(List.of("Tem "), "MAX_TOKENS", null));
+
+        assertEquals(List.of("delta:Tem ", "partial:max_tokens:Tem "), sink.events);
+    }
+
+    @Test
+    @DisplayName("a client that is already gone cancels the upstream subscription immediately")
+    void cancelBeforeSubscribe() {
+        AtomicBoolean upstreamCancelled = new AtomicBoolean();
+        CountDownLatch subscribed = new CountDownLatch(1);
+        ChatModel model = new StubChatModel(List.of(), null, null) {
+            @Override
+            public Flux<ChatResponse> stream(Prompt prompt) {
+                return Flux.<ChatResponse>never()
+                        .doOnSubscribe(subscription -> subscribed.countDown())
+                        .doOnCancel(() -> upstreamCancelled.set(true));
+            }
+        };
+        RecordingSink sink = new RecordingSink() {
+            @Override
+            public void onCancel(Runnable cancel) {
+                cancel.run();
+            }
+        };
+
+        adapter(model).streamReply(TURN, sink);
+
+        assertTrue(sink.events.isEmpty());
+        assertTrue(subscribed.getCount() == 1 || upstreamCancelled.get());
+    }
+
+    @Test
+    @DisplayName("sync reply reports completed or partial from the finish reason")
+    void replyStates() {
+
+        AnaReply completed = adapter(new StubChatModel(List.of("Tem 2."), "STOP", null)).reply(TURN);
+        AnaReply partial = adapter(new StubChatModel(List.of("Tem"), "LENGTH", null)).reply(TURN);
+
+        assertTrue(completed.isCompleted());
+        assertEquals("Tem 2.", completed.content());
+        assertEquals(AnaReply.State.PARTIAL, partial.state());
+        assertEquals("max_tokens", partial.reason());
+        Timer done = registry.find(AiMetrics.CALL).tags("outcome", "completed", "finish_reason", "stop").timer();
+        assertEquals(1, done.count());
+        assertEquals(Set.of("feature", "provider", "model", "outcome", "finish_reason"),
+                done.getId().getTags().stream().map(Tag::getKey).collect(Collectors.toSet()));
+        assertEquals(1, registry.find(AiMetrics.CALL).tags("outcome", "partial", "finish_reason", "length").timer().count());
+    }
+
+    @Test
+    @DisplayName("sync reply turns blank text and provider errors into unavailable")
+    void replyFailures() {
+        SpringAiAnaChatAdapter blank = adapter(new StubChatModel(List.of(" "), "STOP", null));
+        SpringAiAnaChatAdapter failing = adapter(new StubChatModel(List.of(), null, new IllegalStateException("down")));
+
+        assertThrows(AnaUnavailableException.class, () -> blank.reply(TURN));
+        assertThrows(AnaUnavailableException.class, () -> failing.reply(TURN));
+        assertEquals(1, registry.find(AiMetrics.CALL).tag("outcome", "empty").timer().count());
+        assertEquals(1, registry.find(AiMetrics.CALL).tag("outcome", "unknown").timer().count());
+    }
+
+    @Test
+    @DisplayName("sync reply keeps text received before a failure as partial")
+    void replyInterrupted() {
+
+        AnaReply reply = adapter(new StubChatModel(List.of("Tem "), null, new IllegalStateException("reset")))
+                .reply(TURN);
+
+        assertEquals(AnaReply.State.PARTIAL, reply.state());
+        assertEquals("interrupted", reply.reason());
+        assertEquals("Tem ", reply.content());
+    }
+
+    @Test
+    @DisplayName("web search tool is offered only when the turn asks for it")
+    void toolsFollowTurnDecision() {
+        List<Prompt> prompts = new ArrayList<>();
+        ChatModel model = new StubChatModel(List.of("ok"), "STOP", null) {
+            @Override
+            public Flux<ChatResponse> stream(Prompt prompt) {
+                prompts.add(prompt);
+                return super.stream(prompt);
+            }
+        };
+        SpringAiAnaChatAdapter adapter = adapter(model);
+
+        adapter.reply(TURN);
+        adapter.reply(new AnaTurnRequest("7", "manual?", "briefing", List.of(), true, Deadline.after(Duration.ofSeconds(60))));
+
+        assertEquals(List.of("get_last_announcement", "get_order", "list_orders", "search_components"), toolNames(prompts.get(0)));
+        assertTrue(toolNames(prompts.get(1)).contains("search_web"));
+    }
+
+    @Test
+    @DisplayName("a provider that never answers ends within the turn budget as CHAT_TIMEOUT and is cancelled")
+    void neverAnswering() throws InterruptedException {
+        AtomicBoolean upstreamCancelled = new AtomicBoolean();
+        ChatModel silent = new StubChatModel(List.of(), null, null) {
+            @Override
+            public Flux<ChatResponse> stream(Prompt prompt) {
+                return Flux.<ChatResponse>never().doOnCancel(() -> upstreamCancelled.set(true));
+            }
+        };
+        AnaTurnRequest shortTurn = new AnaTurnRequest("7", "Oi", "b", List.of(), false, Deadline.after(Duration.ofMillis(150)));
+        RecordingSink sink = new RecordingSink();
+        long started = System.nanoTime();
+
+        adapter(silent).streamReply(shortTurn, sink);
 
         assertTrue(sink.await());
-        assertEquals(List.of("delta:Tem ", "delta:2.", "done:Tem 2."), sink.events);
+        assertTrue(Duration.ofNanos(System.nanoTime() - started).compareTo(Duration.ofSeconds(2)) < 0);
+        assertEquals(List.of("error:" + AnaUnavailableException.TIMEOUT_CODE), sink.events);
+        assertTrue(upstreamCancelled.get());
+    }
+
+    @Test
+    @DisplayName("text received before the deadline is kept as partial timeout in both paths")
+    void timeoutAfterText() throws InterruptedException {
+        ChatModel stalls = new StubChatModel(List.of(), null, null) {
+            @Override
+            public Flux<ChatResponse> stream(Prompt prompt) {
+                return Flux.just(new ChatResponse(List.of(new Generation(new AssistantMessage("Tem ")))))
+                        .concatWith(Flux.never());
+            }
+        };
+        RecordingSink sink = new RecordingSink();
+
+        adapter(stalls).streamReply(new AnaTurnRequest("7", "Oi", "b", List.of(), false, Deadline.after(Duration.ofMillis(150))), sink);
+        AnaReply reply = adapter(stalls).reply(new AnaTurnRequest("7", "Oi", "b", List.of(), false, Deadline.after(Duration.ofMillis(150))));
+
+        assertTrue(sink.await());
+        assertEquals(List.of("delta:Tem ", "partial:timeout:Tem "), sink.events);
+        assertEquals("timeout", reply.reason());
+    }
+
+    @Test
+    @DisplayName("first token, idle and total limits apply in virtual time")
+    void deadlinesInVirtualTime() {
+        StepVerifier.withVirtualTime(() -> SpringAiAnaChatAdapter.withDeadline(
+                        Flux.never(), virtualDeadline(Duration.ofSeconds(60)), Duration.ofSeconds(30), Duration.ofSeconds(20)))
+                .expectSubscription()
+                .expectNoEvent(Duration.ofSeconds(29))
+                .thenAwait(Duration.ofSeconds(1))
+                .expectError(TimeoutException.class)
+                .verify(Duration.ofSeconds(5));
+
+        StepVerifier.withVirtualTime(() -> SpringAiAnaChatAdapter.withDeadline(
+                        Flux.just("a").concatWith(Flux.never()), virtualDeadline(Duration.ofSeconds(60)),
+                        Duration.ofSeconds(30), Duration.ofSeconds(20)))
+                .expectNext("a")
+                .expectNoEvent(Duration.ofSeconds(19))
+                .thenAwait(Duration.ofSeconds(1))
+                .expectError(TimeoutException.class)
+                .verify(Duration.ofSeconds(5));
+
+        StepVerifier.withVirtualTime(() -> SpringAiAnaChatAdapter.withDeadline(
+                        Flux.interval(Duration.ofSeconds(10)), virtualDeadline(Duration.ofSeconds(35)),
+                        Duration.ofSeconds(30), Duration.ofSeconds(20)))
+                .expectSubscription()
+                .thenAwait(Duration.ofSeconds(30))
+                .expectNextCount(3)
+                .thenAwait(Duration.ofSeconds(5))
+                .expectError(TimeoutException.class)
+                .verify(Duration.ofSeconds(5));
+    }
+
+    private static Deadline virtualDeadline(Duration budget) {
+        return Deadline.after(budget, () -> VirtualTimeScheduler.get().now(TimeUnit.NANOSECONDS));
+    }
+
+    private static List<String> toolNames(Prompt prompt) {
+        return ((ToolCallingChatOptions) prompt.getOptions()).getToolCallbacks().stream()
+                .map(callback -> callback.getToolDefinition().name())
+                .sorted()
+                .toList();
+    }
+
+    private RecordingSink stream(ChatModel model) throws InterruptedException {
+        RecordingSink sink = new RecordingSink();
+        adapter(model).streamReply(TURN, sink);
+        assertTrue(sink.await());
+        return sink;
     }
 
     private SpringAiAnaChatAdapter adapter(ChatModel chatModel) {
         return new SpringAiAnaChatAdapter(
                 ChatClient.builder(chatModel).build(),
-                chatMemory,
                 webSearchTool,
-                shopTools
+                shopTools,
+                Duration.ofSeconds(30),
+                Duration.ofSeconds(20),
+                TestMetrics.feature(registry, "ana")
         );
     }
 
-    private static final class StubChatModel implements ChatModel {
+    private static class StubChatModel implements ChatModel {
 
         private final List<String> chunks;
+        private final String finishReason;
         private final RuntimeException error;
 
-        private StubChatModel(List<String> chunks, RuntimeException error) {
+        private StubChatModel(List<String> chunks, String finishReason, RuntimeException error) {
             this.chunks = chunks;
+            this.finishReason = finishReason;
             this.error = error;
         }
 
         @Override
         public ChatResponse call(Prompt prompt) {
-            return new ChatResponse(List.of(new Generation(new AssistantMessage(String.join("", chunks)))));
+            if (error != null) {
+                throw error;
+            }
+            return response(String.join("", chunks), finishReason);
         }
 
         @Override
         public Flux<ChatResponse> stream(Prompt prompt) {
-            Flux<ChatResponse> body = Flux.fromIterable(chunks)
-                    .map(chunk -> new ChatResponse(List.of(new Generation(new AssistantMessage(chunk)))));
+            List<ChatResponse> responses = new ArrayList<>();
+            for (int i = 0; i < chunks.size(); i++) {
+                responses.add(response(chunks.get(i), i == chunks.size() - 1 ? finishReason : null));
+            }
+            Flux<ChatResponse> body = Flux.fromIterable(responses);
             if (error == null) {
                 return body;
             }
             return body.concatWith(Flux.error(error));
         }
+
+        private static ChatResponse response(String text, String finishReason) {
+            ChatGenerationMetadata metadata = finishReason == null
+                    ? ChatGenerationMetadata.NULL
+                    : ChatGenerationMetadata.builder().finishReason(finishReason).build();
+            return new ChatResponse(List.of(new Generation(new AssistantMessage(text), metadata)));
+        }
     }
 
-    private static final class RecordingSink implements ChatStreamSink {
+    private static class RecordingSink implements ChatStreamSink {
 
         private final List<String> events = new ArrayList<>();
         private final CountDownLatch done = new CountDownLatch(1);
@@ -171,6 +382,12 @@ class SpringAiAnaChatAdapterTest {
         @Override
         public void complete(String fullContent) {
             events.add("done:" + fullContent);
+            done.countDown();
+        }
+
+        @Override
+        public void partial(String content, String reason) {
+            events.add("partial:" + reason + ":" + content);
             done.countDown();
         }
 

@@ -14,8 +14,6 @@ public interface MarketViewGateway {
 
     Optional<String> findCurrentBucketKey();
 
-    Optional<String> findPreviousBucketKey(String currentBucketKey);
-
     long countCurrentProducts();
 
     long countDistinctBrands();

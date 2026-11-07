@@ -2,6 +2,8 @@ package com.undercontroll.infrastructure.handler;
 
 import com.undercontroll.application.dto.common.ExceptionHandlerResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -10,6 +12,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 
 @Slf4j
+@Order(Ordered.LOWEST_PRECEDENCE - 1)
 public abstract class GenericExceptionHandler {
 
     public static final String VALIDATION_ERROR = "VALIDATION_ERROR";

@@ -1,6 +1,5 @@
 package com.undercontroll.domain.usecase.auth.impl;
 
-import com.undercontroll.application.dto.auth.CreatePasswordEventRequest;
 import com.undercontroll.domain.usecase.auth.CreatePasswordEventPort;
 import com.undercontroll.domain.model.PasswordEvent;
 import com.undercontroll.domain.enums.PasswordEventStatus;
@@ -23,7 +22,7 @@ public class CreatePasswordEventImpl implements CreatePasswordEventPort {
     private final PasswordEventGateway passwordEventGateway;
 
     @Override
-    public PasswordEvent execute(CreatePasswordEventRequest request) {
+    public PasswordEvent execute(Input request) {
         String value = request.userPhone();
 
         if (request.type().equals(PasswordEventType.RESET)) {

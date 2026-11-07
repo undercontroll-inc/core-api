@@ -1,16 +1,15 @@
 package com.undercontroll.domain.usecase.dashboard.impl;
 
-import com.undercontroll.application.dto.dashboard.CustomerTypeResponse;
 import com.undercontroll.domain.enums.OrderStatus;
 import com.undercontroll.domain.enums.PeriodFilter;
 import com.undercontroll.domain.enums.StatusFilter;
 import com.undercontroll.domain.gateway.OrderGateway;
+import com.undercontroll.domain.model.dashboard.CustomerTypePoint;
 import com.undercontroll.domain.usecase.dashboard.DashboardDateFilter;
 import com.undercontroll.domain.usecase.dashboard.GetCustomerTypeEvolutionPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.sql.Date;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -21,36 +20,12 @@ public class GetCustomerTypeEvolutionImpl implements GetCustomerTypeEvolutionPor
     private final OrderGateway orderGateway;
 
     @Override
-    public CustomerTypeResponse execute(PeriodFilter period, StatusFilter status) {
+    public List<CustomerTypePoint> execute(PeriodFilter period, StatusFilter status) {
         LocalDate startDate = DashboardDateFilter.from(period);
         List<String> statuses = status.getStatuses().stream()
                 .map(OrderStatus::name)
                 .toList();
 
-        List<Object[]> rows = orderGateway.getCustomerTypeEvolution(startDate, statuses);
-
-        List<CustomerTypeResponse.DataPoint> dataPoints = rows.stream()
-                .map(row -> new CustomerTypeResponse.DataPoint(
-                        toLocalDate(row[0]),
-                        toLong(row[1]),
-                        toLong(row[2])
-                ))
-                .toList();
-
-        return new CustomerTypeResponse(dataPoints);
-    }
-
-    private LocalDate toLocalDate(Object value) {
-        if (value == null) return null;
-        if (value instanceof Date sqlDate) return sqlDate.toLocalDate();
-        if (value instanceof LocalDate ld) return ld;
-        return null;
-    }
-
-    private Long toLong(Object value) {
-        if (value == null) return 0L;
-        if (value instanceof Long l) return l;
-        if (value instanceof Number n) return n.longValue();
-        return 0L;
+        return orderGateway.getCustomerTypeEvolution(startDate, statuses);
     }
 }

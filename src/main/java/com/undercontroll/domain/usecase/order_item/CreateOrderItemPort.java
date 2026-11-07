@@ -1,10 +1,17 @@
 package com.undercontroll.domain.usecase.order_item;
 
-import com.undercontroll.application.dto.orderitem.CreateOrderItemRequest;
-import com.undercontroll.application.dto.orderitem.OrderItemDto;
-
 public interface CreateOrderItemPort {
-    OrderItemDto execute(CreateOrderItemRequest request);
 
-    OrderItemDto execute(Integer orderId, CreateOrderItemRequest request);
+    OrderItemOutput execute(Integer orderId, Input input);
+
+    record Input(
+            String brand,
+            String model,
+            String type,
+            String imageUrl,
+            String volt,
+            String series,
+            Double laborValue
+    ) {
+    }
 }

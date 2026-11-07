@@ -1,6 +1,6 @@
 package com.undercontroll.application.controller;
 
-import com.undercontroll.infrastructure.config.ApiResponseDocumentation.*;
+import com.undercontroll.application.controller.doc.ApiResponseDocumentation.*;
 import com.undercontroll.application.dto.component.ComponentDto;
 import com.undercontroll.application.dto.component.RegisterComponentRequest;
 import com.undercontroll.application.dto.component.UpdateComponentRequest;

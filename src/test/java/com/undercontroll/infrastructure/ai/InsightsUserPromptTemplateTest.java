@@ -16,40 +16,41 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class InsightsUserPromptTemplateTest {
 
     @Test
-    @DisplayName("user prompt interpolates month names for visible copy and codes for JSON")
-    void rendersMonthLabels() throws IOException {
-        String template = new ClassPathResource("prompts/insights-user-prompt.txt")
-                .getContentAsString(StandardCharsets.UTF_8);
-        String rendered = PromptTemplate.builder()
+    @DisplayName("user prompt interpolates the month, the limit, the candidates and the optional correction")
+    void renders() throws IOException {
+        String rendered = render(Map.of(
+                "mesAtual", "mês de agosto de 2026",
+                "maxInsights", 5,
+                "candidatos", "[{\"candidate_id\":\"ALERTA_PRECO:MLB-MICROWAVES\"}]",
+                "correcao", ""
+        ));
+
+        assertTrue(rendered.startsWith("Escreva os insights do mês de agosto de 2026"));
+        assertTrue(rendered.contains("no máximo 5 candidatos"));
+        assertTrue(rendered.contains("\"candidate_id\":\"ALERTA_PRECO:MLB-MICROWAVES\""));
+        assertFalse(rendered.contains("<"));
+        assertFalse(rendered.contains("CORREÇÃO"));
+        assertTrue(render(Map.of("mesAtual", "m", "maxInsights", 1, "candidatos", "[]",
+                "correcao", "CORREÇÃO OBRIGATÓRIA")).contains("CORREÇÃO OBRIGATÓRIA"));
+    }
+
+    @Test
+    @DisplayName("system prompt has no template delimiters and requires placeholders for every number")
+    void systemPrompt() throws IOException {
+        String system = new ClassPathResource("prompts/insights-system-prompt.txt").getContentAsString(StandardCharsets.UTF_8);
+
+        assertFalse(system.contains("<"));
+        assertFalse(system.contains(">"));
+        assertTrue(system.contains("Não escreva nenhum dígito fora de placeholder"));
+    }
+
+    private static String render(Map<String, Object> variables) throws IOException {
+        String template = new ClassPathResource("prompts/insights-user-prompt.txt").getContentAsString(StandardCharsets.UTF_8);
+        return PromptTemplate.builder()
                 .template(template)
-                .variables(Map.of(
-                        "mesAtual", "mês de agosto de 2026",
-                        "mesComparacao", "mês de julho de 2026",
-                        "bucketAtual", "2026-08",
-                        "bucketComparacao", "2026-07",
-                        "maxInsights", 7,
-                        "grounding", "{\"cobertura_match\":{\"nivel_1_exato\":2}}"
-                ))
-                .renderer(StTemplateRenderer.builder()
-                        .startDelimiterToken('<')
-                        .endDelimiterToken('>')
-                        .build())
+                .variables(variables)
+                .renderer(StTemplateRenderer.builder().startDelimiterToken('<').endDelimiterToken('>').build())
                 .build()
                 .render();
-
-        assertTrue(rendered.startsWith("Gere os insights do mês de agosto de 2026"));
-        assertTrue(rendered.contains("mês de julho de 2026"));
-        assertTrue(rendered.contains("periodo.bucket_atual = 2026-08"));
-        assertTrue(rendered.contains("7"));
-        assertTrue(rendered.contains("Não chame tools"));
-        assertTrue(rendered.contains("\"nivel_1_exato\":2"));
-        assertFalse(rendered.contains("get_repair_catalog"));
-        assertFalse(rendered.contains("list_price_movements"));
-        assertFalse(rendered.contains("Não chame tool para"));
-        assertFalse(rendered.contains("<mesAtual>"));
-        assertFalse(rendered.contains("<bucketAtual>"));
-        assertFalse(rendered.contains("<grounding>"));
-        assertFalse(rendered.contains("do mês 2026-08"));
-        assertFalse(rendered.contains("do bucket"));
     }
 }

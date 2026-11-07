@@ -1,7 +1,7 @@
 package com.undercontroll.domain.usecase.chat;
 
-import com.undercontroll.application.dto.chat.ChatSuggestionsResponse;
+import java.util.List;
 
 public interface GetChatSuggestionsPort {
-    ChatSuggestionsResponse execute(boolean refresh);
+    List<String> execute(boolean refresh);
 }

@@ -1,14 +1,11 @@
 package com.undercontroll.domain.gateway;
 
-import java.util.List;
+import com.undercontroll.domain.model.chat.AnaReply;
+import com.undercontroll.domain.model.chat.AnaTurnRequest;
 
 public interface AnaChatGateway {
 
-    String reply(String conversationId, String message, String shopBriefing);
+    AnaReply reply(AnaTurnRequest turn);
 
-    void streamReply(String conversationId, String message, String shopBriefing, ChatStreamSink sink);
-
-    default List<String> recentConversationTexts(String conversationId) {
-        return List.of();
-    }
+    void streamReply(AnaTurnRequest turn, ChatStreamSink sink);
 }

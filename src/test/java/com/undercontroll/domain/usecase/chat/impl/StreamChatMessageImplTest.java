@@ -1,18 +1,13 @@
 package com.undercontroll.domain.usecase.chat.impl;
 
-import com.undercontroll.application.dto.chat.SendChatMessageRequest;
-import com.undercontroll.domain.enums.OrderStatus;
 import com.undercontroll.domain.exception.AnaUnavailableException;
 import com.undercontroll.domain.gateway.AnaChatGateway;
 import com.undercontroll.domain.gateway.ChatStreamSink;
-import com.undercontroll.domain.gateway.CurrentUserIdPort;
-import com.undercontroll.domain.gateway.OrderGateway;
-import com.undercontroll.domain.model.Order;
-import com.undercontroll.domain.model.OrderItem;
-import com.undercontroll.domain.model.User;
-import com.undercontroll.domain.model.chat.ShopSnapshot;
-import com.undercontroll.domain.model.chat.ShopSuggestionComposer;
-import com.undercontroll.domain.usecase.chat.StreamChatSession;
+import com.undercontroll.domain.model.chat.AnaReply;
+import com.undercontroll.domain.model.chat.AnaTurnRequest;
+import com.undercontroll.domain.support.Deadline;
+import com.undercontroll.domain.model.chat.ConversationKey;
+import com.undercontroll.domain.usecase.chat.AnaChatSession;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,126 +15,153 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.factory.ObjectProvider;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class StreamChatMessageImplTest {
 
+    private static final AnaChatSession SESSION = new AnaChatSession(
+            new ConversationKey(7, "kitchen"),
+            new AnaTurnRequest("kitchen", "Oi", "briefing", List.of(), false, Deadline.after(Duration.ofSeconds(60))),
+            null,
+            true
+    );
+
     @Mock
-    private ObjectProvider<AnaChatGateway> anaChatGateway;
+    private AnaTurnPreparer preparer;
 
     @Mock
     private AnaChatGateway gateway;
-
-    @Mock
-    private CurrentUserIdPort currentUserIdPort;
-
-    @Mock
-    private ShopSnapshotLoader shopSnapshotLoader;
-
-    @Mock
-    private OrderGateway orderGateway;
 
     @InjectMocks
     private StreamChatMessageImpl useCase;
 
     @Test
-    @DisplayName("prepares a stream session with a shop snapshot briefing")
-    void preparesSession() {
-        when(anaChatGateway.getIfAvailable()).thenReturn(gateway);
-        when(currentUserIdPort.require()).thenReturn(7);
-        when(shopSnapshotLoader.load()).thenReturn(ShopSuggestionComposer.from(
-                List.of(
-                        Order.builder()
-                                .id(12)
-                                .status(OrderStatus.PENDING)
-                                .user(User.builder().name("Maria").lastName("Souza").build())
-                                .orderItems(List.of(
-                                        OrderItem.builder().type("liquidificador").brand("Mondial").build()
-                                ))
-                                .build()
-                ),
-                List.of(),
-                List.of(),
-                null
-        ));
+    @DisplayName("prepare delegates to the turn preparer")
+    void prepares() {
+        when(preparer.prepare("Oi", "kitchen")).thenReturn(SESSION);
 
-        StreamChatSession session = useCase.prepare(new SendChatMessageRequest("Quais consertos estão abertos?"));
-
-        assertEquals("7", session.conversationId());
-        assertEquals("Quais consertos estão abertos?", session.message());
-        assertTrue(session.briefing().contains("Maria"));
-        assertTrue(session.briefing().contains("liquidificador"));
+        assertSame(SESSION, useCase.prepare("Oi", "kitchen"));
     }
 
     @Test
-    @DisplayName("throws when the LLM bean is missing")
-    void missingLlm() {
-        when(anaChatGateway.getIfAvailable()).thenReturn(null);
-
-        SendChatMessageRequest request = new SendChatMessageRequest("Oi");
-        assertThrows(AnaUnavailableException.class, () -> useCase.prepare(request));
-    }
-
-    @Test
-    @DisplayName("loads a cited order into the briefing instead of waiting for a tool")
-    void inlinesCitedOrder() {
-        when(anaChatGateway.getIfAvailable()).thenReturn(gateway);
-        when(currentUserIdPort.require()).thenReturn(7);
-        when(shopSnapshotLoader.load()).thenReturn(ShopSnapshot.empty());
-        when(orderGateway.findDetailById(12)).thenReturn(Optional.of(
-                Order.builder()
-                        .id(12)
-                        .status(OrderStatus.PENDING)
-                        .user(User.builder().name("Maria").lastName("Souza").build())
-                        .orderItems(List.of(OrderItem.builder().type("liquidificador").brand("Mondial").build()))
-                        .build()
-        ));
-
-        StreamChatSession session = useCase.prepare(new SendChatMessageRequest("Me fala do pedido 12"));
-
-        assertTrue(session.briefing().contains("pedido 12"));
-        assertTrue(session.briefing().contains("Maria"));
-    }
-
-    @Test
-    @DisplayName("starts the sink and streams through the gateway")
-    void streamsThroughGateway() {
-        when(anaChatGateway.getIfAvailable()).thenReturn(gateway);
+    @DisplayName("completed streams are recorded before done reaches the client")
+    void completedIsRecorded() {
         RecordingSink sink = new RecordingSink();
-        StreamChatSession session = new StreamChatSession("7", "Oi", "briefing");
+        ChatStreamSink wrapped = stream(sink);
 
-        useCase.stream(session, sink);
+        wrapped.delta("Tem ");
+        wrapped.complete("Tem 2.");
+        sink.cancel.run();
 
-        assertEquals(List.of("start:7", "status:generating"), sink.events);
-        verify(gateway).streamReply(eq("7"), eq("Oi"), eq("briefing"), eq(sink));
+        assertEquals(List.of("start:kitchen", "status:generating", "delta:Tem ", "done:Tem 2.", "cancelled"), sink.events);
+        verify(preparer).finish(SESSION, AnaReply.completed("Tem 2."));
+        verify(preparer, never()).abandon(any());
     }
 
     @Test
-    @DisplayName("emits an error event when the gateway disappears after prepare")
-    void errorsWhenGatewayMissingDuringStream() {
-        when(anaChatGateway.getIfAvailable()).thenReturn(null);
+    @DisplayName("partial replies are stored as partial; errors and cancels without content only release once")
+    void nonCompletedReplies() {
+        RecordingSink partialSink = new RecordingSink();
+        stream(partialSink).partial("Tem", "max_tokens");
+        RecordingSink errorSink = new RecordingSink();
+        stream(errorSink).error("CHAT_UNAVAILABLE", "x");
+        RecordingSink cancelSink = new RecordingSink();
+        stream(cancelSink);
+        cancelSink.cancel.run();
+        cancelSink.cancel.run();
+
+        assertEquals("partial:max_tokens:Tem", partialSink.events.getLast());
+        assertEquals("error:CHAT_UNAVAILABLE", errorSink.events.getLast());
+        verify(preparer).finish(SESSION, AnaReply.partial("Tem", "max_tokens"));
+        verify(preparer, times(2)).abandon(SESSION);
+    }
+
+    @Test
+    @DisplayName("a cancel or error after streamed text stores what the user already saw as partial")
+    void streamedTextIsKept() {
+        RecordingSink cancelSink = new RecordingSink();
+        ChatStreamSink canceled = stream(cancelSink);
+        canceled.delta("Tem ");
+        canceled.delta("dois");
+        cancelSink.cancel.run();
+        RecordingSink errorSink = new RecordingSink();
+        ChatStreamSink failed = stream(errorSink);
+        failed.delta("Parcial");
+        failed.error("CHAT_TIMEOUT", "x");
+
+        verify(preparer).finish(SESSION, AnaReply.partial("Tem dois", "canceled"));
+        verify(preparer).finish(SESSION, AnaReply.partial("Parcial", "chat_timeout"));
+        verify(preparer, never()).abandon(any());
+    }
+
+    @Test
+    @DisplayName("stored ids reach the client on start and done")
+    void idsReachClient() {
+        AnaChatSession persisted = new AnaChatSession(SESSION.key(), SESSION.turn(), null, true, 55L, 100L);
+        when(preparer.gateway()).thenReturn(gateway);
+        when(preparer.finish(persisted, AnaReply.completed("Tem 2."))).thenReturn(101L);
+        List<String> events = new ArrayList<>();
+        ChatStreamSink client = new RecordingSink() {
+            @Override
+            public void start(String conversationId, Long userMessageId) {
+                events.add("start:" + userMessageId);
+            }
+
+            @Override
+            public void complete(String fullContent, Long messageId) {
+                events.add("done:" + messageId);
+            }
+        };
+        ArgumentCaptor<ChatStreamSink> wrapped = ArgumentCaptor.forClass(ChatStreamSink.class);
+
+        useCase.stream(persisted, client);
+        verify(gateway).streamReply(eq(persisted.turn()), wrapped.capture());
+        wrapped.getValue().complete("Tem 2.");
+
+        assertEquals(List.of("start:100", "done:101"), events);
+    }
+
+    @Test
+    @DisplayName("emits an error event and releases the conversation when the gateway disappears")
+    void gatewayMissing() {
+        when(preparer.gateway()).thenThrow(new AnaUnavailableException());
         RecordingSink sink = new RecordingSink();
 
-        useCase.stream(new StreamChatSession("7", "Oi", "briefing"), sink);
+        useCase.stream(SESSION, sink);
 
         assertEquals(List.of("error:CHAT_UNAVAILABLE"), sink.events);
+        verify(preparer).abandon(SESSION);
     }
 
-    private static final class RecordingSink implements ChatStreamSink {
+    private ChatStreamSink stream(RecordingSink sink) {
+        when(preparer.gateway()).thenReturn(gateway);
+        ArgumentCaptor<ChatStreamSink> wrapped = ArgumentCaptor.forClass(ChatStreamSink.class);
+        useCase.stream(SESSION, sink);
+        verify(gateway, atLeastOnce()).streamReply(eq(SESSION.turn()), wrapped.capture());
+        ChatStreamSink last = wrapped.getValue();
+        last.onCancel(() -> sink.events.add("cancelled"));
+        return last;
+    }
+
+    private static class RecordingSink implements ChatStreamSink {
 
         private final List<String> events = new ArrayList<>();
+        private Runnable cancel = () -> {
+        };
 
         @Override
         public void start(String conversationId) {
@@ -162,8 +184,18 @@ class StreamChatMessageImplTest {
         }
 
         @Override
+        public void partial(String content, String reason) {
+            events.add("partial:" + reason + ":" + content);
+        }
+
+        @Override
         public void error(String code, String message) {
             events.add("error:" + code);
+        }
+
+        @Override
+        public void onCancel(Runnable action) {
+            cancel = action;
         }
     }
 }

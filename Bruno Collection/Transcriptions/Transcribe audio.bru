@@ -13,3 +13,8 @@ post {
 body:multipart-form {
   audio: @file(note.webm)
 }
+
+docs {
+  multipart field audio (webm/ogg/wav/mp3/m4a, max 8MB). The format is detected from the file bytes;
+  a Content-Type that contradicts the content, unrecognized content or WAV longer than 180s returns 400.
+}

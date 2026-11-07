@@ -1,0 +1,20 @@
+meta {
+  name: List imports
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/v1/api/stock-imports
+  body: none
+  auth: inherit
+}
+
+params:query {
+  limit: 20
+  ~status: READY
+}
+
+docs {
+  Newest first. Optional status (PROCESSING|READY|FAILED|CONFIRMED|CANCELED) and limit (1-50, default 20).
+}

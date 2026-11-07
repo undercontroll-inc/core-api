@@ -1,5 +1,6 @@
 package com.undercontroll.domain.market;
 
+import com.undercontroll.domain.model.insight.RepairRelation;
 import com.undercontroll.domain.model.market.MarketProductCurrent;
 import com.undercontroll.domain.model.market.MatchCoverage;
 import com.undercontroll.domain.model.market.RepairCatalogItem;
@@ -38,6 +39,22 @@ class RepairCatalogMatcherTest {
     }
 
     @Test
+    @DisplayName("relations go from exact model to brand and category, and brands match on their own")
+    void relations() {
+        RepairCatalogMatcher.CatalogIndex index = RepairCatalogMatcher.index(List.of(
+                new RepairCatalogItem("Electrolux", "ME23S", "Microondas", 4,
+                        "electrolux", "electrolux:me23s", "MLB-MICROWAVES")));
+
+        assertEquals(RepairRelation.NIVEL_1_EXATO, index.relation("electrolux:me23s", null, null));
+        assertEquals(RepairRelation.NIVEL_2_MARCA_CATEGORIA, index.relation(null, "electrolux", "MLB-MICROWAVES"));
+        assertEquals(RepairRelation.NIVEL_3_CATEGORIA, index.relation(null, "lg", "MLB-MICROWAVES"));
+        assertEquals(RepairRelation.SEM_MATCH, index.relation(null, "electrolux", "MLB-FANS"));
+        assertEquals(RepairRelation.NIVEL_2_MARCA_CATEGORIA, index.brandRelation("electrolux"));
+        assertEquals(RepairRelation.SEM_MATCH, index.brandRelation(null));
+        assertEquals(RepairRelation.SEM_MATCH, RepairCatalogMatcher.index(null).relation("a", "b", "c"));
+    }
+
+    @Test
     @DisplayName("empty products yield empty coverage")
     void emptyProducts() {
         MatchCoverage coverage = RepairCatalogMatcher.coverage(List.of(), List.of());
@@ -50,7 +67,7 @@ class RepairCatalogMatcherTest {
                 1, "MUITO_ALTO", 1, "CRESCIMENTO", 80.0, "PRIORIDADE_ALTA", "HIGH",
                 domainId, "MLB1", "Cat", "Brand", brandSlug, "M", productKey,
                 "110V", 1000, 20.0, "L", "A", 100.0, 90.0, 100.0, 110.0, 1.0, 10.0,
-                5, 3, 0.9, "DOMINIO_WHITELIST", "http://x"
+                null, 5, 5, false, 3, 0.9, "DOMINIO_WHITELIST", "http://x"
         );
     }
 }

@@ -1,9 +1,8 @@
 package com.undercontroll.domain.usecase.order.impl;
 
-import com.undercontroll.application.dto.dashboard.OrdersByStatusResponse;
-import com.undercontroll.domain.enums.OrderStatus;
 import com.undercontroll.domain.enums.PeriodFilter;
 import com.undercontroll.domain.gateway.OrderGateway;
+import com.undercontroll.domain.model.dashboard.StatusCount;
 import com.undercontroll.domain.usecase.dashboard.DashboardDateFilter;
 import com.undercontroll.domain.usecase.order.GetOrdersByStatusPort;
 import lombok.RequiredArgsConstructor;
@@ -19,25 +18,9 @@ public class GetOrdersByStatusImpl implements GetOrdersByStatusPort {
     private final OrderGateway orderGateway;
 
     @Override
-    public OrdersByStatusResponse execute(PeriodFilter period) {
+    public List<StatusCount> execute(PeriodFilter period) {
         LocalDate startDate = DashboardDateFilter.from(period);
 
-        List<Object[]> rows = orderGateway.getOrdersByStatus(startDate);
-
-        List<OrdersByStatusResponse.StatusCount> statusCounts = rows.stream()
-                .map(row -> new OrdersByStatusResponse.StatusCount(
-                        OrderStatus.valueOf((String) row[0]),
-                        toLong(row[1])
-                ))
-                .toList();
-
-        return new OrdersByStatusResponse(statusCounts);
-    }
-
-    private Long toLong(Object value) {
-        if (value == null) return 0L;
-        if (value instanceof Long l) return l;
-        if (value instanceof Number n) return n.longValue();
-        return 0L;
+        return orderGateway.getOrdersByStatus(startDate);
     }
 }

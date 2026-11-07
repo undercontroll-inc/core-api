@@ -1,6 +1,5 @@
 package com.undercontroll.domain.usecase.auth.impl;
 
-import com.undercontroll.application.dto.auth.ResetPasswordRequest;
 import com.undercontroll.domain.exception.InvalidPasswordResetException;
 import com.undercontroll.domain.usecase.auth.ResetPasswordPort;
 import com.undercontroll.domain.gateway.UserGateway;
@@ -16,7 +15,7 @@ public class ResetPasswordImpl implements ResetPasswordPort {
     private final UserGateway userGateway;
 
     @Override
-    public void execute(Integer userId, ResetPasswordRequest request, String token) {
+    public void execute(Integer userId, Input request, String token) {
         log.info("Resetting password for user {}", userId);
 
         if (userId == null || userId <= 0) {

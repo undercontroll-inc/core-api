@@ -19,12 +19,12 @@ public interface UserGateway {
 
     Optional<User> findByCpf(String cpf);
 
-    List<User> findAll();
+    List<User> findAll(int limit);
 
-    List<User> findAllCustomers();
+    List<User> findCustomers(int limit);
 
     Optional<User> findCustomerById(Integer id);
 
-    List<User> findAllCustomersThatHaveEmail();
+    List<User> findCustomersWithEmail(int limit);
 
 }
