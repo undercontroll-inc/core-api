@@ -43,6 +43,10 @@ variables:
   value: '1'
   id: vg00000008
 - enabled: true
+  name: stock_import_id
+  value: '1'
+  id: vg00000020
+- enabled: true
   name: announcement_id
   value: '1'
   id: vg00000009

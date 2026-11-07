@@ -9,6 +9,10 @@ public interface ComponentGateway {
 
     ComponentPart save(ComponentPart component);
 
+    boolean existsById(Integer id);
+
+    Optional<ComponentPart> addStock(Integer id, long quantity, Double price);
+
     void deleteById(Integer id);
 
     Optional<ComponentPart> findById(Integer id);

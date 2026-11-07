@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
+  <NFe>
+    <infNFe Id="NFe35261112345678000195550010000012341000012345" versao="4.00">
+      <ide>
+        <cUF>35</cUF>
+        <natOp>VENDA</natOp>
+        <mod>55</mod>
+        <serie>1</serie>
+        <nNF>1234</nNF>
+        <dhEmi>2026-11-03T10:15:00-03:00</dhEmi>
+      </ide>
+      <emit>
+        <CNPJ>12345678000195</CNPJ>
+        <xNome>Distribuidora de Pecas Eletro LTDA</xNome>
+        <xFant>Eletro Pecas</xFant>
+      </emit>
+      <dest>
+        <CNPJ>98765432000110</CNPJ>
+        <xNome>Oficina Undercontroll</xNome>
+      </dest>
+      <det nItem="1">
+        <prod>
+          <cProd>RES-10K</cProd>
+          <xProd>Resistencia 10k Ohm 1/4W</xProd>
+          <uCom>UN</uCom>
+          <qCom>100.0000</qCom>
+          <vUnCom>0.1500000000</vUnCom>
+          <vProd>15.00</vProd>
+        </prod>
+      </det>
+      <det nItem="2">
+        <prod>
+          <cProd>MOT-LIQ-220</cProd>
+          <xProd>Motor liquidificador 220V</xProd>
+          <uCom>PC</uCom>
+          <qCom>2.0000</qCom>
+          <vUnCom>89.9000000000</vUnCom>
+          <vProd>179.80</vProd>
+        </prod>
+      </det>
+      <total>
+        <ICMSTot>
+          <vProd>194.80</vProd>
+          <vNF>204.80</vNF>
+        </ICMSTot>
+      </total>
+    </infNFe>
+  </NFe>
+</nfeProc>

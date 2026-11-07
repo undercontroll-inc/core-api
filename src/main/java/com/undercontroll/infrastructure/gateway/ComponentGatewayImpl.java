@@ -31,6 +31,24 @@ public class ComponentGatewayImpl implements ComponentGateway {
     }
 
     @Override
+    public boolean existsById(Integer id) {
+        return id != null && componentJpaRepository.existsById(id);
+    }
+
+    @Override
+    @Transactional
+    public Optional<ComponentPart> addStock(Integer id, long quantity, Double price) {
+        return componentJpaRepository.findByIdForUpdate(id).map(entity -> {
+            long current = entity.getQuantity() == null ? 0L : entity.getQuantity();
+            entity.setQuantity(current + quantity);
+            if (price != null) {
+                entity.setPrice(price);
+            }
+            return componentPartMapper.toDomain(entity);
+        });
+    }
+
+    @Override
     @Transactional
     public void deleteById(Integer id) {
         componentJpaRepository.deleteById(id);

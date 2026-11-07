@@ -1,0 +1,46 @@
+meta {
+  name: Save review draft
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/v1/api/stock-imports/{{stockImportId}}
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "supplier": {"name": "Distribuidora de Pecas Eletro LTDA", "cnpj": "12345678000195"},
+    "invoice": {"number": "1234", "series": "1", "issuedAt": "2026-11-03T10:15:00-03:00"},
+    "items": [
+      {
+        "id": 1,
+        "description": "Resistencia 10k Ohm 1/4W",
+        "quantity": 100,
+        "unit": "UN",
+        "unitPrice": 0.15,
+        "action": "ADD_TO_EXISTING",
+        "componentId": 1,
+        "updatePrice": false,
+        "newComponent": null
+      },
+      {
+        "id": null,
+        "description": "Motor liquidificador 220V",
+        "quantity": 2,
+        "unit": "PC",
+        "unitPrice": 89.90,
+        "action": "CREATE_NEW",
+        "componentId": null,
+        "updatePrice": false,
+        "newComponent": {"name": "Motor liquidificador 220V", "brand": "Arno", "category": "Motores", "description": null}
+      }
+    ]
+  }
+}
+
+docs {
+  Only READY. Full item list; items left out become IGNORE; id null adds an item. 400 VALIDATION_ERROR with errors[].field.
+}

@@ -87,6 +87,7 @@ public class SecurityConfig {
                         .requestMatchers("/v1/api/orders/*/items/**").hasRole("ADMINISTRATOR")
                         .requestMatchers("/v1/api/orders/*/demands/**").hasRole("ADMINISTRATOR")
                         .requestMatchers("/v1/api/components/**").hasRole("ADMINISTRATOR")
+                        .requestMatchers("/v1/api/stock-imports/**").hasRole("ADMINISTRATOR")
                         .requestMatchers("/v1/api/service-orders/**").hasRole("ADMINISTRATOR")
                         .anyRequest().authenticated()
                 )

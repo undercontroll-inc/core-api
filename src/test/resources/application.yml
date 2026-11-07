@@ -57,6 +57,8 @@ undercontroll:
       repair-catalog-days: 90
     transcription:
       provider: none
+    stock-import:
+      provider: none
 
 logging:
   level:
