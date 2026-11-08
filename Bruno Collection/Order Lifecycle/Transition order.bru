@@ -1,0 +1,23 @@
+meta {
+  name: Transition order
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/v1/api/orders/{{orderId}}/transitions
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "to": "IN_REPAIR",
+    "outcome": null,
+    "note": "Cliente aprovou por telefone"
+  }
+}
+
+docs {
+  to: RECEIVED | AWAITING_APPROVAL | IN_REPAIR | READY_FOR_PICKUP | DELIVERED. outcome (REPAIRED | NOT_REPAIRED) only when moving to READY_FOR_PICKUP. 409 ORDER_INVALID_TRANSITION / ORDER_CONCURRENT_UPDATE.
+}

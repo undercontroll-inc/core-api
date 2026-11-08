@@ -13,6 +13,7 @@ import com.undercontroll.domain.usecase.component.ComponentOutput;
 import com.undercontroll.domain.usecase.order.CreateOrderPort;
 import com.undercontroll.domain.usecase.order.GetOrdersPort;
 import com.undercontroll.domain.usecase.order.OrderOutput;
+import com.undercontroll.domain.usecase.order.OrderPartOutput;
 import com.undercontroll.domain.usecase.order.OrderPartInput;
 import com.undercontroll.domain.usecase.order.UpdateOrderPort;
 import com.undercontroll.domain.usecase.order_item.OrderItemOutput;
@@ -43,7 +44,7 @@ class OrderDtoMapperTest {
                 7,
                 new UserOutput(3, "Ana", "ana@x.com", "Souza", "Rua 1", "123", "01000-000", "1199", null, true, false, false, UserType.CUSTOMER),
                 List.of(new OrderItemOutput(1, null, "X1", "TV", "LG", "220V", "SN1", 80.0, null)),
-                List.of(new ComponentOutput(5, "Capacitor", "desc", "Epcos", 2.5, 10L, "Loja", "Elétrica")),
+                List.of(new OrderPartOutput(5, "Capacitor", "desc", "Epcos", 2.5, 10L, "Loja", "Elétrica", 1L)),
                 2.5,
                 80.0,
                 0.0,
@@ -54,9 +55,9 @@ class OrderDtoMapperTest {
                 true,
                 "Não gela",
                 null,
-                OrderStatus.PENDING,
-                null
-        );
+                OrderStatus.RECEIVED,
+                null,
+                null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @Test
@@ -72,7 +73,7 @@ class OrderDtoMapperTest {
         assertEquals(82.5, dto.totalValue());
         assertEquals("Não gela", dto.customerDescription());
         assertNull(dto.technicalDescription());
-        assertEquals(OrderStatus.PENDING, dto.status());
+        assertEquals(OrderStatus.RECEIVED, dto.status());
     }
 
     @Test
@@ -95,7 +96,7 @@ class OrderDtoMapperTest {
                 0.0, "10/01/2026", null, "Não gela", "Compressor", "PENDING", true, false, "NF-1"
         ));
         UpdateOrderPort.Input update = mapper.toInput(new UpdateOrderRequest(
-                OrderStatus.COMPLETED,
+                null,
                 List.of(new UpdateOrderItemDto(9, "TV", "LG", "X1", "220V", "SN1", 70.0)),
                 List.of(new PartDto(5, 0)),
                 null,
@@ -106,7 +107,6 @@ class OrderDtoMapperTest {
         assertEquals(new OrderPartInput(5, 2), create.parts().get(0));
         assertEquals("NF-1", create.nf());
         assertEquals(new UpdateOrderPort.Appliance(9, "TV", "LG", "X1", "220V", "SN1", 70.0), update.appliances().get(0));
-        assertEquals(OrderStatus.COMPLETED, update.status());
         assertEquals("Trocado", update.technicalDescription());
     }
 }

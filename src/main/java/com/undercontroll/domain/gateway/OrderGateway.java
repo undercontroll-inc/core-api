@@ -22,6 +22,8 @@ public interface OrderGateway {
 
     Optional<Order> findById(Integer id);
 
+    Optional<Order> findByTrackingToken(String token);
+
     List<Order> findAll();
 
     List<Order> findRecent(OrderStatus status, int limit);

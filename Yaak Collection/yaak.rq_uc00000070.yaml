@@ -1,0 +1,44 @@
+type: http_request
+model: http_request
+id: rq_uc00000070
+createdAt: 2026-11-08T12:00:00.000000
+updatedAt: 2026-11-08T12:00:00.000000
+workspaceId: wk_ucCoreApi1
+folderId: fl_ucOrderLc1
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "uploadId": "${[ upload_id ]}"
+    }
+bodyType: application/json
+description: "Step 3, after the PUT: reads the label with AI."
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: ct000070
+method: POST
+name: Read appliance label
+sortPriority: 6000.0
+url: ${[ base_url ]}/v1/api/orders/label-reading
+urlParameters: []
+settingSendCookies:
+  enabled: false
+  value: true
+settingStoreCookies:
+  enabled: false
+  value: true
+settingValidateCertificates:
+  enabled: false
+  value: true
+settingFollowRedirects:
+  enabled: false
+  value: true
+settingRequestTimeout:
+  enabled: false
+  value: 0
+settingHttpVersion:
+  enabled: false
+  value: auto

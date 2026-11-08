@@ -7,7 +7,7 @@ import com.undercontroll.application.dto.announcement.GenerateUploadUrlResponse;
 import com.undercontroll.application.dto.announcement.GetPaginatedAnnouncementResponse;
 import com.undercontroll.application.dto.announcement.UpdateAnnouncementRequest;
 import com.undercontroll.application.dto.announcement.UpdateAnnouncementResponse;
-import com.undercontroll.domain.model.PresignedUpload;
+import com.undercontroll.domain.storage.PresignedUploadUrl;
 import com.undercontroll.domain.usecase.announcement.AnnouncementOutput;
 import com.undercontroll.domain.usecase.announcement.CreateAnnouncementPort;
 import com.undercontroll.domain.usecase.announcement.GetAnnouncementsPort;
@@ -24,7 +24,13 @@ public interface AnnouncementDtoMapper {
 
     AnnouncementDto toDto(AnnouncementOutput output);
 
-    GenerateUploadUrlResponse toDto(PresignedUpload upload);
+    default GenerateUploadUrlResponse toDto(PresignedUploadUrl upload) {
+        if (upload == null) {
+            return null;
+        }
+        return new GenerateUploadUrlResponse(upload.url(), upload.key(), upload.expiresAt().toEpochMilli(),
+                upload.method(), upload.headers());
+    }
 
     CreateAnnouncementResponse toResponse(CreateAnnouncementPort.Output output);
 

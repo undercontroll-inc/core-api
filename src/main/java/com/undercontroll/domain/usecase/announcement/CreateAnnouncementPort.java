@@ -1,7 +1,7 @@
 package com.undercontroll.domain.usecase.announcement;
 
 import com.undercontroll.domain.enums.AnnouncementType;
-import com.undercontroll.domain.model.PresignedUpload;
+import com.undercontroll.domain.storage.PresignedUploadUrl;
 
 import java.time.LocalDateTime;
 
@@ -16,7 +16,7 @@ public interface CreateAnnouncementPort {
             Integer id,
             String title,
             String content,
-            PresignedUpload imageUpload,
+            PresignedUploadUrl imageUpload,
             AnnouncementType type,
             LocalDateTime publishedAt,
             LocalDateTime updatedAt

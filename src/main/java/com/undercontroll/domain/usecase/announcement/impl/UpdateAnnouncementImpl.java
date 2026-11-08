@@ -3,10 +3,10 @@ package com.undercontroll.domain.usecase.announcement.impl;
 import com.undercontroll.domain.exception.AnnouncementNotFoundException;
 import com.undercontroll.domain.exception.InvalidAnnouncementException;
 import com.undercontroll.domain.gateway.AnnouncementGateway;
-import com.undercontroll.domain.gateway.StorageGateway;
+import com.undercontroll.domain.gateway.ObjectStorageGateway;
 import com.undercontroll.domain.model.Announcement;
-import com.undercontroll.domain.model.PresignedUpload;
-import com.undercontroll.domain.usecase.announcement.AnnouncementImageKeys;
+import com.undercontroll.domain.storage.PresignedUploadUrl;
+import com.undercontroll.domain.usecase.announcement.AnnouncementImages;
 import com.undercontroll.domain.usecase.announcement.AnnouncementOutputs;
 import com.undercontroll.domain.usecase.announcement.UpdateAnnouncementPort;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +18,7 @@ import org.springframework.stereotype.Service;
 public class UpdateAnnouncementImpl implements UpdateAnnouncementPort {
 
     private final AnnouncementGateway announcementGateway;
-    private final StorageGateway storageGateway;
+    private final ObjectStorageGateway storageGateway;
 
     @Override
     @CacheEvict(value = {"announcements", "lastAnnouncement"}, allEntries = true)
@@ -49,14 +49,12 @@ public class UpdateAnnouncementImpl implements UpdateAnnouncementPort {
             announcement.setType(input.type());
         }
 
-        PresignedUpload imageUpload = input.imageUpload() == null
+        PresignedUploadUrl imageUpload = input.imageUpload() == null
                 ? null
-                : storageGateway.presignAnnouncementImageUpload(
-                        AnnouncementImageKeys.generate(announcement.getId(), input.imageUpload())
-                );
+                : AnnouncementImages.presign(storageGateway, announcement.getId(), input.imageUpload());
 
         if (imageUpload != null) {
-            announcement.setImageKey(imageUpload.fileKey());
+            announcement.setImageKey(imageUpload.key());
         }
 
         Announcement saved = announcementGateway.save(announcement);

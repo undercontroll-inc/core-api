@@ -6,6 +6,7 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -31,6 +32,19 @@ public class GlobalExceptionHandler extends GenericExceptionHandler {
                 request.getRequestURI(),
                 VALIDATION_ERROR,
                 fieldErrors
+        );
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ExceptionHandlerResponse> handleUnsupportedMediaType(
+            HttpMediaTypeNotSupportedException e,
+            HttpServletRequest request
+    ) {
+        return this.buildErrorResponse(
+                HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+                "Content-Type " + e.getContentType() + " is not supported here; supported: " + e.getSupportedMediaTypes(),
+                request.getRequestURI(),
+                VALIDATION_ERROR
         );
     }
 

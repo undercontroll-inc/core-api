@@ -63,6 +63,8 @@ public class MicrometerMetricsAdapter implements MetricsGateway {
                 case ORDER_CREATED -> new MeterSpec("order.created", null, "Total de pedidos criados");
                 case ORDER_COMPLETED -> new MeterSpec("order.completed", null, "Total de pedidos concluídos");
                 case ORDER_CANCELLED -> new MeterSpec("order.cancelled", null, "Total de pedidos cancelados");
+                case ORDER_BUDGET_APPROVED -> new MeterSpec("order.budget.decided", "approved", "Total de orçamentos aprovados");
+                case ORDER_BUDGET_DECLINED -> new MeterSpec("order.budget.decided", "declined", "Total de orçamentos recusados");
                 case ORDER_UPDATE_FAILED -> new MeterSpec("order.update.failed", null, "Total de falhas ao atualizar pedidos");
                 case INSUFFICIENT_STOCK -> new MeterSpec("inventory.insufficient.stock", null, "Número de vezes que houve estoque insuficiente");
                 case COMPONENT_CREATED -> new MeterSpec("component.created", null, "Total de componentes criados");

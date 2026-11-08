@@ -30,7 +30,7 @@ public interface OrderApi {
     @Operation(summary = "Update an order")
     @PatchApiResponses
     @PatchMapping(value = "/{orderId}", consumes = MediaType.APPLICATION_JSON_VALUE)
-    ResponseEntity<Void> updateOrder(
+    ResponseEntity<OrderEnrichedDto> updateOrder(
             @PathVariable @Parameter(example = "1") Integer orderId,
             @RequestBody UpdateOrderRequest request
     );

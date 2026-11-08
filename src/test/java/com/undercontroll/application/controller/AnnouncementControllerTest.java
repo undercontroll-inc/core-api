@@ -1,6 +1,8 @@
 package com.undercontroll.application.controller;
 
-import com.undercontroll.domain.model.PresignedUpload;
+import com.undercontroll.domain.storage.PresignedUploadUrl;
+import java.time.Instant;
+import java.util.Map;
 import com.undercontroll.domain.model.AccessTokenClaims;
 import com.undercontroll.application.mapper.AnnouncementDtoMapperImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -104,11 +106,7 @@ class AnnouncementControllerTest {
         mockTokenPortWithRole("ADMINISTRATOR");
 
         AnnouncementImageUploadDto imageUpload = new AnnouncementImageUploadDto("cover.png", "image/png", 1024L);
-        PresignedUpload uploadResponse = new PresignedUpload(
-                "https://s3.example/upload",
-                "announcements/1/cover.png",
-                123L
-        );
+        PresignedUploadUrl uploadResponse = new PresignedUploadUrl("https://s3.example/upload", "PUT", Map.of("Content-Type", "image/png"), "announcements/1/cover.png", Instant.ofEpochMilli(123L));
         CreateAnnouncementRequest request = new CreateAnnouncementRequest(
                 "New Feature", "We have a new feature available!", imageUpload, AnnouncementType.HOLIDAY
         );
@@ -343,11 +341,7 @@ class AnnouncementControllerTest {
         UpdateAnnouncementRequest request = new UpdateAnnouncementRequest(
                 "Updated Title", "Updated Content", imageUpload, false, AnnouncementType.HOLIDAY
         );
-        PresignedUpload uploadResponse = new PresignedUpload(
-                "https://s3.example/update",
-                "announcements/1/new-cover.webp",
-                456L
-        );
+        PresignedUploadUrl uploadResponse = new PresignedUploadUrl("https://s3.example/update", "PUT", Map.of("Content-Type", "image/png"), "announcements/1/new-cover.webp", Instant.ofEpochMilli(456L));
 
         UpdateAnnouncementPort.Output response = new UpdateAnnouncementPort.Output(
                 1,

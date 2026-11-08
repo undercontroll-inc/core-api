@@ -59,6 +59,8 @@ undercontroll:
       provider: none
     stock-import:
       provider: none
+    label-reading:
+      provider: none
 
 logging:
   level:

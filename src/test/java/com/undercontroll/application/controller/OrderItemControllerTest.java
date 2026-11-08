@@ -85,7 +85,7 @@ class OrderItemControllerTest {
         when(getOrderItemByIdPort.execute(1, 11)).thenReturn(Optional.empty());
 
         mockMvc.perform(get("/v1/api/orders/1/items")).andExpect(jsonPath("$[0].brand").value("LG"));
-        mockMvc.perform(get("/v1/api/orders/1/items/10")).andExpect(jsonPath("$.series").value("SN1"));
+        mockMvc.perform(get("/v1/api/orders/1/items/10")).andExpect(jsonPath("$.serial").value("SN1"));
         mockMvc.perform(get("/v1/api/orders/1/items/11")).andExpect(status().isNotFound());
         mockMvc.perform(delete("/v1/api/orders/1/items/10")).andExpect(status().isNoContent());
 

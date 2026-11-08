@@ -3,6 +3,7 @@ package com.undercontroll.infrastructure.gateway;
 import com.undercontroll.domain.enums.OrderStatus;
 import com.undercontroll.domain.model.Order;
 import com.undercontroll.domain.model.PaginatedResult;
+import com.undercontroll.domain.exception.OrderConcurrentUpdateException;
 import com.undercontroll.domain.gateway.OrderGateway;
 import com.undercontroll.domain.model.Demand;
 import com.undercontroll.domain.model.dashboard.ApplianceCount;
@@ -20,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,8 +45,12 @@ public class OrderGatewayImpl implements OrderGateway {
     @Transactional
     public Order save(Order order) {
         OrderJpaEntity jpaEntity = orderMapper.toEntityWithId(order);
-        OrderJpaEntity savedEntity = orderJpaRepository.save(jpaEntity);
-        return orderMapper.toDomain(savedEntity);
+        try {
+            OrderJpaEntity savedEntity = orderJpaRepository.saveAndFlush(jpaEntity);
+            return orderMapper.toDomain(savedEntity);
+        } catch (ObjectOptimisticLockingFailureException ex) {
+            throw new OrderConcurrentUpdateException(order.getId(), ex);
+        }
     }
 
     @Override
@@ -55,6 +61,12 @@ public class OrderGatewayImpl implements OrderGateway {
     @Override
     public Optional<Order> findById(Integer id) {
         return orderJpaRepository.findById(id).map(orderMapper::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Order> findByTrackingToken(String token) {
+        return orderJpaRepository.findByTrackingToken(token).map(orderMapper::toDomainWithoutDemands);
     }
 
     @Override
@@ -93,7 +105,7 @@ public class OrderGatewayImpl implements OrderGateway {
                 Sort.by(Sort.Direction.ASC, "createdAt").and(Sort.by(Sort.Direction.ASC, "id"))
         );
         return orderJpaRepository.findByStatusIn(
-                        List.of(OrderStatus.PENDING, OrderStatus.IN_ANALYSIS),
+                        OrderStatus.ONGOING,
                         pageable
                 ).stream()
                 .map(orderMapper::toDomainWithoutDemands)
@@ -105,9 +117,9 @@ public class OrderGatewayImpl implements OrderGateway {
         var pageable = PageRequest.of(
                 0,
                 Math.max(1, limit),
-                Sort.by(Sort.Direction.DESC, "completedTime").and(Sort.by(Sort.Direction.DESC, "id"))
+                Sort.by(Sort.Direction.DESC, "completedAt").and(Sort.by(Sort.Direction.DESC, "id"))
         );
-        return orderJpaRepository.findByStatus(OrderStatus.COMPLETED, pageable).stream()
+        return orderJpaRepository.findByStatus(OrderStatus.READY_FOR_PICKUP, pageable).stream()
                 .map(orderMapper::toDomainWithoutDemands)
                 .toList();
     }

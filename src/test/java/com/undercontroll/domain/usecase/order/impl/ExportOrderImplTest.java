@@ -3,14 +3,18 @@ package com.undercontroll.domain.usecase.order.impl;
 import com.undercontroll.domain.exception.OrderNotFoundException;
 import com.undercontroll.domain.gateway.OrderGateway;
 import com.undercontroll.domain.gateway.PdfExportGateway;
-import com.undercontroll.domain.gateway.StorageGateway;
+import com.undercontroll.domain.gateway.ObjectStorageGateway;
+import com.undercontroll.domain.storage.StorageArea;
 import com.undercontroll.domain.model.ComponentPart;
 import com.undercontroll.domain.model.Demand;
 import com.undercontroll.domain.model.Order;
 import com.undercontroll.domain.model.OrderItem;
 import com.undercontroll.domain.model.ServiceOrderDocument;
 import com.undercontroll.domain.model.User;
+import com.undercontroll.domain.model.ShopProfile;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import java.time.ZoneId;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -34,15 +38,22 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ExportOrderImplTest {
 
+    private static final ShopProfile SHOP = new ShopProfile("Pelluci", null, null, null, null, 90,
+            ZoneId.of("America/Sao_Paulo"), "http://localhost");
+
     @Mock
-    private OrderGateway orderGateway;
+    private OrderAccess orderAccess;
     @Mock
     private PdfExportGateway pdfExportGateway;
     @Mock
-    private StorageGateway storageGateway;
+    private ObjectStorageGateway storageGateway;
 
-    @InjectMocks
     private ExportOrderImpl useCase;
+
+    @BeforeEach
+    void setUp() {
+        useCase = new ExportOrderImpl(orderAccess, SHOP, pdfExportGateway, storageGateway);
+    }
 
     @Test
     @DisplayName("builds the service order document, renders the PDF and stores it")
@@ -58,7 +69,7 @@ class ExportOrderImplTest {
                 .fabricGuarantee(true)
                 .build();
         byte[] pdf = {1, 2, 3};
-        when(orderGateway.findById(12)).thenReturn(Optional.of(order));
+        when(orderAccess.requireVisible(12)).thenReturn(order);
         when(pdfExportGateway.exportOS(any())).thenReturn(pdf);
 
         assertArrayEquals(pdf, useCase.execute(12));
@@ -72,21 +83,22 @@ class ExportOrderImplTest {
         assertEquals("Capacitor", document.getValue().pecas().get(0).peca());
         assertEquals(String.format("R$ %.2f", 5.0), document.getValue().pecas().get(0).valor());
         assertEquals("ana@x.com", document.getValue().nome());
-        verify(storageGateway).storeOrderExport("12-NF-1.pdf", pdf);
+        verify(storageGateway).put(StorageArea.ORDER_EXPORTS, "order-exports/12-NF-1.pdf", pdf, "application/pdf");
     }
 
     @Test
     @DisplayName("export key uses the order id, a safe NF and the pdf extension")
     void exportKey() {
-        assertEquals("7.pdf", ExportOrderImpl.exportKey(Order.builder().id(7).build()));
-        assertEquals("7.pdf", ExportOrderImpl.exportKey(Order.builder().id(7).nf(" ").build()));
-        assertEquals("7-NF_12_A.pdf", ExportOrderImpl.exportKey(Order.builder().id(7).nf("NF 12/A").build()));
+        assertEquals("order-exports/7.pdf", ExportOrderImpl.exportKey(Order.builder().id(7).build()));
+        assertEquals("order-exports/7.pdf", ExportOrderImpl.exportKey(Order.builder().id(7).nf(" ").build()));
+        assertEquals("order-exports/7-NF_12_A.pdf", ExportOrderImpl.exportKey(Order.builder().id(7).nf("NF 12/A").build()));
+        assertEquals("order-exports/7-NF__1_2.pdf", ExportOrderImpl.exportKey(Order.builder().id(7).nf("NF..1.2").build()));
     }
 
     @Test
     @DisplayName("fails for an unknown order")
     void unknownOrder() {
-        when(orderGateway.findById(99)).thenReturn(Optional.empty());
+        when(orderAccess.requireVisible(99)).thenThrow(new OrderNotFoundException("Order 99 not found"));
 
         assertThrows(OrderNotFoundException.class, () -> useCase.execute(99));
     }

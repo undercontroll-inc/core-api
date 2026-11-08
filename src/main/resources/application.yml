@@ -22,8 +22,8 @@ spring:
 
   servlet:
     multipart:
-      max-file-size: 10MB
-      max-request-size: 11MB
+      max-file-size: 8MB
+      max-request-size: 9MB
   mvc:
     async:
       request-timeout: 120s
@@ -79,6 +79,8 @@ spring:
     routing-key:
       announcement: "announcement.created"
       user-created: "user.created"
+      order-status-changed: "order.status.changed"
+      order-budget-decided: "order.budget.decided"
 management:
   endpoint:
     health:
@@ -127,6 +129,8 @@ rate-limit:
   auth-requests-per-minute: ${RATE_LIMIT_AUTH_RPM:10}
   # Max requests per minute per IP for all other endpoints
   general-requests-per-minute: ${RATE_LIMIT_GENERAL_RPM:100}
+  # Max requests per minute per IP for the customer page (/p/**) and /v1/public/**
+  public-requests-per-minute: ${RATE_LIMIT_PUBLIC_RPM:30}
 
 undercontroll:
   ai:
@@ -177,6 +181,13 @@ undercontroll:
       timeout: ${TRANSCRIPTION_TIMEOUT:60s}
       thinking: ${TRANSCRIPTION_THINKING:minimal}
       max-duration: 180s
+    label-reading:
+      provider: ${LABEL_READING_PROVIDER:${INSIGHTS_PROVIDER:none}}
+      model: ${LABEL_READING_MODEL:gemini-3.6-flash}
+      timeout: ${LABEL_READING_TIMEOUT:20s}
+      temperature: 0.0
+      max-output-tokens: 1024
+      thinking: ${LABEL_READING_THINKING:default}
     stock-import:
       provider: ${STOCK_IMPORT_PROVIDER:${INSIGHTS_PROVIDER:none}}
       model: ${STOCK_IMPORT_MODEL:gemini-3.6-flash}
@@ -188,16 +199,29 @@ undercontroll:
       lease-duration: 3m
       worker-interval: 5s
       file-retention: 30d
+  shop:
+    name: "Comercial Irmãos Pelluci"
+    phone: ${SHOP_PHONE:"+551123417100"}
+    whatsapp: ${SHOP_WHATSAPP:"5511964007420"}
+    address: ${SHOP_ADDRESS:"Av. Zelina, 505 - Vila Zelina, São Paulo - SP, 03143-000"}
+    hours: ${SHOP_HOURS:"Seg a sex, 9h às 18h"}
+    warranty-days: ${SHOP_WARRANTY_DAYS:90}
+    zone: America/Sao_Paulo
+  storage:
+    endpoint: ${STORAGE_ENDPOINT:}
+    public-endpoint: ${STORAGE_PUBLIC_ENDPOINT:}
+    region: ${STORAGE_REGION:us-east-1}
+    path-style: ${STORAGE_PATH_STYLE:false}
+    access-key: ${STORAGE_ACCESS_KEY:${ACCESS_KEY_ID:}}
+    secret-key: ${STORAGE_SECRET_KEY:${SECRET_ACCESS_KEY:}}
+    session-token: ${STORAGE_SESSION_TOKEN:${SESSION_TOKEN:}}
+    server-side-encryption: ${STORAGE_SSE:true}
+    sweep-interval: 15m
+    buckets:
+      uploads: ${S3_UPLOAD_BUCKET:undercontroll-uploads}
+      exports: ${S3_EXPORT_BUCKET:undercontroll-exports}
+  public:
+    base-url: ${PUBLIC_BASE_URL:http://localhost:8080}
+    link-ttl-after-delivery: 60d
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
-aws:
-  accessKeyId: ${ACCESS_KEY_ID:example}
-  secretAccessKey: ${SECRET_ACCESS_KEY:example}
-  sessionToken: ${SESSION_TOKEN:example}
-  region: us-east-1
-  s3:
-    # TODO: Mudar para ser dinamico
-    export-bucket: undercontroll-dev-export-bucket
-    upload-bucket: ${S3_UPLOAD_BUCKET:undercontroll-dev-upload-bucket}
-    upload-expiration-minutes: ${S3_UPLOAD_EXPIRATION_MINUTES:15}
-    read-expiration-minutes: ${S3_READ_EXPIRATION_MINUTES:1440}

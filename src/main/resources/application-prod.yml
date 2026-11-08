@@ -43,16 +43,14 @@ firebase:
   config:
     path: file:/opt/app/firebase-service-account.json
 
-aws:
-  accessKeyId: ${ACCESS_KEY_ID}
-  secretAccessKey: ${SECRET_ACCESS_KEY}
-  sessionToken: ${SESSION_TOKEN}
-  region: us-east-1
-  s3:
-    export-bucket: ${S3_EXPORT_BUCKET}
-    upload-bucket: ${S3_UPLOAD_BUCKET}
-    upload-expiration-minutes: ${S3_UPLOAD_EXPIRATION_MINUTES:15}
-    read-expiration-minutes: ${S3_READ_EXPIRATION_MINUTES:1440}
+undercontroll:
+  storage:
+    region: ${STORAGE_REGION:us-east-1}
+    server-side-encryption: true
+    buckets:
+      uploads: ${S3_UPLOAD_BUCKET}
+      exports: ${S3_EXPORT_BUCKET}
+
 
 logging:
   structured:

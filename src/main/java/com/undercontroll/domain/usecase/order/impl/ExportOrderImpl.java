@@ -1,10 +1,10 @@
 package com.undercontroll.domain.usecase.order.impl;
 
-import com.undercontroll.domain.gateway.StorageGateway;
+import com.undercontroll.domain.gateway.ObjectStorageGateway;
+import com.undercontroll.domain.storage.StorageArea;
 import com.undercontroll.domain.usecase.order.ExportOrderPort;
 import com.undercontroll.domain.model.Order;
-import com.undercontroll.domain.exception.OrderNotFoundException;
-import com.undercontroll.domain.gateway.OrderGateway;
+import com.undercontroll.domain.model.ShopProfile;
 import com.undercontroll.domain.gateway.PdfExportGateway;
 import com.undercontroll.domain.model.ServiceOrderDocument;
 import lombok.RequiredArgsConstructor;
@@ -19,9 +19,10 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ExportOrderImpl implements ExportOrderPort {
 
-    private final OrderGateway orderGateway;
+    private final OrderAccess orderAccess;
+    private final ShopProfile shopProfile;
     private final PdfExportGateway pdfExportGateway;
-    private final StorageGateway storageGateway;
+    private final ObjectStorageGateway storageGateway;
 
     @Override
     public byte[] execute(Integer orderId) {
@@ -29,9 +30,7 @@ public class ExportOrderImpl implements ExportOrderPort {
 
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-        Order order = orderGateway.findById(orderId)
-                .orElseThrow(() -> new OrderNotFoundException(
-                        String.format("Order with id %d not found", orderId)));
+        Order order = orderAccess.requireVisible(orderId);
 
         List<ServiceOrderDocument.ProductInfo> produtos = order.getOrderItems().stream()
                 .map(item -> new ServiceOrderDocument.ProductInfo(
@@ -50,14 +49,16 @@ public class ExportOrderImpl implements ExportOrderPort {
                 .toList();
 
         final var receivedAt = order.getReceived_at() != null ? dtf.format(order.getReceived_at()) : null;
-        final var completedAt = order.getCompletedTime() != null ? dtf.format(order.getCompletedTime()) : null;
+        final var completedAt = order.getCompletedAt() != null
+                ? dtf.format(order.getCompletedAt().atZone(shopProfile.zone()))
+                : order.getDeadline() != null ? dtf.format(order.getDeadline()) : null;
 
         ServiceOrderDocument document = new ServiceOrderDocument(
                 order.getId().toString(),
                 order.getId().toString(),
                 order.getNf(),
                 receivedAt,
-                "Loja",
+                shopProfile.name(),
                 produtos,
                 order.getUser().getEmail(),
                 order.getUser().getAddress(),
@@ -66,7 +67,7 @@ public class ExportOrderImpl implements ExportOrderPort {
                 pecas,
                 String.format("R$ %.2f", order.calculateTotal()),
                 completedAt,
-                "Técnico",
+                shopProfile.name(),
                 order.isFabricGuarantee(),
                 null,
                 order.isReturnGuarantee()
@@ -74,16 +75,17 @@ public class ExportOrderImpl implements ExportOrderPort {
 
         byte[] pdfData = pdfExportGateway.exportOS(document);
 
-        storageGateway.storeOrderExport(exportKey(order), pdfData);
+        storageGateway.put(StorageArea.ORDER_EXPORTS, exportKey(order), pdfData, "application/pdf");
 
         return pdfData;
     }
 
     static String exportKey(Order order) {
         String nf = order.getNf();
+        String prefix = StorageArea.ORDER_EXPORTS.policy().prefix() + "/";
         if (nf == null || nf.isBlank()) {
-            return order.getId() + ".pdf";
+            return prefix + order.getId() + ".pdf";
         }
-        return order.getId() + "-" + nf.trim().replaceAll("[^A-Za-z0-9._-]", "_") + ".pdf";
+        return prefix + order.getId() + "-" + nf.trim().replaceAll("[^A-Za-z0-9_-]", "_") + ".pdf";
     }
 }

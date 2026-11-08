@@ -1,8 +1,12 @@
 package com.undercontroll.domain.model;
 
+import com.undercontroll.domain.enums.ApprovalDecision;
+import com.undercontroll.domain.enums.OrderActor;
+import com.undercontroll.domain.enums.OrderOutcome;
 import com.undercontroll.domain.enums.OrderStatus;
 import lombok.*;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Date;
@@ -44,7 +48,27 @@ public class Order {
 
     private LocalDate received_at;
 
-    private LocalDate completedTime;
+    private LocalDate deadline;
+
+    private OrderOutcome outcome;
+
+    private Instant completedAt;
+
+    private Instant deliveredAt;
+
+    private String trackingToken;
+
+    private Instant budgetSentAt;
+    private Double budgetLaborTotal;
+    private Double budgetPartsTotal;
+    private Double budgetDiscount;
+    private Double budgetTotal;
+
+    private ApprovalDecision approvalDecision;
+    private Instant decidedAt;
+    private OrderActor decidedVia;
+
+    private Long version;
 
     private LocalDateTime createdAt;
 
@@ -66,19 +90,24 @@ public class Order {
 
     public Double calculateLaborTotal() {
         return this.getOrderItems().stream()
-                .mapToDouble(OrderItem::getLaborValue)
+                .mapToDouble(item -> item.getLaborValue() == null ? 0.0 : item.getLaborValue())
                 .sum();
     }
 
-    public Double calculatePartsTotal(){
+    public Double calculatePartsTotal() {
         return this.demands
                 .stream()
+                .filter(d -> d.getQuantity() != null && d.getComponent() != null && d.getComponent().getPrice() != null)
                 .mapToDouble(d -> d.getQuantity() * d.getComponent().getPrice())
                 .sum();
     }
 
     public Double calculateTotal() {
-        return this.calculatePartsTotal() + this.calculateLaborTotal() - this.discount;
+        return this.calculatePartsTotal() + this.calculateLaborTotal() - (this.discount == null ? 0.0 : this.discount);
+    }
+
+    public void recalculateTotal() {
+        this.total = calculateTotal();
     }
 
 }

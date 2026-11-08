@@ -2,6 +2,9 @@ package com.undercontroll.application.controller;
 
 import com.undercontroll.application.controller.doc.ApiResponseDocumentation.ErrorResponse;
 import com.undercontroll.application.dto.stockimport.StockImportDto;
+import com.undercontroll.application.dto.storage.UploadReference;
+import com.undercontroll.application.dto.storage.UploadRequest;
+import com.undercontroll.application.dto.storage.UploadTicketDto;
 import com.undercontroll.application.dto.stockimport.StockImportReviewRequest;
 import com.undercontroll.application.dto.stockimport.StockImportSummaryDto;
 import com.undercontroll.domain.enums.StockImportStatus;
@@ -23,8 +26,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -34,13 +35,26 @@ import java.util.List;
 public interface StockImportApi {
 
     @Operation(
-            summary = "Upload an invoice (photo, PDF or NF-e XML) for extraction",
+            summary = "Get a presigned URL to upload the invoice (photo, PDF or NF-e XML)",
+            description = "Step 1. PUT the file to uploadUrl with the returned headers, then POST /v1/api/stock-imports with the uploadId."
+    )
+    @ApiResponse(responseCode = "201", description = "Upload ticket",
+            content = @Content(schema = @Schema(implementation = UploadTicketDto.class)))
+    @ApiResponse(responseCode = "400", description = "Unsupported type or over 10MB (code STOCK_IMPORT_INVALID)",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "503", description = "AI extraction disabled; XML still works (code STOCK_IMPORT_UNAVAILABLE)",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @PostMapping(value = "/uploads", consumes = MediaType.APPLICATION_JSON_VALUE)
+    ResponseEntity<UploadTicketDto> requestUpload(@RequestBody UploadRequest request);
+
+    @Operation(
+            summary = "Create the import from an uploaded file (step 2, idempotent per uploadId)",
             description = "Extraction runs in the background. Poll GET /v1/api/stock-imports/{importId} until status leaves PROCESSING."
     )
     @ApiResponse(responseCode = "202", description = "Import created with status PROCESSING",
             content = @Content(schema = @Schema(implementation = StockImportDto.class)))
     @ApiResponse(responseCode = "400",
-            description = "Missing, empty, over 10MB, unsupported type, MIME that contradicts the content or PDF over 5 pages (code STOCK_IMPORT_INVALID)",
+            description = "Upload missing or expired, content that contradicts the declared type, or PDF over 5 pages (code STOCK_IMPORT_INVALID)",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "401", description = "Missing or invalid token",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
@@ -48,11 +62,8 @@ public interface StockImportApi {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "503", description = "AI extraction disabled; XML still works (code STOCK_IMPORT_UNAVAILABLE)",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    ResponseEntity<StockImportDto> create(
-            @Parameter(description = "JPEG, PNG, WEBP, PDF (up to 5 pages) or NF-e XML, up to 10MB")
-            @RequestPart("file") MultipartFile file
-    );
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    ResponseEntity<StockImportDto> create(@RequestBody UploadReference request);
 
     @Operation(summary = "List recent imports, newest first")
     @ApiResponse(responseCode = "200", description = "Imports",

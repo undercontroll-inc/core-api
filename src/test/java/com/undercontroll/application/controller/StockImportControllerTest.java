@@ -2,6 +2,12 @@ package com.undercontroll.application.controller;
 
 import com.undercontroll.application.controller.impl.StockImportController;
 import com.undercontroll.application.mapper.StockImportDtoMapper;
+import com.undercontroll.application.mapper.UploadDtoMapper;
+import com.undercontroll.domain.storage.PresignedUploadUrl;
+import com.undercontroll.domain.storage.UploadTicket;
+import com.undercontroll.domain.usecase.stockimport.RequestStockImportUploadPort;
+import java.util.Map;
+import java.util.UUID;
 import com.undercontroll.domain.enums.StockImportItemAction;
 import com.undercontroll.domain.enums.StockImportMatchType;
 import com.undercontroll.domain.enums.StockImportSourceType;
@@ -38,7 +44,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -57,7 +62,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -68,7 +72,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         StockImportExceptionHandler.class,
         TranscriptionExceptionHandler.class,
         GlobalExceptionHandler.class,
-        StockImportDtoMapper.class
+        StockImportDtoMapper.class,
+        UploadDtoMapper.class
 })
 @AutoConfigureMockMvc
 @WebMvcTest(StockImportController.class)
@@ -94,6 +99,8 @@ class StockImportControllerTest {
     @MockitoBean
     private CreateStockImportPort createStockImportPort;
     @MockitoBean
+    private RequestStockImportUploadPort requestStockImportUploadPort;
+    @MockitoBean
     private ListStockImportsPort listStockImportsPort;
     @MockitoBean
     private GetStockImportPort getStockImportPort;
@@ -108,9 +115,7 @@ class StockImportControllerTest {
     @MockitoBean
     private TokenGateway tokenGateway;
 
-    private static MockMultipartFile file() {
-        return new MockMultipartFile("file", "nota.jpg", "image/jpeg", new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 0});
-    }
+    private static final UUID UPLOAD = UUID.fromString("0f8fad5b-d9cb-469f-a165-70867728950e");
 
     private static StockImport ready() {
         return StockImport.builder()
@@ -142,13 +147,23 @@ class StockImportControllerTest {
 
     @Test
     @WithMockUser(username = "12", roles = "ADMINISTRATOR")
-    @DisplayName("POST returns 202 with PROCESSING and stage")
+    @DisplayName("upload ticket, then POST with the uploadId returns 202 with PROCESSING and stage")
     void create() throws Exception {
-        when(createStockImportPort.execute(any())).thenReturn(StockImport.builder()
+        when(requestStockImportUploadPort.execute(new RequestStockImportUploadPort.Input("application/pdf", 52000L, "nota.pdf")))
+                .thenReturn(new UploadTicket(UPLOAD, new PresignedUploadUrl("http://minio:9000/undercontroll-uploads/stock-imports/12/a.pdf?sig",
+                        "PUT", Map.of("Content-Type", "application/pdf", "Content-Length", "52000"), "stock-imports/12/a.pdf",
+                        Instant.parse("2026-11-08T12:05:00Z"))));
+        when(createStockImportPort.execute(UPLOAD)).thenReturn(StockImport.builder()
                 .id(1L).status(StockImportStatus.PROCESSING).stage(StockImportStage.RECEIVED)
-                .sourceType(StockImportSourceType.IMAGE).build());
+                .sourceType(StockImportSourceType.PDF).build());
 
-        mockMvc.perform(multipart(BASE).file(file()))
+        mockMvc.perform(post(BASE + "/uploads").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"contentType\":\"application/pdf\",\"sizeBytes\":52000,\"fileName\":\"nota.pdf\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.uploadId").value(UPLOAD.toString()))
+                .andExpect(jsonPath("$.headers['Content-Type']").value("application/pdf"))
+                .andExpect(jsonPath("$.expiresAt").value("2026-11-08T12:05:00Z"));
+        mockMvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON).content("{\"uploadId\":\"" + UPLOAD + "\"}"))
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.status").value("PROCESSING"))
@@ -160,9 +175,10 @@ class StockImportControllerTest {
     @WithMockUser(roles = "CUSTOMER")
     @DisplayName("customers are forbidden")
     void customerForbidden() throws Exception {
-        mockMvc.perform(multipart(BASE).file(file())).andExpect(status().isForbidden());
+        mockMvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isForbidden());
+        mockMvc.perform(post(BASE + "/uploads").contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isForbidden());
         mockMvc.perform(get(BASE)).andExpect(status().isForbidden());
-        verify(createStockImportPort, never()).execute(any());
+        verify(createStockImportPort, never()).execute(any(UUID.class));
     }
 
     @Test
@@ -173,24 +189,25 @@ class StockImportControllerTest {
 
     @Test
     @WithMockUser(roles = "ADMINISTRATOR")
-    @DisplayName("missing file part is 400 STOCK_IMPORT_INVALID")
-    void missingFile() throws Exception {
-        mockMvc.perform(multipart(BASE))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("STOCK_IMPORT_INVALID"));
+    @DisplayName("multipart is no longer accepted on POST")
+    void multipartRejected() throws Exception {
+        mockMvc.perform(post(BASE).contentType(MediaType.MULTIPART_FORM_DATA).content("x"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
 
     @Test
     @WithMockUser(roles = "ADMINISTRATOR")
     @DisplayName("invalid upload and disabled AI map to their codes")
     void uploadErrors() throws Exception {
-        when(createStockImportPort.execute(any())).thenThrow(new InvalidStockImportException("File exceeds 10MB"));
-        mockMvc.perform(multipart(BASE).file(file()))
+        when(createStockImportPort.execute(UPLOAD)).thenThrow(new InvalidStockImportException("O arquivo ainda não foi enviado"));
+        mockMvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON).content("{\"uploadId\":\"" + UPLOAD + "\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("STOCK_IMPORT_INVALID"));
 
-        doThrow(new StockImportUnavailableException()).when(createStockImportPort).execute(any());
-        mockMvc.perform(multipart(BASE).file(file()))
+        when(requestStockImportUploadPort.execute(any())).thenThrow(new StockImportUnavailableException());
+        mockMvc.perform(post(BASE + "/uploads").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"contentType\":\"image/jpeg\",\"sizeBytes\":10}"))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.code").value("STOCK_IMPORT_UNAVAILABLE"));
     }

@@ -187,3 +187,92 @@ Update these calls first:
 7. `RepairService.deleteOrderItem` → `DELETE /orders/{orderId}/items/{id}` (needs the parent order id).
 
 Also stop treating empty `GET` collections as HTTP `204`.
+
+---
+
+## Order lifecycle (status model, budget approval link, photos)
+
+### New status model
+
+| Old | New |
+|---|---|
+| `PENDING`, `IN_ANALYSIS` | `RECEIVED` (Em avaliação) |
+| – | `AWAITING_APPROVAL` (Aguardando aprovação) |
+| – | `IN_REPAIR` (Em conserto) |
+| `COMPLETED` | `READY_FOR_PICKUP` (Pronto para retirada) + `outcome: REPAIRED` |
+| `DELIVERED` | `DELIVERED` + `outcome: REPAIRED` |
+
+`outcome` (`REPAIRED` / `NOT_REPAIRED`) is set when the order reaches `READY_FOR_PICKUP` and kept on `DELIVERED`. Existing data is migrated by `V7__order_lifecycle.sql` (prod) or the `LegacyOrderStatusBackfill` runner (dev, no Flyway). Deploy as stop → migrate → start: old instances can't read the new values.
+
+Valid transitions (anything else is `409 ORDER_INVALID_TRANSITION`):
+
+- `RECEIVED → AWAITING_APPROVAL | READY_FOR_PICKUP (NOT_REPAIRED)`
+- `AWAITING_APPROVAL → IN_REPAIR (approved) | READY_FOR_PICKUP (declined, NOT_REPAIRED) | RECEIVED (redo budget)`
+- `IN_REPAIR → READY_FOR_PICKUP (REPAIRED by default, NOT_REPAIRED allowed)`
+- `READY_FOR_PICKUP → DELIVERED`
+
+### Changed endpoints
+
+| Endpoint | Old | New |
+|---|---|---|
+| `PATCH /v1/api/orders/{id}` | accepted `status`; `200` empty body | `status` → `400 VALIDATION_ERROR` (use `/transitions`); returns `200` with the order; total recalculated |
+| `GET /v1/api/orders/{id}`, `/{id}/export` | any authenticated user could read any order | a CUSTOMER only sees their own orders; others → `404 ORDER_NOT_FOUND` |
+| Order `deadline` | always `null` (value was stored as `completedTime`) | real `yyyy-MM-dd` |
+| Appliances `volt` / `series` | mixed with `voltage` / `serial` | `voltage` / `serial` in create, update and output; `volt` / `series` still accepted on input for one version |
+| `parts[]` in order responses | no quantity on the order | adds `demandQuantity` (`quantity` stays as the component stock) |
+| Dashboard `status` filter | `ONGOING`, `COMPLETED`, `DELIVERED`, `ALL` | `ONGOING` (RECEIVED+AWAITING_APPROVAL+IN_REPAIR), `READY`, `DELIVERED`, `ALL`; `COMPLETED` is an alias of `READY` for one version |
+| Dashboard revenue/profit/avg price/top components | counted every order | exclude `outcome = NOT_REPAIRED` (no fee) |
+| Dashboard average repair time | `deadline − receivedAt` | `completedAt − receivedAt`, `REPAIRED` only |
+
+Order responses add `outcome`, `trackingUrl`, `budgetSentAt`, `budgetTotal`, `approvalDecision`, `decidedAt`, `decidedVia`, `completedAt`, `deliveredAt`, and (single-order responses only; `null` in lists) `statusHistory[]` and `photos[]`.
+
+### New endpoints (ADMINISTRATOR)
+
+- `POST /v1/api/orders/{id}/transitions` `{to, outcome?, note?}`
+- `POST /v1/api/orders/{id}/budget/send` → `{trackingUrl, whatsappText, order}`; `400 ORDER_BUDGET_EMPTY`
+- `POST /v1/api/orders/{id}/budget/decision` `{decision: APPROVED|DECLINED, note?}` (idempotent)
+- `POST /v1/api/orders/{id}/tracking-link` → `{trackingUrl, whatsappText}`
+- `GET /v1/api/orders/lookup?token=` → `{id}`
+- `POST /v1/api/orders/label-reading` (multipart `file`) → `{isLabel, type, brand, model, serial, voltage, confidence}`; `400 LABEL_READING_INVALID`, `503 LABEL_READING_UNAVAILABLE`
+- `POST /v1/api/orders/{id}/photos` (multipart `file` + `kind`), `GET /v1/api/orders/{id}/photos`, `DELETE /v1/api/orders/{id}/photos/{photoId}`; `409 ORDER_PHOTO_LIMIT` (6)
+
+Concurrent edits of the same order: the loser gets `409 ORDER_CONCURRENT_UPDATE`.
+
+### Public customer page (no login, 30 requests/minute per IP)
+
+- `GET /p/{token}` HTML page, `POST /p/{token}/decision` form (303 back to the page), `GET /v1/public/orders/{token}` JSON.
+- Unknown link, or 60 days after delivery: friendly 404 page / `404 TRACKING_NOT_FOUND`.
+- Shows only the customer's first name, device, values and status.
+
+### Events and config
+
+- RabbitMQ `notification.events`: `order.status.changed`, `order.budget.decided` (after commit).
+- Config: `undercontroll.shop.*` (`SHOP_NAME`, `SHOP_PHONE`, `SHOP_WHATSAPP`, `SHOP_ADDRESS`, `SHOP_HOURS`, `SHOP_WARRANTY_DAYS`), `undercontroll.public.base-url` (`PUBLIC_BASE_URL`), `undercontroll.ai.label-reading.*` (`LABEL_READING_PROVIDER`, falls back to `INSIGHTS_PROVIDER`), `rate-limit.public-requests-per-minute`.
+- Redis cache prefix bumped to `v5:`.
+
+---
+
+## File uploads: direct to storage through presigned URLs
+
+Files no longer go through the API as multipart. Every upload is three steps:
+
+1. `POST …/uploads` with `{contentType, sizeBytes}` → `201 {uploadId, uploadUrl, method: "PUT", headers, expiresAt}` (valid for 5 minutes).
+2. `PUT uploadUrl` with the raw file bytes and **exactly** the returned `headers` (`Content-Type`, `Content-Length`, and `x-amz-server-side-encryption` in production). No `Authorization` header: the signature in the URL is the authorization. A different type or size fails with `403 SignatureDoesNotMatch` from the storage.
+3. Call the feature endpoint with the `uploadId`. The backend checks the stored size and the file signature (magic bytes); a mismatch deletes the object and returns `400 UPLOAD_INVALID` (or the feature's own code).
+
+| Feature | Old | New |
+|---|---|---|
+| Order photos | `POST /v1/api/orders/{id}/photos` multipart `file` + `kind` | `POST /v1/api/orders/{id}/photos/uploads` `{kind, contentType, sizeBytes}` → PUT → `POST /v1/api/orders/{id}/photos/uploads/{uploadId}/complete` → `201 OrderPhotoDto` (idempotent). The limit of 6 counts pending uploads. |
+| Label reading | `POST /v1/api/orders/label-reading` multipart `file` | `POST /v1/api/orders/label-reading/uploads` `{contentType, sizeBytes}` → PUT → `POST /v1/api/orders/label-reading` `{uploadId}` |
+| Stock import | `POST /v1/api/stock-imports` multipart `file` | `POST /v1/api/stock-imports/uploads` `{contentType, sizeBytes, fileName}` → PUT → `POST /v1/api/stock-imports` `{uploadId}` → `202` (idempotent per `uploadId`) |
+| Announcement image | presigned PUT without signed type or size | Same endpoints. The PUT now signs the `contentType`/`sizeBytes` the request already sends (JPEG/PNG/WEBP, ≤ 5MB, else `400 UPLOAD_INVALID`); the response adds `method` and `headers`. |
+
+Other changes:
+
+- Read URLs are presigned per area: order photos 15 minutes, announcement images 60 minutes, PDF exports 5 minutes. The same URL is returned while more than half of its validity remains, so client image caches work. Responses carry `Cache-Control: private, max-age=…, immutable`.
+- A multipart (or any unsupported `Content-Type`) request now gets `415` with `code: VALIDATION_ERROR` instead of `500`.
+- Storage failures return `503 STORAGE_UNAVAILABLE`. Before, failed writes were silently ignored.
+- Global multipart limit back to 8MB/9MB (only transcription still uses multipart).
+- Config: `undercontroll.storage.*` (`STORAGE_ENDPOINT`, `STORAGE_PUBLIC_ENDPOINT`, `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`, `STORAGE_REGION`, `STORAGE_PATH_STYLE`, `STORAGE_SSE`, `S3_UPLOAD_BUCKET`, `S3_EXPORT_BUCKET`). The old `aws.*` keys are gone; `ACCESS_KEY_ID` / `SECRET_ACCESS_KEY` / `SESSION_TOKEN` are still read as fallbacks. With no keys, the AWS default credential chain (IAM role) is used.
+- Local development uses MinIO from `docker compose` (API `:9000`, console `:9001`, `minioadmin`/`minioadmin`).
+- Migration `V8__storage_uploads.sql`: `storage_upload` table, `stock_import.storage_key`, `stock_import.file_purged_at`. Imports created before V8 keep reading their file from `stock_import_file` until it is purged.

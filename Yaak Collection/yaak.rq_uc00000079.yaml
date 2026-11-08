@@ -1,0 +1,41 @@
+type: http_request
+model: http_request
+id: rq_uc00000079
+createdAt: 2026-11-08T12:00:00.000000
+updatedAt: 2026-11-08T12:00:00.000000
+workspaceId: wk_ucCoreApi1
+folderId: fl_ucStorage1
+authentication: {}
+authenticationType: none
+body:
+  filePath: ''
+bodyType: binary
+description: "Step 2 of every upload: set upload_url from the upload response, choose the file and send exactly the returned headers. No Bearer token."
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/pdf
+  id: ct000079
+method: PUT
+name: Upload file to presigned URL
+sortPriority: 1000.0
+url: ${[ upload_url ]}
+urlParameters: []
+settingSendCookies:
+  enabled: false
+  value: true
+settingStoreCookies:
+  enabled: false
+  value: true
+settingValidateCertificates:
+  enabled: false
+  value: true
+settingFollowRedirects:
+  enabled: false
+  value: true
+settingRequestTimeout:
+  enabled: false
+  value: 0
+settingHttpVersion:
+  enabled: false
+  value: auto

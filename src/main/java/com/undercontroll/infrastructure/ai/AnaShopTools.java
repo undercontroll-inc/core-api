@@ -60,12 +60,12 @@ public class AnaShopTools {
             Responde com total e has_more; se has_more for true, diga que há mais e ofereça a próxima página.
             """)
     public ToolResult<OrderPage> listOrders(
-            @ToolParam(required = false, description = "abertos, prontos, entregues ou todos (padrão: abertos)") String status,
+            @ToolParam(required = false, description = "abertos, aguardando (aprovação do orçamento), em conserto, prontos, entregues ou todos (padrão: abertos)") String status,
             @ToolParam(required = false, description = "Página, começando em 1") Integer page
     ) {
         List<OrderStatus> statuses = statuses(status);
         if (statuses == null) {
-            return ToolResult.invalidInput("Situação inválida. Use abertos, prontos, entregues ou todos.");
+            return ToolResult.invalidInput("Situação inválida. Use abertos, aguardando, em conserto, prontos, entregues ou todos.");
         }
         int pageNumber = page == null || page < 1 ? 1 : page;
         try {
@@ -84,9 +84,11 @@ public class AnaShopTools {
     static List<OrderStatus> statuses(String status) {
         String value = status == null || status.isBlank() ? "abertos" : Texts.stripAccents(status.trim().toLowerCase(Locale.ROOT));
         return switch (value) {
-            case "abertos", "aberto", "em andamento", "andamento", "pending", "in_analysis" ->
-                    List.of(OrderStatus.PENDING, OrderStatus.IN_ANALYSIS);
-            case "prontos", "pronto", "completed" -> List.of(OrderStatus.COMPLETED);
+            case "abertos", "aberto", "em andamento", "andamento" -> OrderStatus.ONGOING;
+            case "avaliacao", "em avaliacao", "received" -> List.of(OrderStatus.RECEIVED);
+            case "aguardando", "aguardando aprovacao", "awaiting_approval" -> List.of(OrderStatus.AWAITING_APPROVAL);
+            case "em conserto", "conserto", "in_repair" -> List.of(OrderStatus.IN_REPAIR);
+            case "prontos", "pronto", "ready_for_pickup" -> List.of(OrderStatus.READY_FOR_PICKUP);
             case "entregues", "entregue", "delivered" -> List.of(OrderStatus.DELIVERED);
             case "todos", "all" -> List.of(OrderStatus.values());
             default -> null;

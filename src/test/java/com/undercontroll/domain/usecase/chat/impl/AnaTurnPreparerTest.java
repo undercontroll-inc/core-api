@@ -102,7 +102,7 @@ class AnaTurnPreparerTest {
         ));
         when(orderGateway.findDetailById(12)).thenReturn(Optional.of(Order.builder()
                 .id(12)
-                .status(OrderStatus.PENDING)
+                .status(OrderStatus.RECEIVED)
                 .user(User.builder().name("Maria").lastName("Souza").build())
                 .orderItems(List.of(OrderItem.builder().type("liquidificador").build()))
                 .build()));

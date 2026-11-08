@@ -1,43 +1,58 @@
 package com.undercontroll.application.usecase;
 
-import com.undercontroll.domain.usecase.order.OrderOutput;
-import com.undercontroll.domain.gateway.CurrentUserAdminPort;
-import com.undercontroll.domain.usecase.order.impl.GetOrderByIdImpl;
-import com.undercontroll.domain.model.Order;
 import com.undercontroll.domain.enums.OrderStatus;
+import com.undercontroll.domain.gateway.CurrentUserAdminPort;
+import com.undercontroll.domain.gateway.CurrentUserIdPort;
 import com.undercontroll.domain.gateway.OrderGateway;
+import com.undercontroll.domain.gateway.OrderPhotoGateway;
+import com.undercontroll.domain.gateway.OrderStatusEventGateway;
+import com.undercontroll.domain.gateway.ObjectStorageGateway;
+import com.undercontroll.domain.model.Order;
+import com.undercontroll.domain.model.ShopProfile;
+import com.undercontroll.domain.model.User;
+import com.undercontroll.domain.usecase.order.OrderOutput;
+import com.undercontroll.domain.usecase.order.impl.GetOrderByIdImpl;
+import com.undercontroll.domain.usecase.order.impl.OrderAccess;
+import com.undercontroll.domain.usecase.order.impl.OrderDetailsAssembler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
 class GetOrderByIdImplTest {
 
-    @Mock
     private OrderGateway orderGateway;
-
-    @Mock
-    private CurrentUserAdminPort currentUserAdminPort;
-
-    @InjectMocks
+    private CurrentUserAdminPort admin;
+    private CurrentUserIdPort currentUser;
+    private OrderStatusEventGateway events;
+    private OrderPhotoGateway photos;
     private GetOrderByIdImpl getOrderByIdImpl;
-
     private Order order;
 
     @BeforeEach
     void setUp() {
+        orderGateway = mock(OrderGateway.class);
+        admin = mock(CurrentUserAdminPort.class);
+        currentUser = mock(CurrentUserIdPort.class);
+        events = mock(OrderStatusEventGateway.class);
+        photos = mock(OrderPhotoGateway.class);
+        ShopProfile shop = new ShopProfile("Loja", null, null, null, null, 90, ZoneId.of("America/Sao_Paulo"), "http://localhost");
+        OrderAccess access = new OrderAccess(orderGateway, currentUser, admin);
+        OrderDetailsAssembler assembler = new OrderDetailsAssembler(events, photos, mock(ObjectStorageGateway.class), shop);
+        getOrderByIdImpl = new GetOrderByIdImpl(access, assembler);
         order = Order.builder()
                 .id(1)
-                .status(OrderStatus.PENDING)
+                .user(User.builder().id(7).name("Maria").build())
+                .status(OrderStatus.RECEIVED)
                 .total(100.0)
                 .discount(0.0)
                 .customerDescription("Não gela")
@@ -45,45 +60,48 @@ class GetOrderByIdImplTest {
                 .nf("NF123")
                 .returnGuarantee(true)
                 .build();
+        when(events.findByOrderId(1)).thenReturn(List.of());
+        when(photos.findByOrderId(1)).thenReturn(List.of());
     }
 
     @Test
-    @DisplayName("Should return order when it exists")
-    void testGetOrderById_ShouldReturnOrder_WhenExists() {
+    @DisplayName("customer sees their own order without the technical description, with history and photos")
+    void ownOrder() {
+        when(currentUser.require()).thenReturn(7);
         when(orderGateway.findById(1)).thenReturn(Optional.of(order));
 
         Optional<OrderOutput> output = getOrderByIdImpl.execute(1);
 
         assertTrue(output.isPresent());
-        assertEquals(1, output.get().id());
-        assertEquals(OrderStatus.PENDING, output.get().status());
-        assertEquals("Não gela", output.get().customerDescription());
+        assertEquals(OrderStatus.RECEIVED, output.get().status());
         assertNull(output.get().technicalDescription());
-
-        verify(orderGateway, times(1)).findById(1);
+        assertEquals(List.of(), output.get().statusHistory());
+        assertEquals(List.of(), output.get().photos());
     }
 
     @Test
-    @DisplayName("Administrator mapping includes the technical description flag")
-    void administratorMapsWithTechnicalDescription() {
-        when(currentUserAdminPort.isAdministrator()).thenReturn(true);
+    @DisplayName("customer cannot see someone else's order")
+    void otherCustomer() {
+        when(currentUser.require()).thenReturn(99);
         when(orderGateway.findById(1)).thenReturn(Optional.of(order));
 
-        Optional<OrderOutput> output = getOrderByIdImpl.execute(1);
-
-        assertTrue(output.isPresent());
-        assertEquals("Compressor queimado", output.get().technicalDescription());
+        assertTrue(getOrderByIdImpl.execute(1).isEmpty());
     }
 
     @Test
-    @DisplayName("Should return empty when order does not exist")
-    void testGetOrderById_ShouldReturnNullOrder_WhenNotFound() {
+    @DisplayName("administrator sees any order with the technical description")
+    void administrator() {
+        when(admin.isAdministrator()).thenReturn(true);
+        when(orderGateway.findById(1)).thenReturn(Optional.of(order));
+
+        assertEquals("Compressor queimado", getOrderByIdImpl.execute(1).orElseThrow().technicalDescription());
+    }
+
+    @Test
+    @DisplayName("unknown order is empty")
+    void notFound() {
         when(orderGateway.findById(999)).thenReturn(Optional.empty());
 
-        Optional<OrderOutput> output = getOrderByIdImpl.execute(999);
-
-        assertTrue(output.isEmpty());
-
-        verify(orderGateway, times(1)).findById(999);
+        assertTrue(getOrderByIdImpl.execute(999).isEmpty());
     }
 }

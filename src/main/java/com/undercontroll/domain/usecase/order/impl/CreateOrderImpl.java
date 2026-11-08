@@ -5,6 +5,7 @@ import com.undercontroll.domain.usecase.order.OrderOutput;
 import com.undercontroll.domain.usecase.order.OrderPartInput;
 import com.undercontroll.domain.usecase.demand.CreateDemandPort;
 import com.undercontroll.domain.model.Order;
+import com.undercontroll.domain.model.ShopProfile;
 import com.undercontroll.domain.model.OrderItem;
 import com.undercontroll.domain.model.ComponentPart;
 import com.undercontroll.domain.model.User;
@@ -39,6 +40,8 @@ public class CreateOrderImpl implements CreateOrderPort {
     private final CreateDemandPort createDemandPort;
     private final MetricsGateway metricsGateway;
     private final CurrentUserAdminPort currentUserAdminPort;
+    private final ShopProfile shopProfile;
+    private final OrderDetailsAssembler orderDetailsAssembler;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -81,22 +84,22 @@ public class CreateOrderImpl implements CreateOrderPort {
         User user = userGateway.findById(request.userId())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        Double total = partsTotal + laborTotal - request.discount();
+        Double total = partsTotal + laborTotal - (request.discount() == null ? 0.0 : request.discount());
 
         Order order = Order.builder()
                 .orderItems(orderItems)
-                .status(OrderStatus.PENDING)
+                .status(OrderStatus.RECEIVED)
                 .user(user)
                 .discount(request.discount())
                 .date(null)
-                .store("Loja")
+                .store(shopProfile.name())
                 .nf(request.nf())
                 .fabricGuarantee(request.fabricGuarantee())
                 .received_at(receivedFormatted)
                 .customerDescription(request.customerDescription())
                 .technicalDescription(currentUserAdminPort.isAdministrator() ? request.technicalDescription() : null)
                 .returnGuarantee(request.returnGuarantee())
-                .completedTime(completedFormatted)
+                .deadline(completedFormatted)
                 .total(total)
                 .build();
 
@@ -121,7 +124,7 @@ public class CreateOrderImpl implements CreateOrderPort {
         log.info("Order {} created with {} demands", savedOrder.getId(), request.parts().size());
 
         Order finalOrder = orderGateway.findById(savedOrder.getId()).orElse(savedOrder);
-        return OrderOutput.from(finalOrder, currentUserAdminPort.isAdministrator());
+        return orderDetailsAssembler.summary(finalOrder, currentUserAdminPort.isAdministrator());
     }
 
     private LocalDate formatOrderDate(String dateStr) {

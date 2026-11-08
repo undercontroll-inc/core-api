@@ -1,0 +1,19 @@
+meta {
+  name: Lookup order by token
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/v1/api/orders/lookup
+  body: none
+  auth: inherit
+}
+
+params:query {
+  token: {{trackingToken}}
+}
+
+docs {
+  Order id for a scanned QR code (last path segment of the tracking URL).
+}

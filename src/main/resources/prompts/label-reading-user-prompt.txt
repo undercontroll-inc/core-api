@@ -1,0 +1,1 @@
+Leia a etiqueta do aparelho na foto anexada seguindo o schema de resposta.
