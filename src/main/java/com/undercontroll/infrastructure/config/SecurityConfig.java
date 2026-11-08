@@ -52,7 +52,7 @@ public class SecurityConfig {
                 .headers(headers -> headers
                         .frameOptions(HeadersConfigurer.FrameOptionsConfig::disable)
                 )
-                .csrf(csrf -> csrf.ignoringRequestMatchers("/v1/api/**", "/h2-console/**")) // NOSONAR - Bearer JWT, no cookies
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/v1/api/**", "/h2-console/**", "/p/**")) // NOSONAR - Bearer JWT, no cookies
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
                             .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
@@ -68,6 +68,19 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/v1/api/auth", "/v1/api/auth/refresh").permitAll()
                         .requestMatchers(HttpMethod.POST, "/v1/api/users").permitAll()
                         .requestMatchers(HttpMethod.GET, ANNOUNCEMENTS, "/v1/api/announcements/latest").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/p/*", "/p/assets/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/p/*/decision").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/v1/public/**").permitAll()
+                        .requestMatchers(
+                                "/v1/api/orders/lookup",
+                                "/v1/api/orders/label-reading",
+                                "/v1/api/orders/label-reading/**",
+                                "/v1/api/orders/*/transitions",
+                                "/v1/api/orders/*/budget/**",
+                                "/v1/api/orders/*/tracking-link",
+                                "/v1/api/orders/*/photos",
+                                "/v1/api/orders/*/photos/**"
+                        ).hasRole("ADMINISTRATOR")
                         .requestMatchers(HttpMethod.POST, "/v1/api/orders").hasAnyRole("CUSTOMER", "ADMINISTRATOR")
                         .requestMatchers(HttpMethod.PATCH, "/v1/api/users/{userId}", "/v1/api/users/{userId}/password").hasAnyRole("CUSTOMER", "ADMINISTRATOR")
                         .requestMatchers(HttpMethod.GET, "/v1/api/orders", ORDER_BY_ID, ORDER_BY_ID + "/export").hasAnyRole("CUSTOMER", "ADMINISTRATOR")

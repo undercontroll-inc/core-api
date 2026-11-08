@@ -1,0 +1,22 @@
+meta {
+  name: Decide budget
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/v1/api/orders/{{orderId}}/budget/decision
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "decision": "APPROVED",
+    "note": "Respondeu no WhatsApp"
+  }
+}
+
+docs {
+  Shop registers the customer answer (APPROVED | DECLINED). Idempotent; a different decision after deciding → 409.
+}

@@ -4,32 +4,17 @@ import com.undercontroll.application.dto.stockimport.StockImportDto;
 import com.undercontroll.application.dto.stockimport.StockImportItemDto;
 import com.undercontroll.application.dto.stockimport.StockImportReviewRequest;
 import com.undercontroll.application.dto.stockimport.StockImportSummaryDto;
-import com.undercontroll.domain.exception.InvalidStockImportException;
-import com.undercontroll.domain.model.stockimport.InvoiceUpload;
 import com.undercontroll.domain.model.stockimport.MatchCandidate;
 import com.undercontroll.domain.model.stockimport.NewComponentSpec;
 import com.undercontroll.domain.model.stockimport.StockImport;
 import com.undercontroll.domain.model.stockimport.StockImportItem;
 import com.undercontroll.domain.model.stockimport.StockImportReview;
 import org.springframework.stereotype.Component;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.util.List;
 
 @Component
 public class StockImportDtoMapper {
-
-    public InvoiceUpload toUpload(MultipartFile file) {
-        if (file == null) {
-            return null;
-        }
-        try {
-            return new InvoiceUpload(file.getBytes(), file.getContentType(), file.getOriginalFilename());
-        } catch (IOException ex) {
-            throw new InvalidStockImportException("File could not be read");
-        }
-    }
 
     public StockImportReview toReview(StockImportReviewRequest request) {
         if (request == null) {

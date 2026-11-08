@@ -3,10 +3,12 @@ package com.undercontroll.domain.enums;
 import java.util.List;
 
 public enum StatusFilter {
-    ONGOING(List.of(OrderStatus.PENDING, OrderStatus.IN_ANALYSIS)),
-    COMPLETED(List.of(OrderStatus.COMPLETED)),
+    ONGOING(OrderStatus.ONGOING),
+    READY(List.of(OrderStatus.READY_FOR_PICKUP)),
+    @Deprecated
+    COMPLETED(List.of(OrderStatus.READY_FOR_PICKUP)),
     DELIVERED(List.of(OrderStatus.DELIVERED)),
-    ALL(List.of(OrderStatus.PENDING, OrderStatus.IN_ANALYSIS, OrderStatus.COMPLETED, OrderStatus.DELIVERED));
+    ALL(List.of(OrderStatus.values()));
 
     private final List<OrderStatus> statuses;
 
@@ -18,4 +20,3 @@ public enum StatusFilter {
         return statuses;
     }
 }
-

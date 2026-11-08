@@ -14,7 +14,14 @@ import com.undercontroll.domain.model.stockimport.InvoiceFileType;
 import com.undercontroll.domain.model.stockimport.InvoiceUpload;
 import com.undercontroll.domain.model.stockimport.StockImport;
 import com.undercontroll.domain.support.Texts;
+import com.undercontroll.domain.exception.InvalidUploadException;
+import com.undercontroll.domain.gateway.ObjectStorageGateway;
+import com.undercontroll.domain.storage.StorageArea;
+import com.undercontroll.domain.storage.UploadIntent;
+import com.undercontroll.domain.storage.UploadTicket;
 import com.undercontroll.domain.usecase.stockimport.CreateStockImportPort;
+import com.undercontroll.domain.usecase.stockimport.RequestStockImportUploadPort;
+import com.undercontroll.domain.usecase.storage.StorageUploadService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
@@ -25,11 +32,13 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.HexFormat;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.UUID;
 
 @Slf4j
 @Service
-public class CreateStockImportImpl implements CreateStockImportPort {
+public class CreateStockImportImpl implements CreateStockImportPort, RequestStockImportUploadPort {
 
     public static final long MAX_BYTES = 10L * 1024 * 1024;
     static final int MAX_PDF_PAGES = 5;
@@ -40,6 +49,8 @@ public class CreateStockImportImpl implements CreateStockImportPort {
     private final StockImportDispatcher stockImportDispatcher;
     private final CurrentUserIdPort currentUserIdPort;
     private final Clock clock;
+    private final StorageUploadService uploads;
+    private final ObjectStorageGateway storage;
 
     public CreateStockImportImpl(
             StockImportGateway stockImportGateway,
@@ -47,7 +58,9 @@ public class CreateStockImportImpl implements CreateStockImportPort {
             PdfInspectorGateway pdfInspectorGateway,
             StockImportDispatcher stockImportDispatcher,
             CurrentUserIdPort currentUserIdPort,
-            Clock clock
+            Clock clock,
+            StorageUploadService uploads,
+            ObjectStorageGateway storage
     ) {
         this.stockImportGateway = stockImportGateway;
         this.invoiceExtractionGateway = invoiceExtractionGateway;
@@ -55,10 +68,43 @@ public class CreateStockImportImpl implements CreateStockImportPort {
         this.stockImportDispatcher = stockImportDispatcher;
         this.currentUserIdPort = currentUserIdPort;
         this.clock = clock;
+        this.uploads = uploads;
+        this.storage = storage;
     }
 
     @Override
-    public StockImport execute(InvoiceUpload upload) {
+    public UploadTicket execute(RequestStockImportUploadPort.Input input) {
+        boolean xml = InvoiceFileType.fromMimeType(input.contentType() == null ? null
+                : input.contentType().split(";", 2)[0].trim().toLowerCase(Locale.ROOT))
+                .map(type -> type == InvoiceFileType.XML).orElse(false);
+        if (!xml && invoiceExtractionGateway.getIfAvailable() == null) {
+            throw new StockImportUnavailableException();
+        }
+        try {
+            return uploads.request(StorageArea.STOCK_IMPORTS, input.contentType(), input.sizeBytes(), input.fileName(), null, null);
+        } catch (InvalidUploadException ex) {
+            throw new InvalidStockImportException(ex.getMessage());
+        }
+    }
+
+    @Override
+    public StockImport execute(UUID uploadId) {
+        if (uploadId == null) {
+            throw new InvalidStockImportException("Informe o uploadId do arquivo enviado");
+        }
+        UploadIntent intent;
+        byte[] content;
+        try {
+            intent = uploads.complete(uploadId, StorageArea.STOCK_IMPORTS, null);
+            Optional<StockImport> existing = stockImportGateway.findByStorageKey(intent.objectKey());
+            if (existing.isPresent()) {
+                return existing.get();
+            }
+            content = storage.read(StorageArea.STOCK_IMPORTS, intent.objectKey(), MAX_BYTES);
+        } catch (InvalidUploadException ex) {
+            throw new InvalidStockImportException(ex.getMessage());
+        }
+        InvoiceUpload upload = new InvoiceUpload(content, intent.contentType(), intent.originalName());
         InvoiceFileType type = validate(upload);
         if (type.sourceType() != StockImportSourceType.NFE_XML && invoiceExtractionGateway.getIfAvailable() == null) {
             throw new StockImportUnavailableException();
@@ -72,9 +118,10 @@ public class CreateStockImportImpl implements CreateStockImportPort {
                 .fileName(Texts.clip(Texts.blankToNull(upload.fileName()), 255))
                 .mimeType(type.mimeType())
                 .fileSha256(sha256(upload.content()))
+                .storageKey(intent.objectKey())
                 .createdAt(now)
                 .updatedAt(now)
-                .build(), upload.content());
+                .build());
         log.info("Stock import created id={} sourceType={} byteSize={}", created.id(), created.sourceType(), upload.size());
         stockImportDispatcher.dispatch();
         return created;

@@ -3,13 +3,13 @@ package com.undercontroll.domain.usecase.order.impl;
 import com.undercontroll.domain.model.Demand;
 import com.undercontroll.domain.model.Order;
 import com.undercontroll.domain.model.OrderItem;
-import com.undercontroll.domain.enums.OrderStatus;
 import com.undercontroll.domain.exception.OrderNotFoundException;
 import com.undercontroll.domain.exception.InvalidUpdateOrderException;
 import com.undercontroll.domain.gateway.DemandGateway;
 import com.undercontroll.domain.gateway.OrderGateway;
 import com.undercontroll.domain.usecase.demand.CreateDemandPort;
 import com.undercontroll.domain.usecase.order.OrderPartInput;
+import com.undercontroll.domain.usecase.order.OrderOutput;
 import com.undercontroll.domain.usecase.order.UpdateOrderPort;
 import com.undercontroll.domain.usecase.order_item.UpdateOrderItemPort;
 import com.undercontroll.domain.gateway.MetricName;
@@ -33,11 +33,12 @@ public class UpdateOrderImpl implements UpdateOrderPort {
     private final UpdateOrderItemPort updateOrderItemPort;
     private final DemandGateway demandGateway;
     private final CreateDemandPort createDemandPort;
+    private final OrderDetailsAssembler orderDetailsAssembler;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     @CacheEvict(value = {"orders", "ordersByUser", "order", "orderParts", "dashboardMetrics"}, allEntries = true)
-    public void execute(Integer orderId, Input request) {
+    public OrderOutput execute(Integer orderId, Input request) {
         try {
             log.info("Updating order {}", orderId);
 
@@ -46,7 +47,6 @@ public class UpdateOrderImpl implements UpdateOrderPort {
             Order order = orderGateway.findById(orderId)
                     .orElseThrow(() -> new OrderNotFoundException("Could not found the order while updating."));
 
-            applyStatus(order, orderId, request.status());
             if (request.customerDescription() != null) {
                 order.setCustomerDescription(request.customerDescription());
             }
@@ -57,21 +57,15 @@ public class UpdateOrderImpl implements UpdateOrderPort {
             applyParts(order, request.parts());
 
             orderGateway.save(order);
-            log.info("Order {} updated successfully", orderId);
+            Order updated = orderGateway.findById(orderId)
+                    .orElseThrow(() -> new OrderNotFoundException("Could not found the order while updating."));
+            updated.recalculateTotal();
+            Order saved = orderGateway.save(updated);
+            log.info("Order {} updated successfully total={}", orderId, saved.getTotal());
+            return orderDetailsAssembler.detail(orderGateway.findById(orderId).orElse(saved), true);
         } catch (Exception e) {
             metricsGateway.increment(MetricName.ORDER_UPDATE_FAILED);
             throw e;
-        }
-    }
-
-    private void applyStatus(Order order, Integer orderId, OrderStatus status) {
-        if (status == null) {
-            return;
-        }
-        order.setStatus(status);
-        log.info("Order {} status updated to {}", orderId, status);
-        if (status == OrderStatus.COMPLETED) {
-            metricsGateway.increment(MetricName.ORDER_COMPLETED);
         }
     }
 

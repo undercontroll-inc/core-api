@@ -46,10 +46,21 @@ spring:
   #     path: /h2-console
   #     settings:
   #       web-allow-others: false
-aws:
-  s3:
-    upload-bucket: "undercontroll-dev-announcement-image-upload"
-    read-expiration-minutes: 1440
+undercontroll:
+  seed:
+    password: ${DEV_SEED_PASSWORD:}
+  storage:
+    endpoint: ${STORAGE_ENDPOINT:http://localhost:9000}
+    public-endpoint: ${STORAGE_PUBLIC_ENDPOINT:http://localhost:9000}
+    path-style: true
+    access-key: ${STORAGE_ACCESS_KEY:minioadmin}
+    secret-key: ${STORAGE_SECRET_KEY:minioadmin}
+    session-token: ""
+    server-side-encryption: false
+    buckets:
+      uploads: ${S3_UPLOAD_BUCKET:undercontroll-uploads}
+      exports: ${S3_EXPORT_BUCKET:undercontroll-exports}
+
 
 jwt:
   secret: undercontroll-dev-secret
@@ -58,6 +69,3 @@ jwt:
   # Refresh token expiration in days (default: 7 days)
   refresh-token-expiration-days: ${JWT_REFRESH_TOKEN_EXPIRATION_DAYS:7}
 
-undercontroll:
-  seed:
-    password: ${DEV_SEED_PASSWORD:}

@@ -41,8 +41,8 @@ public class ShopSnapshotLoaderImpl implements ShopSnapshotLoader {
                 ),
                 demandGateway.findRecent(ShopSnapshotFactory.DEMAND_LIMIT),
                 announcementGateway.findLastAnnouncement().orElse(null),
-                orderGateway.countByStatusIn(List.of(OrderStatus.PENDING, OrderStatus.IN_ANALYSIS)),
-                orderGateway.countByStatusIn(List.of(OrderStatus.COMPLETED)),
+                orderGateway.countByStatusIn(OrderStatus.ONGOING),
+                orderGateway.countByStatusIn(List.of(OrderStatus.READY_FOR_PICKUP)),
                 LocalDateTime.now(ZoneOffset.UTC)
         );
     }

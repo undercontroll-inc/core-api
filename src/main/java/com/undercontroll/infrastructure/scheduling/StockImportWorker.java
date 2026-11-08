@@ -1,7 +1,10 @@
 package com.undercontroll.infrastructure.scheduling;
 
 import com.undercontroll.domain.gateway.StockImportDispatcher;
+import com.undercontroll.domain.gateway.ObjectStorageGateway;
 import com.undercontroll.domain.gateway.StockImportGateway;
+import com.undercontroll.domain.model.stockimport.StockImport;
+import com.undercontroll.domain.storage.StorageArea;
 import com.undercontroll.domain.usecase.stockimport.ProcessStockImportsPort;
 import com.undercontroll.infrastructure.logging.MdcKeys;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +17,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -22,8 +26,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Component
 public class StockImportWorker implements StockImportDispatcher {
 
+    static final int PURGE_BATCH = 200;
+
     private final ProcessStockImportsPort processStockImportsPort;
     private final StockImportGateway stockImportGateway;
+    private final ObjectStorageGateway storage;
     private final Executor executor;
     private final Clock clock;
     private final Duration fileRetention;
@@ -33,12 +40,14 @@ public class StockImportWorker implements StockImportDispatcher {
     public StockImportWorker(
             ProcessStockImportsPort processStockImportsPort,
             StockImportGateway stockImportGateway,
+            ObjectStorageGateway storage,
             @Qualifier("taskExecutor") Executor executor,
             Clock clock,
             @Value("${undercontroll.ai.stock-import.file-retention:30d}") Duration fileRetention
     ) {
         this.processStockImportsPort = processStockImportsPort;
         this.stockImportGateway = stockImportGateway;
+        this.storage = storage;
         this.executor = executor;
         this.clock = clock;
         this.fileRetention = fileRetention;
@@ -66,7 +75,13 @@ public class StockImportWorker implements StockImportDispatcher {
     @Scheduled(cron = "${undercontroll.ai.stock-import.purge-cron:0 30 3 * * *}")
     public void purge() {
         try {
-            int purged = stockImportGateway.purgeFiles(clock.instant().minus(fileRetention));
+            Instant before = clock.instant().minus(fileRetention);
+            int purged = stockImportGateway.purgeLegacyFiles(before);
+            for (StockImport stockImport : stockImportGateway.findStoredFilesToPurge(before, PURGE_BATCH)) {
+                storage.delete(StorageArea.STOCK_IMPORTS, stockImport.storageKey());
+                stockImportGateway.markFilePurged(stockImport.id(), clock.instant());
+                purged++;
+            }
             if (purged > 0) {
                 log.info("Stock import purged {} stored file(s)", purged);
             }

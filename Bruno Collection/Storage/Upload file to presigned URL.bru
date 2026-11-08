@@ -1,0 +1,23 @@
+meta {
+  name: Upload file to presigned URL
+  type: http
+  seq: 1
+}
+
+put {
+  url: {{uploadUrl}}
+  body: file
+  auth: none
+}
+
+headers {
+  Content-Type: application/pdf
+}
+
+body:file {
+  file: @file(nota.pdf) @contentType(application/pdf)
+}
+
+docs {
+  Step 2 of every upload: copy uploadUrl from the upload response into the uploadUrl env var, pick the file, and send exactly the returned headers (Content-Type, Content-Length; x-amz-server-side-encryption in prod). No Bearer token: the signature in the URL is the authorization.
+}

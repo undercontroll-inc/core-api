@@ -1,7 +1,6 @@
 package com.undercontroll.infrastructure.handler;
 
 import com.undercontroll.application.dto.common.ExceptionHandlerResponse;
-import com.undercontroll.domain.exception.InvalidStockImportException;
 import com.undercontroll.domain.exception.InvalidTranscriptionException;
 import com.undercontroll.domain.exception.TranscriptionUnavailableException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -51,14 +50,6 @@ public class TranscriptionExceptionHandler extends GenericExceptionHandler {
             HttpServletRequest request
     ) {
         String path = request.getRequestURI();
-        if (isStockImport(path)) {
-            return buildErrorResponse(
-                    HttpStatus.BAD_REQUEST,
-                    "File is required",
-                    path,
-                    InvalidStockImportException.CODE
-            );
-        }
         if (path != null && path.contains("/v1/api/transcriptions")) {
             return buildErrorResponse(
                     HttpStatus.BAD_REQUEST,
@@ -81,14 +72,6 @@ public class TranscriptionExceptionHandler extends GenericExceptionHandler {
             HttpServletRequest request
     ) {
         String path = request.getRequestURI();
-        if (isStockImport(path)) {
-            return buildErrorResponse(
-                    HttpStatus.BAD_REQUEST,
-                    "File exceeds 10MB",
-                    path,
-                    InvalidStockImportException.CODE
-            );
-        }
         return buildErrorResponse(
                 HttpStatus.BAD_REQUEST,
                 "Audio file exceeds 8MB",
@@ -97,7 +80,4 @@ public class TranscriptionExceptionHandler extends GenericExceptionHandler {
         );
     }
 
-    private static boolean isStockImport(String path) {
-        return path != null && path.contains("/v1/api/stock-imports");
-    }
 }

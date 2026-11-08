@@ -44,6 +44,41 @@ services:
       timeout: 5s
       retries: 5
 
+  minio:
+    image: minio/minio:latest
+    container_name: undercontroll-test-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_API_CORS_ALLOW_ORIGIN: http://localhost:3000,http://localhost:5173
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: undercontroll-test-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 minioadmin minioadmin &&
+      mc mb --ignore-existing local/undercontroll-uploads &&
+      mc mb --ignore-existing local/undercontroll-exports &&
+      mc anonymous set none local/undercontroll-uploads &&
+      mc anonymous set none local/undercontroll-exports &&
+      (mc ilm rule ls local/undercontroll-uploads 2>/dev/null | grep -q label-scans || mc ilm rule add --expire-days 1 --prefix label-scans/ local/undercontroll-uploads)
+      "
+
   app:
     build:
       context: .
@@ -107,3 +142,4 @@ services:
 volumes:
   postgres-data:
   redis_data:
+  minio_data:

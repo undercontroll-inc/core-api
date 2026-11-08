@@ -61,6 +61,12 @@ public class StockImportJpaEntity {
     @Column(name = "file_sha256", nullable = false, length = 64)
     private String fileSha256;
 
+    @Column(name = "storage_key")
+    private String storageKey;
+
+    @Column(name = "file_purged_at")
+    private Instant filePurgedAt;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "failure_reason", length = 30)
     private StockImportFailureReason failureReason;

@@ -39,6 +39,7 @@ public class StockImportPersistenceMapper {
                 .fileName(entity.getFileName())
                 .mimeType(entity.getMimeType())
                 .fileSha256(entity.getFileSha256())
+                .storageKey(entity.getStorageKey())
                 .failureReason(entity.getFailureReason())
                 .failureMessage(entity.getFailureMessage())
                 .supplierName(entity.getSupplierName())
@@ -67,6 +68,7 @@ public class StockImportPersistenceMapper {
         entity.setFileName(domain.fileName());
         entity.setMimeType(domain.mimeType());
         entity.setFileSha256(domain.fileSha256());
+        entity.setStorageKey(domain.storageKey());
         entity.setFailureReason(domain.failureReason());
         entity.setFailureMessage(domain.failureMessage());
         entity.setSupplierName(domain.supplierName());

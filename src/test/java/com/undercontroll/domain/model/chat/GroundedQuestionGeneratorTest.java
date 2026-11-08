@@ -94,9 +94,9 @@ class GroundedQuestionGeneratorTest {
     @DisplayName("snapshot factory falls back to description, brand and model for the appliance")
     void applianceFallbacks() {
         ShopSnapshot shop = ShopSnapshotFactory.from(List.of(
-                Order.builder().id(1).status(OrderStatus.PENDING).customerDescription("  Liquidificador sem tampa que não liga  ").build(),
-                Order.builder().id(2).status(OrderStatus.PENDING).orderItems(List.of(OrderItem.builder().brand("Philco").build())).build(),
-                Order.builder().id(3).status(OrderStatus.PENDING).orderItems(List.of(OrderItem.builder().model("X1").build())).build(),
+                Order.builder().id(1).status(OrderStatus.RECEIVED).customerDescription("  Liquidificador sem tampa que não liga  ").build(),
+                Order.builder().id(2).status(OrderStatus.RECEIVED).orderItems(List.of(OrderItem.builder().brand("Philco").build())).build(),
+                Order.builder().id(3).status(OrderStatus.RECEIVED).orderItems(List.of(OrderItem.builder().model("X1").build())).build(),
                 Order.builder().id(4).status(null).build(),
                 Order.builder().id(5).status(OrderStatus.DELIVERED).build()
         ), null, null, null);

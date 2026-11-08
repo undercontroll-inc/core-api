@@ -1,0 +1,15 @@
+meta {
+  name: List order photos
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/v1/api/orders/{{orderId}}/photos
+  body: none
+  auth: inherit
+}
+
+docs {
+  Presigned URLs valid for 15 minutes.
+}

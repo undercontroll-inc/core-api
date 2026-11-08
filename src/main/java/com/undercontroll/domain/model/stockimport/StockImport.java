@@ -22,6 +22,7 @@ public record StockImport(
         String fileName,
         String mimeType,
         String fileSha256,
+        String storageKey,
         StockImportFailureReason failureReason,
         String failureMessage,
         String supplierName,

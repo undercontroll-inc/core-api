@@ -46,7 +46,6 @@ class StockImportGatewayImplTest {
 
     private static final Instant NOW = Instant.parse("2026-11-06T12:00:00Z");
     private static final Instant LEASE = NOW.plus(Duration.ofMinutes(3));
-    private static final byte[] CONTENT = {1, 2, 3, 4};
 
     @Autowired
     private StockImportGatewayImpl gateway;
@@ -63,8 +62,11 @@ class StockImportGatewayImplTest {
         imports.deleteAll();
     }
 
+    private int sequence;
+
     private StockImport created() {
         return gateway.create(StockImport.builder()
+                .storageKey("stock-imports/1/" + (++sequence) + ".jpg")
                 .createdBy(1)
                 .status(StockImportStatus.PROCESSING)
                 .stage(StockImportStage.RECEIVED)
@@ -74,7 +76,7 @@ class StockImportGatewayImplTest {
                 .fileSha256("sha")
                 .createdAt(NOW)
                 .updatedAt(NOW)
-                .build(), CONTENT);
+                .build());
     }
 
     private static StockImportItem extracted(int line, String description) {
@@ -100,7 +102,7 @@ class StockImportGatewayImplTest {
     void leaseAndComplete() {
         StockImport created = created();
         assertEquals(List.of(created.id()), gateway.findRunnable(NOW, 5));
-        assertArrayEquals(CONTENT, gateway.findContent(created.id()).orElseThrow());
+        assertEquals(created.id(), gateway.findByStorageKey(created.storageKey()).orElseThrow().id());
 
         StockImport leased = gateway.tryAcquire(created.id(), "w1", NOW, LEASE).orElseThrow();
         assertEquals(1, leased.attemptCount());
@@ -183,7 +185,7 @@ class StockImportGatewayImplTest {
     }
 
     @Test
-    @DisplayName("finds confirmed duplicates by access key or file hash and purges old files")
+    @DisplayName("finds confirmed duplicates by access key or file hash and lists stored files to purge once")
     void duplicatesAndPurge() {
         StockImport first = created();
         StockImport leased = gateway.tryAcquire(first.id(), "w1", NOW, LEASE).orElseThrow();
@@ -197,8 +199,11 @@ class StockImportGatewayImplTest {
         assertEquals(first.id(), gateway.findConfirmedDuplicate(second.id(), "1".repeat(44), "other").orElseThrow());
         assertTrue(gateway.findConfirmedDuplicate(second.id(), "2".repeat(44), "other").isEmpty());
 
-        assertEquals(1, gateway.purgeFiles(NOW.plusSeconds(1)));
-        assertTrue(gateway.findContent(first.id()).isEmpty());
-        assertTrue(gateway.findContent(second.id()).isPresent());
+        assertEquals(0, gateway.purgeLegacyFiles(NOW.plusSeconds(1)));
+        List<StockImport> purgeable = gateway.findStoredFilesToPurge(NOW.plusSeconds(1), 10);
+        assertEquals(List.of(first.id()), purgeable.stream().map(StockImport::id).toList());
+        assertEquals(first.storageKey(), purgeable.getFirst().storageKey());
+        gateway.markFilePurged(first.id(), NOW);
+        assertTrue(gateway.findStoredFilesToPurge(NOW.plusSeconds(1), 10).isEmpty());
     }
 }

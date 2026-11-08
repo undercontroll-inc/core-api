@@ -1,15 +1,16 @@
 package com.undercontroll.application.dto.order;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 public record OrderPartDto(
-        Integer componentId,
-        String name,
+        Integer id,
+        String item,
         String description,
         String brand,
         Double price,
+        @Schema(description = "Component stock") Long quantity,
         String supplier,
         String category,
-        Long demandQuantity,
-        Long componentStock
+        @Schema(description = "Quantity of this part on the order") Long demandQuantity
 ) {
 }
-

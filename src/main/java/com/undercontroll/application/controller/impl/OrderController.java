@@ -11,6 +11,7 @@ import com.undercontroll.application.controller.OrderApi;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import com.undercontroll.domain.exception.OrderStatusPatchNotAllowedException;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -31,9 +32,11 @@ public class OrderController implements OrderApi {
     }
 
     @Override
-    public ResponseEntity<Void> updateOrder(Integer orderId, UpdateOrderRequest request) {
-        updateOrderPort.execute(orderId, mapper.toInput(request));
-        return ResponseEntity.ok().build();
+    public ResponseEntity<OrderEnrichedDto> updateOrder(Integer orderId, UpdateOrderRequest request) {
+        if (request != null && request.status() != null) {
+            throw new OrderStatusPatchNotAllowedException();
+        }
+        return ResponseEntity.ok(mapper.toDto(updateOrderPort.execute(orderId, mapper.toInput(request))));
     }
 
     @Override

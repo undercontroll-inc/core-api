@@ -2,6 +2,7 @@ package com.undercontroll.domain.usecase.order.impl;
 
 import com.undercontroll.domain.gateway.OrderGateway;
 import com.undercontroll.domain.model.Order;
+import com.undercontroll.domain.model.ShopProfile;
 import com.undercontroll.domain.model.PaginatedResult;
 import com.undercontroll.domain.usecase.order.GetOrdersPort;
 import com.undercontroll.domain.usecase.order.OrderOutput;
@@ -10,7 +11,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -18,6 +21,7 @@ import java.util.List;
 public class OrderListingQuery {
 
     private final OrderGateway orderGateway;
+    private final ShopProfile shopProfile;
 
     @Cacheable(value = "orders", key = "#userId + '-' + #page + '-' + #size + '-' + #includeTechnical")
     public GetOrdersPort.Output list(Integer userId, Integer page, Integer size, boolean includeTechnical) {
@@ -25,8 +29,8 @@ public class OrderListingQuery {
             log.debug("Fetching orders for userId: {}", userId);
 
             List<OrderOutput> orders = orderGateway.findByUserId(userId).stream()
-                    .map(order -> OrderOutput.from(order, includeTechnical))
-                    .toList();
+                    .map(order -> OrderOutput.from(order, includeTechnical, shopProfile))
+                    .collect(Collectors.toCollection(ArrayList::new));
 
             return new GetOrdersPort.Output(orders, orders.size(), 1, 0, orders.size());
         }
@@ -36,8 +40,8 @@ public class OrderListingQuery {
         PaginatedResult<Order> result = orderGateway.findAllPaginated(page, size);
 
         List<OrderOutput> enrichedOrders = result.content().stream()
-                .map(order -> OrderOutput.from(order, includeTechnical))
-                .toList();
+                .map(order -> OrderOutput.from(order, includeTechnical, shopProfile))
+                .collect(Collectors.toCollection(ArrayList::new));
 
         int totalPages = size > 0
                 ? (int) Math.ceil((double) result.totalElements() / size)

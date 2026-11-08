@@ -1,0 +1,15 @@
+meta {
+  name: Complete photo upload
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/v1/api/orders/{{orderId}}/photos/uploads/{{uploadId}}/complete
+  body: none
+  auth: inherit
+}
+
+docs {
+  Step 3: validates size and file signature in storage and stores the photo (idempotent). 400 UPLOAD_INVALID when missing, expired or mismatched.
+}

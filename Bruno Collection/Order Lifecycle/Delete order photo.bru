@@ -1,0 +1,15 @@
+meta {
+  name: Delete order photo
+  type: http
+  seq: 9
+}
+
+delete {
+  url: {{baseUrl}}/v1/api/orders/{{orderId}}/photos/{{photoId}}
+  body: none
+  auth: inherit
+}
+
+docs {
+  204.
+}

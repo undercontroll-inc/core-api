@@ -12,6 +12,8 @@ import com.undercontroll.domain.model.OrderItem;
 import com.undercontroll.domain.model.Demand;
 import com.undercontroll.domain.enums.AnnouncementType;
 import com.undercontroll.domain.enums.UserType;
+import com.undercontroll.domain.enums.ApprovalDecision;
+import com.undercontroll.domain.enums.OrderOutcome;
 import com.undercontroll.domain.enums.OrderStatus;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +23,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
@@ -176,7 +179,7 @@ public class DataInitializer {
 
         LocalDate today = LocalDate.now();
 
-        saveOrder(joao, OrderStatus.COMPLETED,
+        saveOrder(joao, OrderStatus.READY_FOR_PICKUP,
                 today.minusDays(2), today.minusDays(1), 520.00,
                 "Geladeira", "Electrolux", "DF80", "220V",
                 List.of(entry(compressor, 1L), entry(sensor, 1L)));
@@ -186,12 +189,12 @@ public class DataInitializer {
                 "Máquina de Lavar", "Brastemp", "BWB11", "220V",
                 List.of(entry(motor, 1L), entry(capacitor, 2L)));
 
-        saveOrder(pedro, OrderStatus.PENDING,
+        saveOrder(pedro, OrderStatus.RECEIVED,
                 today.minusDays(3), null, 180.00,
                 "Microondas", "LG", "MS3052R", "110V",
                 List.of(entry(placaControle, 1L)));
 
-        saveOrder(lucas, OrderStatus.IN_ANALYSIS,
+        saveOrder(lucas, OrderStatus.IN_REPAIR,
                 today.minusDays(1), null, 95.00,
                 "Fogão", "Consul", "CF4GB", "220V",
                 List.of(entry(resistencia, 2L)));
@@ -201,12 +204,12 @@ public class DataInitializer {
                 "Ar-condicionado", "Samsung", "AR12", "220V",
                 List.of(entry(placaControle, 1L), entry(capacitor, 3L)));
 
-        saveOrder(joao, OrderStatus.COMPLETED,
+        saveOrder(joao, OrderStatus.READY_FOR_PICKUP,
                 today.minusDays(12), today.minusDays(9), 340.00,
                 "Geladeira", "Brastemp", "BRM44", "220V",
                 List.of(entry(sensor, 2L), entry(capacitor, 1L)));
 
-        saveOrder(maria, OrderStatus.COMPLETED,
+        saveOrder(maria, OrderStatus.READY_FOR_PICKUP,
                 today.minusDays(15), today.minusDays(13), 440.00,
                 "Máquina de Lavar", "LG", "WT7WE", "220V",
                 List.of(entry(motor, 1L), entry(placaPrincipal, 1L)));
@@ -216,12 +219,12 @@ public class DataInitializer {
                 "TV", "Samsung", "UN50TU8", "110V",
                 List.of(entry(placaControle, 1L), entry(placaPrincipal, 1L)));
 
-        saveOrder(lucas, OrderStatus.PENDING,
+        saveOrder(lucas, OrderStatus.RECEIVED,
                 today.minusDays(20), null, 130.00,
                 "Microondas", "Electrolux", "MEB41", "110V",
                 List.of(entry(resistencia, 1L)));
 
-        saveOrder(ana, OrderStatus.IN_ANALYSIS,
+        saveOrder(ana, OrderStatus.IN_REPAIR,
                 today.minusDays(22), null, 210.00,
                 "Fogão", "Brastemp", "BF4GB", "220V",
                 List.of(entry(resistencia, 2L), entry(sensor, 1L)));
@@ -231,7 +234,7 @@ public class DataInitializer {
                 "Ar-condicionado", "LG", "TS-Q122", "220V",
                 List.of(entry(compressor, 1L), entry(placaControle, 1L)));
 
-        saveOrder(maria, OrderStatus.COMPLETED,
+        saveOrder(maria, OrderStatus.READY_FOR_PICKUP,
                 today.minusDays(40), today.minusDays(36), 310.00,
                 "Geladeira", "Consul", "CRM44", "220V",
                 List.of(entry(sensor, 1L), entry(capacitor, 2L)));
@@ -241,7 +244,7 @@ public class DataInitializer {
                 "Máquina de Lavar", "Electrolux", "LTC15", "220V",
                 List.of(entry(motor, 1L), entry(resistencia, 1L)));
 
-        saveOrder(ana, OrderStatus.COMPLETED,
+        saveOrder(ana, OrderStatus.READY_FOR_PICKUP,
                 today.minusDays(55), today.minusDays(51), 420.00,
                 "TV", "LG", "50UP7750", "110V",
                 List.of(entry(placaPrincipal, 1L), entry(capacitor, 4L)));
@@ -251,7 +254,7 @@ public class DataInitializer {
                 "Geladeira", "Samsung", "RT50K", "220V",
                 List.of(entry(compressor, 1L), entry(sensor, 2L)));
 
-        saveOrder(joao, OrderStatus.COMPLETED,
+        saveOrder(joao, OrderStatus.READY_FOR_PICKUP,
                 today.minusDays(70), today.minusDays(65), 255.00,
                 "Microondas", "Brastemp", "BMG45", "110V",
                 List.of(entry(placaControle, 1L)));
@@ -261,7 +264,7 @@ public class DataInitializer {
                 "Ar-condicionado", "Electrolux", "QI18F", "220V",
                 List.of(entry(compressor, 1L), entry(capacitor, 2L)));
 
-        saveOrder(pedro, OrderStatus.COMPLETED,
+        saveOrder(pedro, OrderStatus.READY_FOR_PICKUP,
                 today.minusDays(150), today.minusDays(144), 390.00,
                 "Máquina de Lavar", "Consul", "CWL16", "220V",
                 List.of(entry(motor, 1L), entry(sensor, 1L)));
@@ -271,7 +274,7 @@ public class DataInitializer {
                 "Geladeira", "LG", "GN-B502", "220V",
                 List.of(entry(compressor, 1L), entry(placaPrincipal, 1L), entry(sensor, 1L)));
 
-        saveOrder(lucas, OrderStatus.COMPLETED,
+        saveOrder(lucas, OrderStatus.READY_FOR_PICKUP,
                 today.minusDays(250), today.minusDays(244), 460.00,
                 "TV", "Electrolux", "TVM43", "110V",
                 List.of(entry(placaControle, 1L), entry(capacitor, 3L)));
@@ -302,7 +305,12 @@ public class DataInitializer {
                 .date(new Date())
                 .store("Loja Centro")
                 .received_at(receivedAt)
-                .completedTime(completedTime)
+                .deadline(receivedAt.plusDays(7))
+                .completedAt(completedTime == null ? null : completedTime.atStartOfDay(ZoneOffset.UTC).toInstant())
+                .deliveredAt(status == OrderStatus.DELIVERED && completedTime != null
+                        ? completedTime.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant() : null)
+                .outcome(status == OrderStatus.READY_FOR_PICKUP || status == OrderStatus.DELIVERED ? OrderOutcome.REPAIRED : null)
+                .approvalDecision(status == OrderStatus.RECEIVED ? null : ApprovalDecision.APPROVED)
                 .build();
 
         OrderItem item = OrderItem.builder()

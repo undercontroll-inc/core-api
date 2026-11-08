@@ -25,7 +25,18 @@ final class OrderReportRows {
     }
 
     static StatusCount statusCount(Object[] row) {
-        return new StatusCount(OrderStatus.valueOf((String) row[0]), toLong(row[1]));
+        return new StatusCount(status((String) row[0]), toLong(row[1]));
+    }
+
+    static OrderStatus status(String value) {
+        if (value == null) {
+            return OrderStatus.RECEIVED;
+        }
+        return switch (value) {
+            case "PENDING", "IN_ANALYSIS" -> OrderStatus.RECEIVED;
+            case "COMPLETED" -> OrderStatus.READY_FOR_PICKUP;
+            default -> OrderStatus.valueOf(value);
+        };
     }
 
     static ApplianceCount appliance(Object[] row) {

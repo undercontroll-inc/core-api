@@ -1,0 +1,23 @@
+meta {
+  name: Request photo upload
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/v1/api/orders/{{orderId}}/photos/uploads
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "kind": "DEVICE",
+    "contentType": "image/jpeg",
+    "sizeBytes": 183442
+  }
+}
+
+docs {
+  Step 1: kind LABEL | DEVICE | DAMAGE. Max 6 photos per order (pending uploads count). Then PUT the file (Storage / Upload file to presigned URL) and Complete photo upload.
+}

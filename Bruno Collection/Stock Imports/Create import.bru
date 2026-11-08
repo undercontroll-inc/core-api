@@ -6,16 +6,16 @@ meta {
 
 post {
   url: {{baseUrl}}/v1/api/stock-imports
-  body: multipartForm
+  body: json
   auth: inherit
 }
 
-body:multipart-form {
-  file: @file(nota.jpg)
+body:json {
+  {
+    "uploadId": "{{uploadId}}"
+  }
 }
 
 docs {
-  multipart field file: JPEG, PNG, WEBP, PDF (up to 5 pages) or NF-e XML, max 10MB. Returns 202 with status PROCESSING;
-  poll Get import until status leaves PROCESSING (stage RECEIVED -> EXTRACTING -> MATCHING). HEIC is rejected (send JPEG).
-  503 STOCK_IMPORT_UNAVAILABLE when the AI provider is none (XML still works). ADMINISTRATOR only.
+  Step 3, after the PUT: creates the import from the uploaded file (idempotent per uploadId). Returns 202 PROCESSING; poll Get import. 400 STOCK_IMPORT_INVALID when the file was not uploaded, expired or does not match the declared type.
 }

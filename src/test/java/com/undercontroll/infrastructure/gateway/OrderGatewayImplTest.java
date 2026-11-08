@@ -52,7 +52,7 @@ class OrderGatewayImplTest {
     @Test
     @DisplayName("counts and pages orders by status without loading the whole table")
     void statusQueries() {
-        List<OrderStatus> open = List.of(OrderStatus.PENDING, OrderStatus.IN_ANALYSIS);
+        List<OrderStatus> open = List.of(OrderStatus.RECEIVED, OrderStatus.IN_REPAIR);
         OrderJpaEntity entity = OrderJpaEntity.builder().id(3).build();
         Order order = Order.builder().id(3).build();
         when(orderJpaRepository.countByStatusIn(open)).thenReturn(12L);
@@ -93,12 +93,12 @@ class OrderGatewayImplTest {
     @DisplayName("report queries are converted into typed rows")
     void reportQueriesAreTyped() {
         LocalDate start = LocalDate.of(2026, 1, 1);
-        List<String> statuses = List.of("COMPLETED");
+        List<String> statuses = List.of("READY_FOR_PICKUP");
         when(orderJpaRepository.getRevenueEvolution(start, statuses))
                 .thenReturn(List.<Object[]>of(new Object[]{LocalDate.of(2026, 1, 10), 300.0, 100.0, 3L}));
         when(orderJpaRepository.getCustomerTypeEvolution(start, statuses))
                 .thenReturn(List.<Object[]>of(new Object[]{LocalDate.of(2026, 1, 10), 1L, 2L}));
-        when(orderJpaRepository.getOrdersByStatus(start)).thenReturn(List.<Object[]>of(new Object[]{"COMPLETED", 4L}));
+        when(orderJpaRepository.getOrdersByStatus(start)).thenReturn(List.<Object[]>of(new Object[]{"READY_FOR_PICKUP", 4L}));
         when(orderJpaRepository.getTopAppliances(start, statuses)).thenReturn(List.<Object[]>of(new Object[]{"TV", "LG", 7L}));
         when(orderJpaRepository.getTopComponents(start, statuses))
                 .thenReturn(List.<Object[]>of(new Object[]{5, "Capacitor", "Epcos", "Elétrica", 9L}));
@@ -106,7 +106,7 @@ class OrderGatewayImplTest {
 
         assertEquals(List.of(new RevenuePoint(LocalDate.of(2026, 1, 10), 300.0, 100.0, 3L)), orderGateway.getRevenueEvolution(start, statuses));
         assertEquals(List.of(new CustomerTypePoint(LocalDate.of(2026, 1, 10), 1L, 2L)), orderGateway.getCustomerTypeEvolution(start, statuses));
-        assertEquals(List.of(new StatusCount(OrderStatus.COMPLETED, 4L)), orderGateway.getOrdersByStatus(start));
+        assertEquals(List.of(new StatusCount(OrderStatus.READY_FOR_PICKUP, 4L)), orderGateway.getOrdersByStatus(start));
         assertEquals(List.of(new ApplianceCount("TV", "LG", 7L)), orderGateway.getTopAppliances(start, statuses));
         assertEquals(List.of(new ComponentUsage(5, "Capacitor", "Epcos", "Elétrica", 9L)), orderGateway.getTopComponents(start, statuses));
         assertEquals(List.of(new RepairCatalogRow("LG", "X1", "TV", 2L)), orderGateway.getRepairCatalog(start));

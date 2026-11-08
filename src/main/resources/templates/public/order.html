@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title th:text="'OS nº ' + ${page.orderNumber} + ' · ' + ${shopName}">Ordem de serviço</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif;font-size:20px;line-height:1.5;color:#14202b;background:#f3f5f8}
+header{background:#092542;color:#fff;padding:16px 20px;display:flex;align-items:center;gap:14px}
+header img{width:56px;height:56px}
+header strong{font-size:22px}
+main{max-width:560px;margin:0 auto;padding:20px}
+.card{background:#fff;border-radius:12px;padding:20px;margin-bottom:18px;border:1px solid #d5dce4}
+h1{font-size:26px;margin:0 0 6px}
+h2{font-size:22px;margin:0 0 12px}
+.muted{color:#4a5866;margin:0}
+.status{font-size:26px;font-weight:700;padding:16px 18px;border-radius:10px;margin:0 0 6px}
+.progress{background:#e7eef7;color:#092542}
+.attention{background:#fff1e3;color:#8a4300;border:2px solid #ef7f19}
+.ready{background:#e3f4e8;color:#14532d}
+.done{background:#eceff3;color:#33404d}
+.photo{width:100%;border-radius:10px;margin-top:12px}
+table{width:100%;border-collapse:collapse}
+td{padding:8px 0;border-bottom:1px solid #e3e8ee}
+td.v{text-align:right;white-space:nowrap}
+tr.total td{font-size:24px;font-weight:700;border-bottom:none;padding-top:14px}
+.btn{display:block;width:100%;min-height:64px;margin:14px 0 0;padding:16px;border-radius:12px;border:0;font-size:22px;font-weight:700;text-align:center;text-decoration:none;cursor:pointer}
+.yes{background:#1b7f3b;color:#fff}
+.no{background:#fff;color:#9b1c1c;border:3px solid #9b1c1c}
+.primary{background:#ef7f19;color:#14202b}
+.link{background:#e7eef7;color:#092542}
+.note{background:#fff8ef;border-left:6px solid #ef7f19;padding:12px 14px;border-radius:8px;margin-top:14px}
+ol{margin:0;padding-left:24px}
+li{margin-bottom:10px}
+li span{display:block;color:#4a5866;font-size:18px}
+footer{text-align:center;color:#4a5866;font-size:17px;padding:10px 20px 30px}
+a{color:#092542}
+</style>
+</head>
+<body>
+<header>
+  <img src="/p/assets/logo.png" alt="" width="56" height="56">
+  <strong th:text="${shopName}">Loja</strong>
+</header>
+<main>
+  <section class="card">
+    <h1 th:text="${page.greeting}">Olá!</h1>
+    <p class="muted">Ordem de serviço nº <strong th:text="${page.orderNumber}">1</strong></p>
+    <p class="muted" th:text="${page.device}">Aparelho</p>
+    <img class="photo" th:if="${page.devicePhotoUrl != null}" th:src="${page.devicePhotoUrl}" alt="Foto do seu aparelho">
+  </section>
+
+  <section class="card">
+    <p class="status" th:classappend="${page.statusTone}" th:text="${page.statusLabel}">Situação</p>
+    <p th:if="${page.decisionMessage != null}" th:text="${page.decisionMessage}"></p>
+    <div th:if="${page.readyForPickup}">
+      <p><strong>Pode buscar seu aparelho.</strong></p>
+      <p th:if="${page.shop.address != null}">Endereço: <span th:text="${page.shop.address}"></span></p>
+      <p th:if="${page.shop.hours != null}">Horário: <span th:text="${page.shop.hours}"></span></p>
+    </div>
+  </section>
+
+  <section class="card" th:if="${page.showBudget}">
+    <h2>Orçamento do conserto</h2>
+    <table>
+      <tr><td>Mão de obra</td><td class="v" th:text="${page.laborTotal}"></td></tr>
+      <tr><td>Peças</td><td class="v" th:text="${page.partsTotal}"></td></tr>
+      <tr th:if="${page.discount != null}"><td>Desconto</td><td class="v" th:text="'- ' + ${page.discount}"></td></tr>
+      <tr class="total"><td>Total</td><td class="v" th:text="${page.total}"></td></tr>
+    </table>
+    <p th:if="${page.warranty != null}" th:text="${page.warranty}"></p>
+
+    <div th:if="${page.canDecide and page.confirm == null}">
+      <p class="note">Se você não quiser consertar, <strong>não há cobrança</strong>.</p>
+      <a class="btn yes" th:href="@{/p/{t}(t=${page.token},confirmar='APPROVED')}">✅ Aprovar conserto</a>
+      <a class="btn no" th:href="@{/p/{t}(t=${page.token},confirmar='DECLINED')}">❌ Não quero consertar</a>
+    </div>
+
+    <div th:if="${page.canDecide and page.confirm != null}">
+      <h2>Tem certeza?</h2>
+      <p th:if="${page.confirm == 'APPROVED'}">Você vai <strong>aprovar</strong> o conserto no valor de <strong th:text="${page.total}"></strong>.</p>
+      <p th:if="${page.confirm == 'DECLINED'}">Você vai <strong>recusar</strong> o conserto. Não há cobrança e o aparelho fica disponível para retirada.</p>
+      <form method="post" th:action="@{/p/{t}/decision(t=${page.token})}">
+        <input type="hidden" name="decision" th:value="${page.confirm}">
+        <button type="submit" class="btn" th:classappend="${page.confirm == 'APPROVED'} ? 'yes' : 'no'"
+                th:text="${page.confirm == 'APPROVED'} ? 'Sim, aprovar conserto' : 'Sim, não quero consertar'">Confirmar</button>
+      </form>
+      <a class="btn link" th:href="@{/p/{t}(t=${page.token})}">Voltar</a>
+    </div>
+  </section>
+
+  <section class="card" th:if="${page.canDecide or page.shop.whatsappUrl != null or page.shop.phone != null}">
+    <h2>Fale com a loja</h2>
+    <p th:if="${page.canDecide}">Se preferir, responda no WhatsApp ou ligue.</p>
+    <a class="btn primary" th:if="${page.shop.whatsappUrl != null}" th:href="${page.shop.whatsappUrl}">💬 Conversar no WhatsApp</a>
+    <a class="btn link" th:if="${page.shop.phoneDigits != null}" th:href="'tel:' + ${page.shop.phoneDigits}"
+       th:text="'📞 Ligar ' + ${page.shop.phone}">Ligar</a>
+  </section>
+
+  <section class="card">
+    <h2>Andamento</h2>
+    <ol>
+      <li th:each="step : ${page.timeline}"><strong th:text="${step.label}"></strong><span th:text="${step.date}"></span></li>
+    </ol>
+  </section>
+</main>
+<footer th:text="${shopName}">Loja</footer>
+</body>
+</html>

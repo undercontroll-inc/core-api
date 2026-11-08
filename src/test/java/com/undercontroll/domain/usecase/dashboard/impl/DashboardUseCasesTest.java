@@ -28,8 +28,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class DashboardUseCasesTest {
 
-    private static final List<String> COMPLETED = List.of("COMPLETED");
-    private static final List<String> ONGOING = List.of("PENDING", "IN_ANALYSIS");
+    private static final List<String> COMPLETED = List.of("READY_FOR_PICKUP");
+    private static final List<String> ONGOING = List.of("RECEIVED", "AWAITING_APPROVAL", "IN_REPAIR");
 
     @Mock
     private OrderGateway orderGateway;
@@ -58,7 +58,7 @@ class DashboardUseCasesTest {
         List<CustomerTypePoint> customers = List.of(new CustomerTypePoint(day, 2L, 1L));
         List<ApplianceCount> appliances = List.of(new ApplianceCount("TV", "LG", 7L));
         List<ComponentUsage> components = List.of(new ComponentUsage(3, "Capacitor", "Epcos", "Elétrica", 12L));
-        List<StatusCount> statuses = List.of(new StatusCount(OrderStatus.PENDING, 5L));
+        List<StatusCount> statuses = List.of(new StatusCount(OrderStatus.RECEIVED, 5L));
         when(orderGateway.getRevenueEvolution(isNull(), eq(COMPLETED))).thenReturn(revenue);
         when(orderGateway.getCustomerTypeEvolution(isNull(), eq(COMPLETED))).thenReturn(customers);
         when(orderGateway.getTopAppliances(isNull(), eq(COMPLETED))).thenReturn(appliances);

@@ -2,7 +2,7 @@ package com.undercontroll.domain.usecase.announcement.impl;
 
 import com.undercontroll.domain.enums.AnnouncementType;
 import com.undercontroll.domain.gateway.AnnouncementGateway;
-import com.undercontroll.domain.gateway.StorageGateway;
+import com.undercontroll.domain.gateway.ObjectStorageGateway;
 import com.undercontroll.domain.model.Announcement;
 import com.undercontroll.domain.model.PaginatedResult;
 import com.undercontroll.domain.usecase.announcement.AnnouncementOutput;
@@ -18,7 +18,7 @@ import java.util.List;
 public class GetAnnouncementsImpl implements GetAnnouncementsPort {
 
     private final AnnouncementGateway announcementGateway;
-    private final StorageGateway storageGateway;
+    private final ObjectStorageGateway storageGateway;
 
     @Override
     public Output execute(Integer page, Integer size, AnnouncementType type) {

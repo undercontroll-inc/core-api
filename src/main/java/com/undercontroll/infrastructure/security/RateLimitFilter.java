@@ -30,18 +30,23 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private final int authRequestsPerMinute;
     private final int generalRequestsPerMinute;
+    private final int publicRequestsPerMinute;
 
     private CaffeineProxyManager<String> authManager;
     private CaffeineProxyManager<String> generalManager;
+    private CaffeineProxyManager<String> publicManager;
+    private BucketConfiguration publicConfig;
     private BucketConfiguration authConfig;
     private BucketConfiguration generalConfig;
 
     public RateLimitFilter(
             @Value("${rate-limit.auth-requests-per-minute:10}") int authRequestsPerMinute,
-            @Value("${rate-limit.general-requests-per-minute:100}") int generalRequestsPerMinute
+            @Value("${rate-limit.general-requests-per-minute:100}") int generalRequestsPerMinute,
+            @Value("${rate-limit.public-requests-per-minute:30}") int publicRequestsPerMinute
     ) {
         this.authRequestsPerMinute = authRequestsPerMinute;
         this.generalRequestsPerMinute = generalRequestsPerMinute;
+        this.publicRequestsPerMinute = publicRequestsPerMinute;
     }
 
     @PostConstruct
@@ -60,6 +65,17 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 .addLimit(Bandwidth.builder()
                         .capacity(authRequestsPerMinute)
                         .refillGreedy(authRequestsPerMinute, Duration.ofMinutes(1))
+                        .build())
+                .build();
+        publicManager = new CaffeineProxyManager<>(
+                Caffeine.newBuilder()
+                        .maximumSize(100_000),
+                Duration.ofSeconds(10)
+        );
+        publicConfig = BucketConfiguration.builder()
+                .addLimit(Bandwidth.builder()
+                        .capacity(publicRequestsPerMinute)
+                        .refillGreedy(publicRequestsPerMinute, Duration.ofMinutes(1))
                         .build())
                 .build();
         generalConfig = BucketConfiguration.builder()
@@ -81,9 +97,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
         String ip = resolveClientIp(request);
         String path = request.getServletPath();
         boolean isAuth = isAuthEndpoint(request.getMethod(), path);
+        boolean isPublic = isPublicEndpoint(path);
 
         BucketProxy bucket = isAuth
                 ? authManager.builder().build(ip, authConfig)
+                : isPublic
+                ? publicManager.builder().build(ip, publicConfig)
                 : generalManager.builder().build(ip, generalConfig);
 
         if (bucket.tryConsume(1)) {
@@ -92,10 +111,28 @@ public class RateLimitFilter extends OncePerRequestFilter {
             chain.doFilter(request, response);
         } else {
             log.warn("Rate limit exceeded for IP={} path={}", ip, path);
-            sendTooManyRequests(response, isAuth);
+            if (path.startsWith("/p/")) {
+                sendPublicPageTooManyRequests(response);
+            } else {
+                sendTooManyRequests(response, isAuth);
+            }
         }
     }
 
+
+    static boolean isPublicEndpoint(String path) {
+        return path != null && (path.startsWith("/p/") || path.startsWith("/v1/public/"));
+    }
+
+    private void sendPublicPageTooManyRequests(HttpServletResponse response) throws IOException {
+        response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+        response.setContentType("text/html;charset=UTF-8");
+        response.setHeader("Retry-After", "60");
+        response.getWriter().write("<!DOCTYPE html><html lang=\"pt-BR\"><meta charset=\"utf-8\">"
+                + "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+                + "<body style=\"font-family:Arial,sans-serif;font-size:20px;padding:20px\">"
+                + "<p>Muitos acessos em pouco tempo. Aguarde um minuto e tente de novo.</p></body></html>");
+    }
 
     private boolean isAuthEndpoint(String method, String path) {
         return "POST".equalsIgnoreCase(method)

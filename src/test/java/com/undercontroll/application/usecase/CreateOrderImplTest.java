@@ -4,7 +4,10 @@ import com.undercontroll.domain.usecase.demand.DemandOutput;
 import com.undercontroll.domain.usecase.order.CreateOrderPort;
 import com.undercontroll.domain.usecase.order.OrderOutput;
 import com.undercontroll.domain.usecase.order.OrderPartInput;
+import com.undercontroll.domain.model.ShopProfile;
+import com.undercontroll.domain.usecase.order.OrderOutput;
 import com.undercontroll.domain.usecase.order.impl.CreateOrderImpl;
+import com.undercontroll.domain.usecase.order.impl.OrderDetailsAssembler;
 import com.undercontroll.domain.exception.InsuficientComponentException;
 import com.undercontroll.domain.gateway.CurrentUserAdminPort;
 import com.undercontroll.domain.model.ComponentPart;
@@ -31,6 +34,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -56,6 +60,12 @@ class CreateOrderImplTest {
     @Mock
     private CurrentUserAdminPort currentUserAdminPort;
 
+    @Mock
+    private ShopProfile shopProfile;
+
+    @Mock
+    private OrderDetailsAssembler orderDetailsAssembler;
+
     @InjectMocks
     private CreateOrderImpl createOrderImpl;
 
@@ -65,6 +75,8 @@ class CreateOrderImplTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(orderDetailsAssembler.summary(any(Order.class), anyBoolean()))
+                .thenAnswer(invocation -> OrderOutput.from(invocation.getArgument(0), invocation.getArgument(1), null));
         component = new ComponentPart();
         component.setId(1);
         component.setName("Resistor 10K");
@@ -79,7 +91,7 @@ class CreateOrderImplTest {
 
         savedOrder = Order.builder()
                 .id(1)
-                .status(OrderStatus.PENDING)
+                .status(OrderStatus.RECEIVED)
                 .total(50.0)
                 .build();
     }
@@ -128,7 +140,7 @@ class CreateOrderImplTest {
 
         assertNotNull(output);
         assertEquals(1, output.id());
-        assertEquals(OrderStatus.PENDING, output.status());
+        assertEquals(OrderStatus.RECEIVED, output.status());
 
         verify(stockManagementGateway, times(1)).findComponentById(1);
         verify(stockManagementGateway, times(1)).validateStockAvailability(any(ComponentPart.class), eq(10));

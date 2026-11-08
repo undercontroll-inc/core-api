@@ -39,13 +39,17 @@ public class StockImportGatewayImpl implements StockImportGateway {
 
     @Override
     @Transactional
-    public StockImport create(StockImport stockImport, byte[] content) {
+    public StockImport create(StockImport stockImport) {
         StockImportJpaEntity entity = new StockImportJpaEntity();
         mapper.applyHeader(stockImport, entity);
         entity.setNextRunAt(stockImport.createdAt());
-        StockImportJpaEntity saved = imports.saveAndFlush(entity);
-        files.save(StockImportFileJpaEntity.builder().importId(saved.getId()).content(content).build());
-        return mapper.toDomain(saved, true);
+        return mapper.toDomain(imports.saveAndFlush(entity), true);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<StockImport> findByStorageKey(String storageKey) {
+        return imports.findByStorageKey(storageKey).map(entity -> mapper.toDomain(entity, true));
     }
 
     @Override
@@ -82,7 +86,7 @@ public class StockImportGatewayImpl implements StockImportGateway {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<byte[]> findContent(Long importId) {
+    public Optional<byte[]> findLegacyContent(Long importId) {
         return files.findById(importId).map(StockImportFileJpaEntity::getContent);
     }
 
@@ -151,8 +155,21 @@ public class StockImportGatewayImpl implements StockImportGateway {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<StockImport> findStoredFilesToPurge(Instant finishedBefore, int limit) {
+        return imports.findStoredFilesToPurge(List.of(StockImportStatus.CONFIRMED, StockImportStatus.CANCELED),
+                finishedBefore, PageRequest.of(0, limit)).stream().map(entity -> mapper.toDomain(entity, false)).toList();
+    }
+
+    @Override
     @Transactional
-    public int purgeFiles(Instant finishedBefore) {
+    public void markFilePurged(Long importId, Instant now) {
+        imports.markFilePurged(importId, now);
+    }
+
+    @Override
+    @Transactional
+    public int purgeLegacyFiles(Instant finishedBefore) {
         return files.purge(List.of(StockImportStatus.CONFIRMED, StockImportStatus.CANCELED), finishedBefore);
     }
 
