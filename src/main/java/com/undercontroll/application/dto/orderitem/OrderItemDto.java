@@ -8,8 +8,8 @@ public record OrderItemDto(
         String model,
         String type,
         String brand,
-        String volt,
-        String series,
+        String voltage,
+        String serial,
         Double laborValue,
         LocalDateTime completedAt
 ) {

@@ -34,7 +34,7 @@ class OrderReportRowsTest {
     void customerTypeAndStatus() {
         assertEquals(new CustomerTypePoint(LocalDate.of(2026, 1, 10), 2L, 1L),
                 OrderReportRows.customerType(new Object[]{Date.valueOf("2026-01-10"), 2L, 1}));
-        assertEquals(new StatusCount(OrderStatus.PENDING, 5L), OrderReportRows.statusCount(new Object[]{"PENDING", 5}));
+        assertEquals(new StatusCount(OrderStatus.RECEIVED, 5L), OrderReportRows.statusCount(new Object[]{"PENDING", 5}));
     }
 
     @Test

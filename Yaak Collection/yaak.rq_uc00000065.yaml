@@ -1,0 +1,46 @@
+type: http_request
+model: http_request
+id: rq_uc00000065
+createdAt: 2026-11-07T12:00:00.000000
+updatedAt: 2026-11-07T12:00:00.000000
+workspaceId: wk_ucCoreApi1
+folderId: fl_ucOrderLc1
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "to": "IN_REPAIR",
+      "outcome": null,
+      "note": "Cliente aprovou por telefone"
+    }
+bodyType: application/json
+description: "to: RECEIVED | AWAITING_APPROVAL | IN_REPAIR | READY_FOR_PICKUP | DELIVERED. outcome (REPAIRED | NOT_REPAIRED) only when moving to READY_FOR_PICKUP. 409 ORDER_INVALID_TRANSITION / ORDER_CONCURRENT_UPDATE."
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: ct000065
+method: POST
+name: Transition order
+sortPriority: 1000.0
+url: ${[ base_url ]}/v1/api/orders/${[ order_id ]}/transitions
+urlParameters: []
+settingSendCookies:
+  enabled: false
+  value: true
+settingStoreCookies:
+  enabled: false
+  value: true
+settingValidateCertificates:
+  enabled: false
+  value: true
+settingFollowRedirects:
+  enabled: false
+  value: true
+settingRequestTimeout:
+  enabled: false
+  value: 0
+settingHttpVersion:
+  enabled: false
+  value: auto

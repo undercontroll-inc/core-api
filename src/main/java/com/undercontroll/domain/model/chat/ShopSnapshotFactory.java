@@ -38,8 +38,8 @@ public final class ShopSnapshotFactory {
             Announcement lastAnnouncement
     ) {
         ShopSnapshot base = build(orders, parts, demands, lastAnnouncement);
-        long openTotal = count(orders, OrderStatus.PENDING, OrderStatus.IN_ANALYSIS);
-        long pickupTotal = count(orders, OrderStatus.COMPLETED);
+        long openTotal = count(orders, OrderStatus.RECEIVED, OrderStatus.AWAITING_APPROVAL, OrderStatus.IN_REPAIR);
+        long pickupTotal = count(orders, OrderStatus.READY_FOR_PICKUP);
         return withTotals(base, openTotal, pickupTotal, null);
     }
 
@@ -84,14 +84,13 @@ public final class ShopSnapshotFactory {
     ) {
         List<Order> safeOrders = orders == null ? List.of() : orders;
         List<RepairFact> open = safeOrders.stream()
-                .filter(order -> order.getStatus() == OrderStatus.PENDING
-                        || order.getStatus() == OrderStatus.IN_ANALYSIS)
+                .filter(order -> order.getStatus() != null && order.getStatus().ongoing())
                 .sorted(openRepairOrder())
                 .limit(OPEN_LIMIT)
                 .map(ShopSnapshotFactory::toRepairFact)
                 .toList();
         List<RepairFact> pickup = safeOrders.stream()
-                .filter(order -> order.getStatus() == OrderStatus.COMPLETED)
+                .filter(order -> order.getStatus() == OrderStatus.READY_FOR_PICKUP)
                 .sorted(pickupOrder())
                 .limit(PICKUP_LIMIT)
                 .map(ShopSnapshotFactory::toRepairFact)
@@ -160,9 +159,10 @@ public final class ShopSnapshotFactory {
             return "em andamento";
         }
         return switch (status) {
-            case PENDING -> RepairFact.NOT_LOOKED_AT;
-            case IN_ANALYSIS -> "em análise";
-            case COMPLETED -> "pronto para buscar";
+            case RECEIVED -> RepairFact.NOT_LOOKED_AT;
+            case AWAITING_APPROVAL -> "aguardando sua aprovação";
+            case IN_REPAIR -> "em conserto";
+            case READY_FOR_PICKUP -> "pronto para buscar";
             case DELIVERED -> "entregue";
         };
     }
@@ -173,7 +173,7 @@ public final class ShopSnapshotFactory {
     }
 
     private static Comparator<Order> pickupOrder() {
-        return Comparator.comparing(Order::getCompletedTime, Comparator.nullsLast(Comparator.reverseOrder()))
+        return Comparator.comparing(Order::getCompletedAt, Comparator.nullsLast(Comparator.reverseOrder()))
                 .thenComparing(Order::getId, Comparator.nullsLast(Comparator.reverseOrder()));
     }
 }

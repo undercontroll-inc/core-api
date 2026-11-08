@@ -14,6 +14,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,6 +24,24 @@ public interface StockImportJpaRepository extends JpaRepository<StockImportJpaEn
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT i FROM StockImportJpaEntity i WHERE i.id = :id")
     Optional<StockImportJpaEntity> findByIdForUpdate(@Param("id") Long id);
+
+    Optional<StockImportJpaEntity> findByStorageKey(String storageKey);
+
+    @Query("""
+            SELECT i FROM StockImportJpaEntity i
+            WHERE i.storageKey IS NOT NULL AND i.filePurgedAt IS NULL
+              AND i.status IN :statuses AND i.updatedAt < :before
+            ORDER BY i.updatedAt
+            """)
+    List<StockImportJpaEntity> findStoredFilesToPurge(
+            @Param("statuses") Collection<StockImportStatus> statuses,
+            @Param("before") Instant before,
+            Pageable page
+    );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE StockImportJpaEntity i SET i.filePurgedAt = :now WHERE i.id = :id")
+    int markFilePurged(@Param("id") Long id, @Param("now") Instant now);
 
     @Query("SELECT i FROM StockImportJpaEntity i ORDER BY i.createdAt DESC, i.id DESC")
     List<StockImportJpaEntity> findRecent(Pageable page);

@@ -1,11 +1,15 @@
 package com.undercontroll.infrastructure.persistence.entity;
 
+import com.undercontroll.domain.enums.ApprovalDecision;
+import com.undercontroll.domain.enums.OrderActor;
+import com.undercontroll.domain.enums.OrderOutcome;
 import com.undercontroll.domain.enums.OrderStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -57,7 +61,49 @@ public class OrderJpaEntity {
 
     private LocalDate received_at;
 
-    private LocalDate completedTime;
+    private LocalDate deadline;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private OrderOutcome outcome;
+
+    @Column(name = "completed_at")
+    private Instant completedAt;
+
+    @Column(name = "delivered_at")
+    private Instant deliveredAt;
+
+    @Column(name = "tracking_token", length = 32, unique = true)
+    private String trackingToken;
+
+    @Column(name = "budget_sent_at")
+    private Instant budgetSentAt;
+
+    @Column(name = "budget_labor_total")
+    private Double budgetLaborTotal;
+
+    @Column(name = "budget_parts_total")
+    private Double budgetPartsTotal;
+
+    @Column(name = "budget_discount")
+    private Double budgetDiscount;
+
+    @Column(name = "budget_total")
+    private Double budgetTotal;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "approval_decision", length = 20)
+    private ApprovalDecision approvalDecision;
+
+    @Column(name = "decided_at")
+    private Instant decidedAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "decided_via", length = 20)
+    private OrderActor decidedVia;
+
+    @Version
+    private Long version;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

@@ -79,8 +79,8 @@ class OrderControllerTest {
         OrderOutput response = new OrderOutput(
                 1, null, List.of(), List.of(), 0.0, 0.0, 0.0, 0.0,
                 "20/11/2025", "25/11/2025", "NF123", false, "Não gela",
-                "Compressor queimado", OrderStatus.PENDING, null
-        );
+                "Compressor queimado", OrderStatus.RECEIVED, null,
+                null, null, null, null, null, null, null, null, null, null, null);
 
         when(createOrderPort.execute(any(CreateOrderPort.Input.class))).thenReturn(response);
 
@@ -104,8 +104,8 @@ class OrderControllerTest {
         OrderOutput response = new OrderOutput(
                 1, null, List.of(), List.of(), 0.0, 0.0, 0.0, 0.0,
                 "20/11/2025", "25/11/2025", "NF123", false, "Não gela",
-                "Compressor queimado", OrderStatus.PENDING, null
-        );
+                "Compressor queimado", OrderStatus.RECEIVED, null,
+                null, null, null, null, null, null, null, null, null, null, null);
 
         when(createOrderPort.execute(any(CreateOrderPort.Input.class))).thenReturn(response);
 
@@ -122,23 +122,44 @@ class OrderControllerTest {
     @DisplayName("PATCH /v1/api/orders/{orderId} - ADMINISTRATOR should update order and return 200")
     void administratorShouldUpdateOrderSuccessfully() throws Exception {
         UpdateOrderRequest request = new UpdateOrderRequest(
-                OrderStatus.COMPLETED, List.of(), List.of(), "Reparo em analise", "Aguardando peca"
+                null, List.of(), List.of(), "Reparo em analise", "Aguardando peca"
         );
+        when(updateOrderPort.execute(eq(1), any(UpdateOrderPort.Input.class))).thenReturn(new OrderOutput(
+                1, null, List.of(), List.of(), 0.0, 0.0, 0.0, 150.0,
+                "20/11/2025", "2025-11-25", "NF123", false, "Reparo em analise",
+                "Aguardando peca", OrderStatus.RECEIVED, null,
+                null, null, null, null, null, null, null, null, null, null, null));
 
         mockMvc.perform(patch("/v1/api/orders/1")
                         .with(user("admin@example.com").roles("ADMINISTRATOR"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalValue").value(150.0))
+                .andExpect(jsonPath("$.deadline").value("2025-11-25"));
 
         verify(updateOrderPort, times(1)).execute(eq(1), any(UpdateOrderPort.Input.class));
+    }
+
+    @Test
+    @DisplayName("PATCH /v1/api/orders/{orderId} - status in the body is rejected with 400")
+    void statusInPatchIsRejected() throws Exception {
+        mockMvc.perform(patch("/v1/api/orders/1")
+                        .with(user("admin@example.com").roles("ADMINISTRATOR"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"DELIVERED\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.errors[0].field").value("status"));
+
+        verify(updateOrderPort, never()).execute(any(), any());
     }
 
     @Test
     @DisplayName("PATCH /v1/api/orders/{orderId} - CUSTOMER should be forbidden and return 403")
     void customerShouldBeForbiddenToUpdateOrder() throws Exception {
         UpdateOrderRequest request = new UpdateOrderRequest(
-                OrderStatus.COMPLETED, List.of(), List.of(), "Reparo em analise", "Aguardando peca"
+                null, List.of(), List.of(), "Reparo em analise", "Aguardando peca"
         );
 
         mockMvc.perform(patch("/v1/api/orders/1")
@@ -160,8 +181,8 @@ class OrderControllerTest {
         OrderOutput order = new OrderOutput(
                 1, userDto, List.of(), List.of(), 100.0, 50.0, 10.0, 140.0,
                 "20/11/2025", "25/11/2025", "NF123", true, "Não gela",
-                "Compressor queimado", OrderStatus.PENDING, "20/11/2025"
-        );
+                "Compressor queimado", OrderStatus.RECEIVED, "20/11/2025",
+                null, null, null, null, null, null, null, null, null, null, null);
 
         when(getOrdersPort.execute(isNull(), anyInt(), anyInt()))
                 .thenReturn(new GetOrdersPort.Output(List.of(order), 1L, 1, 0, 10));
@@ -172,7 +193,7 @@ class OrderControllerTest {
                         .param("size", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].id").value(1))
-                .andExpect(jsonPath("$.data[0].status").value("PENDING"))
+                .andExpect(jsonPath("$.data[0].status").value("RECEIVED"))
                 .andExpect(jsonPath("$.data[0].customerDescription").value("Não gela"))
                 .andExpect(jsonPath("$.data[0].technicalDescription").value("Compressor queimado"))
                 .andExpect(jsonPath("$.totalElements").value(1))
@@ -203,8 +224,8 @@ class OrderControllerTest {
         OrderOutput enrichedDto = new OrderOutput(
                 1, userDto, List.of(), List.of(), 100.0, 50.0, 10.0, 140.0,
                 "20/11/2025", "25/11/2025", "NF123", true, "Não gela",
-                null, OrderStatus.PENDING, "20/11/2025"
-        );
+                null, OrderStatus.RECEIVED, "20/11/2025",
+                null, null, null, null, null, null, null, null, null, null, null);
 
         when(getOrderByIdPort.execute(1)).thenReturn(Optional.of(enrichedDto));
 
@@ -212,7 +233,7 @@ class OrderControllerTest {
                         .with(user("customer@example.com").roles("CUSTOMER")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value(1))
-                .andExpect(jsonPath("$.data.status").value("PENDING"))
+                .andExpect(jsonPath("$.data.status").value("RECEIVED"))
                 .andExpect(jsonPath("$.data.customerDescription").value("Não gela"))
                 .andExpect(jsonPath("$.data.technicalDescription").value(nullValue()));
 
@@ -249,8 +270,8 @@ class OrderControllerTest {
         OrderOutput order = new OrderOutput(
                 1, userDto, List.of(), List.of(), 100.0, 50.0, 10.0, 140.0,
                 "20/11/2025", "25/11/2025", "NF123", true, "Não gela",
-                null, OrderStatus.PENDING, "20/11/2025"
-        );
+                null, OrderStatus.RECEIVED, "20/11/2025",
+                null, null, null, null, null, null, null, null, null, null, null);
 
         when(getOrdersPort.execute(eq(1), anyInt(), anyInt()))
                 .thenReturn(new GetOrdersPort.Output(List.of(order), 1L, 1, 0, 1));
@@ -287,8 +308,8 @@ class OrderControllerTest {
         OrderOutput order = new OrderOutput(
                 1, userDto, List.of(), List.of(), 100.0, 50.0, 10.0, 140.0,
                 "20/11/2025", "25/11/2025", "NF123", true, "Não gela",
-                null, OrderStatus.PENDING, "20/11/2025"
-        );
+                null, OrderStatus.RECEIVED, "20/11/2025",
+                null, null, null, null, null, null, null, null, null, null, null);
 
         when(getOrdersPort.execute(eq(1), anyInt(), anyInt()))
                 .thenReturn(new GetOrdersPort.Output(List.of(order), 1L, 1, 0, 1));

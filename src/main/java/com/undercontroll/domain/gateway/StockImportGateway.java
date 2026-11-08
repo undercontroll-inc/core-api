@@ -11,7 +11,9 @@ import java.util.Optional;
 
 public interface StockImportGateway {
 
-    StockImport create(StockImport stockImport, byte[] content);
+    StockImport create(StockImport stockImport);
+
+    Optional<StockImport> findByStorageKey(String storageKey);
 
     Optional<StockImport> findById(Long importId);
 
@@ -21,7 +23,7 @@ public interface StockImportGateway {
 
     StockImport save(StockImport stockImport);
 
-    Optional<byte[]> findContent(Long importId);
+    Optional<byte[]> findLegacyContent(Long importId);
 
     List<Long> findRunnable(Instant now, int limit);
 
@@ -37,5 +39,9 @@ public interface StockImportGateway {
 
     Optional<Long> findConfirmedDuplicate(Long importId, String accessKey, String fileSha256);
 
-    int purgeFiles(Instant finishedBefore);
+    int purgeLegacyFiles(Instant finishedBefore);
+
+    List<StockImport> findStoredFilesToPurge(Instant finishedBefore, int limit);
+
+    void markFilePurged(Long importId, Instant now);
 }

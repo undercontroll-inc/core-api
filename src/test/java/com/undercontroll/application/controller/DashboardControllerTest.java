@@ -89,7 +89,7 @@ class DashboardControllerTest {
         when(getCustomerTypeEvolutionPort.execute(PeriodFilter.THIRTY_DAYS, StatusFilter.ALL))
                 .thenReturn(List.of(new CustomerTypePoint(day, 2L, 1L)));
         when(getOrdersByStatusPort.execute(PeriodFilter.ALL))
-                .thenReturn(List.of(new StatusCount(OrderStatus.PENDING, 5L)));
+                .thenReturn(List.of(new StatusCount(OrderStatus.RECEIVED, 5L)));
         when(getTopAppliancesPort.execute(PeriodFilter.ALL, StatusFilter.ALL))
                 .thenReturn(List.of(new ApplianceCount("TV", "LG", 7L)));
         when(getTopComponentsPort.execute(PeriodFilter.ALL, StatusFilter.ALL))
@@ -101,7 +101,7 @@ class DashboardControllerTest {
         mockMvc.perform(get("/v1/api/dashboard/charts/customer-type"))
                 .andExpect(jsonPath("$.dataPoints[0].recurrentCustomers").value(2));
         mockMvc.perform(get("/v1/api/dashboard/charts/orders-by-status"))
-                .andExpect(jsonPath("$.statusCounts[0].status").value("PENDING"))
+                .andExpect(jsonPath("$.statusCounts[0].status").value("RECEIVED"))
                 .andExpect(jsonPath("$.statusCounts[0].count").value(5));
         mockMvc.perform(get("/v1/api/dashboard/charts/top-appliances"))
                 .andExpect(jsonPath("$.appliances[0].brand").value("LG"));

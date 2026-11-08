@@ -31,6 +31,22 @@ variables:
   value: '1'
   id: vg00000005
 - enabled: true
+  name: upload_id
+  value: ''
+  id: vg00000024
+- enabled: true
+  name: upload_url
+  value: ''
+  id: vg00000025
+- enabled: true
+  name: tracking_token
+  value: ''
+  id: vg00000022
+- enabled: true
+  name: photo_id
+  value: '1'
+  id: vg00000023
+- enabled: true
   name: order_item_id
   value: '1'
   id: vg00000006

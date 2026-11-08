@@ -1,11 +1,13 @@
 package com.undercontroll.application.dto.orderitem;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+
 public record OrderItemCreateOrderRequest(
         String type,
         String brand,
         String model,
-        String voltage,
-        String serial,
+        @JsonAlias("volt") String voltage,
+        @JsonAlias("series") String serial,
         Double laborValue
 ) {
 }

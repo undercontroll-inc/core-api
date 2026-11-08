@@ -1,0 +1,36 @@
+type: http_request
+model: http_request
+id: rq_uc00000074
+createdAt: 2026-11-07T12:00:00.000000
+updatedAt: 2026-11-07T12:00:00.000000
+workspaceId: wk_ucCoreApi1
+folderId: fl_ucOrderLc1
+authentication: {}
+authenticationType: none
+body: {}
+bodyType: null
+description: "No login. First name, device, values and status only. 404 TRACKING_NOT_FOUND. 30 requests/minute per IP."
+headers: []
+method: GET
+name: Public order (JSON)
+sortPriority: 10000.0
+url: ${[ base_url ]}/v1/public/orders/${[ tracking_token ]}
+urlParameters: []
+settingSendCookies:
+  enabled: false
+  value: true
+settingStoreCookies:
+  enabled: false
+  value: true
+settingValidateCertificates:
+  enabled: false
+  value: true
+settingFollowRedirects:
+  enabled: false
+  value: true
+settingRequestTimeout:
+  enabled: false
+  value: 0
+settingHttpVersion:
+  enabled: false
+  value: auto

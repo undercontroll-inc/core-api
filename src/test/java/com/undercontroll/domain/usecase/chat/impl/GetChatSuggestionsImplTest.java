@@ -153,7 +153,7 @@ class GetChatSuggestionsImplTest {
         when(orderGateway.findOpenRepairs(ShopSnapshotFactory.OPEN_LIMIT)).thenReturn(List.of(
                 Order.builder()
                         .id(12)
-                        .status(OrderStatus.PENDING)
+                        .status(OrderStatus.RECEIVED)
                         .user(User.builder().name("Maria").lastName("Souza").build())
                         .orderItems(List.of(
                                 OrderItem.builder().type("liquidificador").brand("Mondial").build()
@@ -208,7 +208,7 @@ class GetChatSuggestionsImplTest {
         return List.of(
                 Order.builder()
                         .id(12)
-                        .status(OrderStatus.PENDING)
+                        .status(OrderStatus.RECEIVED)
                         .user(User.builder().name("Maria").lastName("Souza").build())
                         .orderItems(List.of(
                                 OrderItem.builder().type("liquidificador").brand("Mondial").build()
@@ -216,7 +216,7 @@ class GetChatSuggestionsImplTest {
                         .build(),
                 Order.builder()
                         .id(15)
-                        .status(OrderStatus.IN_ANALYSIS)
+                        .status(OrderStatus.IN_REPAIR)
                         .user(User.builder().name("Ana").lastName("Costa").build())
                         .orderItems(List.of(
                                 OrderItem.builder().type("geladeira").brand("Brastemp").build()
@@ -229,7 +229,7 @@ class GetChatSuggestionsImplTest {
         return List.of(
                 Order.builder()
                         .id(20)
-                        .status(OrderStatus.COMPLETED)
+                        .status(OrderStatus.READY_FOR_PICKUP)
                         .user(User.builder().name("João").lastName("Lima").build())
                         .orderItems(List.of(
                                 OrderItem.builder().type("airfryer").brand("Philco").build()
@@ -237,7 +237,7 @@ class GetChatSuggestionsImplTest {
                         .build(),
                 Order.builder()
                         .id(21)
-                        .status(OrderStatus.COMPLETED)
+                        .status(OrderStatus.READY_FOR_PICKUP)
                         .user(User.builder().name("Pedro").lastName("Nunes").build())
                         .orderItems(List.of(
                                 OrderItem.builder().type("microondas").brand("Electrolux").build()

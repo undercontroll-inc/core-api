@@ -5,10 +5,10 @@ import com.undercontroll.domain.gateway.AnnouncementGateway;
 import com.undercontroll.domain.gateway.MetricName;
 import com.undercontroll.domain.gateway.MetricsGateway;
 import com.undercontroll.domain.gateway.NotificationGateway;
-import com.undercontroll.domain.gateway.StorageGateway;
+import com.undercontroll.domain.gateway.ObjectStorageGateway;
 import com.undercontroll.domain.model.Announcement;
-import com.undercontroll.domain.model.PresignedUpload;
-import com.undercontroll.domain.usecase.announcement.AnnouncementImageKeys;
+import com.undercontroll.domain.storage.PresignedUploadUrl;
+import com.undercontroll.domain.usecase.announcement.AnnouncementImages;
 import com.undercontroll.domain.usecase.announcement.CreateAnnouncementPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,11 +23,14 @@ public class CreateAnnouncementImpl implements CreateAnnouncementPort {
     private final AnnouncementGateway announcementGateway;
     private final NotificationGateway notificationGateway;
     private final MetricsGateway metricsGateway;
-    private final StorageGateway storageGateway;
+    private final ObjectStorageGateway storageGateway;
 
     @Override
     @CacheEvict(value = {"announcements", "lastAnnouncement"}, allEntries = true)
     public Output execute(Input input, String token) {
+        if (input.imageUpload() != null) {
+            AnnouncementImages.validate(input.imageUpload());
+        }
 
         Announcement announcement = Announcement.builder()
                 .title(input.title())
@@ -37,14 +40,12 @@ public class CreateAnnouncementImpl implements CreateAnnouncementPort {
 
         Announcement announcementCreated = announcementGateway.save(announcement);
 
-        PresignedUpload presignedUpload = input.imageUpload() == null
+        PresignedUploadUrl presignedUpload = input.imageUpload() == null
                 ? null
-                : storageGateway.presignAnnouncementImageUpload(
-                        AnnouncementImageKeys.generate(announcementCreated.getId(), input.imageUpload())
-                );
+                : AnnouncementImages.presign(storageGateway, announcementCreated.getId(), input.imageUpload());
 
         if (presignedUpload != null) {
-            announcementCreated.setImageKey(presignedUpload.fileKey());
+            announcementCreated.setImageKey(presignedUpload.key());
             announcementCreated = announcementGateway.save(announcementCreated);
         }
 

@@ -34,7 +34,7 @@ class DeleteOrderImplTest {
     void setUp() {
         order = Order.builder()
                 .id(1)
-                .status(OrderStatus.PENDING)
+                .status(OrderStatus.RECEIVED)
                 .total(100.0)
                 .build();
     }

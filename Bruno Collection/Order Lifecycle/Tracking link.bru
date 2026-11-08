@@ -1,0 +1,15 @@
+meta {
+  name: Tracking link
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/v1/api/orders/{{orderId}}/tracking-link
+  body: none
+  auth: inherit
+}
+
+docs {
+  Creates the link if missing and returns the WhatsApp text for the current status.
+}

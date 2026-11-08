@@ -8,7 +8,10 @@ import com.undercontroll.domain.enums.StockImportStatus;
 import com.undercontroll.domain.exception.InvalidNfeXmlException;
 import com.undercontroll.domain.exception.InvoiceExtractionException;
 import com.undercontroll.domain.gateway.InvoiceExtractionGateway;
+import com.undercontroll.domain.exception.InvalidUploadException;
 import com.undercontroll.domain.gateway.NfeXmlGateway;
+import com.undercontroll.domain.gateway.ObjectStorageGateway;
+import com.undercontroll.domain.storage.StorageArea;
 import com.undercontroll.domain.gateway.StockImportGateway;
 import com.undercontroll.domain.insight.InsightRetryPolicy;
 import com.undercontroll.domain.model.insight.LlmFailure;
@@ -47,6 +50,7 @@ public class RunStockImportImpl implements RunStockImportPort {
     private final StockImportGateway stockImportGateway;
     private final ObjectProvider<InvoiceExtractionGateway> invoiceExtractionGateway;
     private final NfeXmlGateway nfeXmlGateway;
+    private final ObjectStorageGateway storage;
     private final ComponentMatcher componentMatcher;
     private final Sleeper sleeper;
     private final RandomGenerator random;
@@ -58,6 +62,7 @@ public class RunStockImportImpl implements RunStockImportPort {
             StockImportGateway stockImportGateway,
             ObjectProvider<InvoiceExtractionGateway> invoiceExtractionGateway,
             NfeXmlGateway nfeXmlGateway,
+            ObjectStorageGateway storage,
             ComponentMatcher componentMatcher,
             Sleeper sleeper,
             RandomGenerator random,
@@ -67,6 +72,7 @@ public class RunStockImportImpl implements RunStockImportPort {
         this.stockImportGateway = stockImportGateway;
         this.invoiceExtractionGateway = invoiceExtractionGateway;
         this.nfeXmlGateway = nfeXmlGateway;
+        this.storage = storage;
         this.componentMatcher = componentMatcher;
         this.sleeper = sleeper;
         this.random = random;
@@ -82,8 +88,7 @@ public class RunStockImportImpl implements RunStockImportPort {
             if (leased.attemptCount() > MAX_ATTEMPTS) {
                 throw new Failure(StockImportFailureReason.TIMEOUT, "Extraction did not finish after " + MAX_ATTEMPTS + " attempts");
             }
-            byte[] content = stockImportGateway.findContent(importId)
-                    .orElseThrow(() -> new Failure(StockImportFailureReason.UNREADABLE, "The uploaded file is no longer available"));
+            byte[] content = content(leased);
             stockImportGateway.updateStage(importId, owner, StockImportStage.EXTRACTING, clock.instant());
             InvoiceExtraction extraction = extract(leased, content);
             if (!extraction.invoice()) {
@@ -105,6 +110,18 @@ public class RunStockImportImpl implements RunStockImportPort {
         } catch (RuntimeException ex) {
             log.error("Stock import id={} failed unexpectedly", importId, ex);
             fail(importId, owner, StockImportFailureReason.UNREADABLE, "Unexpected error while reading the invoice", started);
+        }
+    }
+
+    private byte[] content(StockImport leased) {
+        if (leased.storageKey() == null) {
+            return stockImportGateway.findLegacyContent(leased.id())
+                    .orElseThrow(() -> new Failure(StockImportFailureReason.UNREADABLE, "The uploaded file is no longer available"));
+        }
+        try {
+            return storage.read(StorageArea.STOCK_IMPORTS, leased.storageKey(), StorageArea.STOCK_IMPORTS.policy().maxBytes());
+        } catch (InvalidUploadException ex) {
+            throw new Failure(StockImportFailureReason.UNREADABLE, "The uploaded file is no longer available");
         }
     }
 

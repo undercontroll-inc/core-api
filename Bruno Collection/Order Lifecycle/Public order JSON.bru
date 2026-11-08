@@ -1,0 +1,15 @@
+meta {
+  name: Public order (JSON)
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/v1/public/orders/{{trackingToken}}
+  body: none
+  auth: none
+}
+
+docs {
+  No login. First name, device, values and status only. 404 TRACKING_NOT_FOUND. 30 requests/minute per IP.
+}

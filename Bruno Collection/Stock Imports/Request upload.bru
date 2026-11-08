@@ -1,0 +1,23 @@
+meta {
+  name: Request upload
+  type: http
+  seq: 0
+}
+
+post {
+  url: {{baseUrl}}/v1/api/stock-imports/uploads
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "contentType": "application/pdf",
+    "sizeBytes": 52000,
+    "fileName": "nota.pdf"
+  }
+}
+
+docs {
+  Step 1: returns uploadId, uploadUrl, method PUT and the headers to send. sizeBytes must be the exact file size. Then run Storage / Upload file to presigned URL and Create import. 503 STOCK_IMPORT_UNAVAILABLE for images/PDF when AI is off (XML works).
+}

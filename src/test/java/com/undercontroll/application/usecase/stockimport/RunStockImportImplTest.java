@@ -12,6 +12,8 @@ import com.undercontroll.domain.exception.InvalidNfeXmlException;
 import com.undercontroll.domain.exception.InvoiceExtractionException;
 import com.undercontroll.domain.gateway.InvoiceExtractionGateway;
 import com.undercontroll.domain.gateway.NfeXmlGateway;
+import com.undercontroll.domain.gateway.ObjectStorageGateway;
+import com.undercontroll.domain.storage.StorageArea;
 import com.undercontroll.domain.gateway.StockImportGateway;
 import com.undercontroll.domain.model.insight.LlmFailure;
 import com.undercontroll.domain.model.stockimport.ComponentMatch;
@@ -38,6 +40,7 @@ import java.util.Random;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -56,6 +59,7 @@ class RunStockImportImplTest {
     private InvoiceExtractionGateway ai;
     private ObjectProvider<InvoiceExtractionGateway> aiProvider;
     private NfeXmlGateway xml;
+    private ObjectStorageGateway storage;
     private ComponentMatcher matcher;
     private Sleeper sleeper;
     private RunStockImportImpl run;
@@ -70,9 +74,10 @@ class RunStockImportImplTest {
         xml = mock(NfeXmlGateway.class);
         matcher = mock(ComponentMatcher.class);
         sleeper = mock(Sleeper.class);
-        run = new RunStockImportImpl(gateway, aiProvider, xml, matcher, sleeper, new Random(1),
+        storage = mock(ObjectStorageGateway.class);
+        run = new RunStockImportImpl(gateway, aiProvider, xml, storage, matcher, sleeper, new Random(1),
                 Clock.fixed(NOW, ZoneOffset.UTC), Duration.ofSeconds(90));
-        when(gateway.findContent(1L)).thenReturn(Optional.of(new byte[]{1, 2, 3}));
+        when(gateway.findLegacyContent(1L)).thenReturn(Optional.of(new byte[]{1, 2, 3}));
         when(gateway.findConfirmedDuplicate(any(), any(), any())).thenReturn(Optional.empty());
         when(gateway.complete(any(), eq(OWNER), any())).thenReturn(true);
         when(matcher.match(any(), any(), anyString())).thenReturn(ComponentMatch.none(List.of()));
@@ -207,6 +212,18 @@ class RunStockImportImplTest {
 
         verify(gateway).fail(eq(1L), eq(OWNER), eq(StockImportFailureReason.TIMEOUT), anyString(), eq(NOW));
         verify(ai, never()).extract(any());
-        verify(gateway, never()).findContent(isNull());
+        verify(gateway, never()).findLegacyContent(isNull());
+    }
+
+    @Test
+    @DisplayName("imports created from an upload read the file from object storage, not from the database")
+    void readsFromStorage() {
+        when(storage.read(eq(StorageArea.STOCK_IMPORTS), eq("stock-imports/12/a.xml"), anyLong())).thenReturn(new byte[]{9});
+        when(xml.parse(new byte[]{9})).thenReturn(extraction(true, List.of(item("Motor", "1", "100.00", "100.00"))));
+
+        run.execute(leased(StockImportSourceType.NFE_XML).toBuilder().storageKey("stock-imports/12/a.xml").build(), OWNER);
+
+        verify(gateway, never()).findLegacyContent(any());
+        verify(gateway).complete(any(), eq(OWNER), any());
     }
 }

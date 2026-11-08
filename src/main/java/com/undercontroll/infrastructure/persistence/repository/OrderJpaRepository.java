@@ -21,6 +21,9 @@ public interface OrderJpaRepository extends JpaRepository<OrderJpaEntity, Intege
     List<OrderJpaEntity> findByUser_id(Integer userId);
 
     @EntityGraph(attributePaths = {"user", "orderItems"})
+    Optional<OrderJpaEntity> findByTrackingToken(String trackingToken);
+
+    @EntityGraph(attributePaths = {"user", "orderItems"})
     @Query("SELECT o FROM OrderJpaEntity o")
     List<OrderJpaEntity> findRecentWithUserAndItems(Pageable pageable);
 
@@ -50,6 +53,7 @@ public interface OrderJpaRepository extends JpaRepository<OrderJpaEntity, Intege
     FROM orders o
     WHERE (CAST(:startDate AS DATE) IS NULL OR o.received_at >= CAST(:startDate AS DATE))
       AND o.status IN :statuses
+      AND (o.outcome IS NULL OR o.outcome <> 'NOT_REPAIRED')
     """, nativeQuery = true)
     Double calculateTotalRevenueFiltered(
             @Param("startDate") LocalDate startDate,
@@ -62,6 +66,7 @@ public interface OrderJpaRepository extends JpaRepository<OrderJpaEntity, Intege
     INNER JOIN component c ON d.component_id = c.id
     WHERE (CAST(:startDate AS DATE) IS NULL OR o.received_at >= CAST(:startDate AS DATE))
       AND o.status IN :statuses
+      AND (o.outcome IS NULL OR o.outcome <> 'NOT_REPAIRED')
     """, nativeQuery = true)
     Double calculateTotalPartsCostFiltered(
             @Param("startDate") LocalDate startDate,
@@ -72,6 +77,7 @@ public interface OrderJpaRepository extends JpaRepository<OrderJpaEntity, Intege
     FROM orders o
     WHERE (CAST(:startDate AS DATE) IS NULL OR o.received_at >= CAST(:startDate AS DATE))
       AND o.status IN :statuses
+      AND (o.outcome IS NULL OR o.outcome <> 'NOT_REPAIRED')
     """, nativeQuery = true)
     Double calculateAverageOrderPriceFiltered(
             @Param("startDate") LocalDate startDate,
@@ -88,12 +94,13 @@ public interface OrderJpaRepository extends JpaRepository<OrderJpaEntity, Intege
             @Param("statuses") List<String> statuses);
 
     @Query(value = """
-    SELECT COALESCE(AVG((completed_time - received_at) * 24), 0.0)
+    SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (completed_at - CAST(received_at AS TIMESTAMP))) / 3600.0), 0.0)
     FROM orders
     WHERE (CAST(:startDate AS DATE) IS NULL OR received_at >= CAST(:startDate AS DATE))
       AND status IN :statuses
+      AND outcome = 'REPAIRED'
       AND received_at IS NOT NULL
-      AND completed_time IS NOT NULL
+      AND completed_at IS NOT NULL
     """, nativeQuery = true)
     Double calculateAverageRepairTimeFiltered(
             @Param("startDate") LocalDate startDate,
@@ -114,6 +121,7 @@ public interface OrderJpaRepository extends JpaRepository<OrderJpaEntity, Intege
     ) parts ON o.id = parts.order_id
     WHERE (CAST(:startDate AS DATE) IS NULL OR o.received_at >= CAST(:startDate AS DATE))
       AND o.status IN :statuses
+      AND (o.outcome IS NULL OR o.outcome <> 'NOT_REPAIRED')
       AND o.received_at IS NOT NULL
     GROUP BY o.received_at
     ORDER BY o.received_at
@@ -180,6 +188,7 @@ public interface OrderJpaRepository extends JpaRepository<OrderJpaEntity, Intege
     INNER JOIN orders o ON d.order_id = o.id
     WHERE (CAST(:startDate AS DATE) IS NULL OR o.received_at >= CAST(:startDate AS DATE))
       AND o.status IN :statuses
+      AND (o.outcome IS NULL OR o.outcome <> 'NOT_REPAIRED')
     GROUP BY c.id, c.name, c.brand, c.category
     ORDER BY total_quantity DESC
     LIMIT 10

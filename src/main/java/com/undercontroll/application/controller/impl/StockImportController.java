@@ -4,7 +4,12 @@ import com.undercontroll.application.controller.StockImportApi;
 import com.undercontroll.application.dto.stockimport.StockImportDto;
 import com.undercontroll.application.dto.stockimport.StockImportReviewRequest;
 import com.undercontroll.application.dto.stockimport.StockImportSummaryDto;
+import com.undercontroll.application.dto.storage.UploadReference;
+import com.undercontroll.application.dto.storage.UploadRequest;
+import com.undercontroll.application.dto.storage.UploadTicketDto;
 import com.undercontroll.application.mapper.StockImportDtoMapper;
+import com.undercontroll.application.mapper.UploadDtoMapper;
+import com.undercontroll.domain.usecase.stockimport.RequestStockImportUploadPort;
 import com.undercontroll.domain.enums.StockImportStatus;
 import com.undercontroll.domain.usecase.stockimport.CancelStockImportPort;
 import com.undercontroll.domain.usecase.stockimport.ConfirmStockImportPort;
@@ -17,7 +22,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -33,11 +37,20 @@ public class StockImportController implements StockImportApi {
     private final RetryStockImportPort retryStockImportPort;
     private final CancelStockImportPort cancelStockImportPort;
     private final StockImportDtoMapper mapper;
+    private final RequestStockImportUploadPort requestStockImportUploadPort;
+    private final UploadDtoMapper uploadMapper;
 
     @Override
-    public ResponseEntity<StockImportDto> create(MultipartFile file) {
+    public ResponseEntity<UploadTicketDto> requestUpload(UploadRequest request) {
+        UploadRequest body = request == null ? new UploadRequest(null, null, null) : request;
+        return ResponseEntity.status(HttpStatus.CREATED).body(uploadMapper.toDto(requestStockImportUploadPort.execute(
+                new RequestStockImportUploadPort.Input(body.contentType(), body.sizeBytes(), body.fileName()))));
+    }
+
+    @Override
+    public ResponseEntity<StockImportDto> create(UploadReference request) {
         return ResponseEntity.status(HttpStatus.ACCEPTED)
-                .body(mapper.toDto(createStockImportPort.execute(mapper.toUpload(file))));
+                .body(mapper.toDto(createStockImportPort.execute(request == null ? null : request.uploadId())));
     }
 
     @Override

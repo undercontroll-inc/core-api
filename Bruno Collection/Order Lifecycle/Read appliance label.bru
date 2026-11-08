@@ -1,0 +1,21 @@
+meta {
+  name: Read appliance label
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/v1/api/orders/label-reading
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "uploadId": "{{uploadId}}"
+  }
+}
+
+docs {
+  Step 3, after the PUT: reads the uploaded label with AI (sync, ~20s). 400 LABEL_READING_INVALID, 503 LABEL_READING_UNAVAILABLE.
+}

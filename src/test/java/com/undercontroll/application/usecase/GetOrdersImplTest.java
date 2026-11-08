@@ -10,7 +10,9 @@ import com.undercontroll.domain.model.PaginatedResult;
 import com.undercontroll.domain.usecase.order.GetOrdersPort;
 import com.undercontroll.domain.usecase.order.OrderOutput;
 import com.undercontroll.domain.usecase.order.impl.GetOrdersImpl;
+import com.undercontroll.domain.model.ShopProfile;
 import com.undercontroll.domain.usecase.order.impl.OrderListingQuery;
+import java.time.ZoneId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -46,10 +48,10 @@ class GetOrdersImplTest {
 
     @BeforeEach
     void setUp() {
-        getOrdersImpl = new GetOrdersImpl(new OrderListingQuery(orderGateway), currentUserAdminPort, currentUserIdPort);
+        getOrdersImpl = new GetOrdersImpl(new OrderListingQuery(orderGateway, new ShopProfile("Loja", null, null, null, null, 90, ZoneId.of("America/Sao_Paulo"), "http://localhost")), currentUserAdminPort, currentUserIdPort);
         order = Order.builder()
                 .id(1)
-                .status(OrderStatus.PENDING)
+                .status(OrderStatus.RECEIVED)
                 .total(100.0)
                 .discount(10.0)
                 .customerDescription("Não gela")

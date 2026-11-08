@@ -7,10 +7,14 @@ import com.undercontroll.domain.exception.InvalidAnnouncementException;
 import com.undercontroll.domain.gateway.AnnouncementGateway;
 import com.undercontroll.domain.gateway.MetricsGateway;
 import com.undercontroll.domain.gateway.NotificationGateway;
-import com.undercontroll.domain.gateway.StorageGateway;
+import com.undercontroll.domain.gateway.ObjectStorageGateway;
+import com.undercontroll.domain.exception.InvalidUploadException;
+import com.undercontroll.domain.storage.StorageArea;
 import com.undercontroll.domain.model.Announcement;
 import com.undercontroll.domain.model.PaginatedResult;
-import com.undercontroll.domain.model.PresignedUpload;
+import com.undercontroll.domain.storage.PresignedUploadUrl;
+import java.time.Instant;
+import java.util.Map;
 import com.undercontroll.domain.usecase.announcement.impl.CreateAnnouncementImpl;
 import com.undercontroll.domain.usecase.announcement.impl.DeleteAnnouncementImpl;
 import com.undercontroll.domain.usecase.announcement.impl.GetAnnouncementsImpl;
@@ -26,6 +30,8 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -35,7 +41,7 @@ import static org.mockito.Mockito.when;
 class AnnouncementImageUseCaseTest {
 
     private final AnnouncementGateway announcementGateway = mock(AnnouncementGateway.class);
-    private final StorageGateway storageGateway = mock(StorageGateway.class);
+    private final ObjectStorageGateway storageGateway = mock(ObjectStorageGateway.class);
 
     @Test
     void shouldGenerateKeyAfterCreatingAnnouncementWithImage() {
@@ -56,8 +62,8 @@ class AnnouncementImageUseCaseTest {
             announcement.setUpdatedAt(LocalDateTime.now());
             return announcement;
         });
-        when(storageGateway.presignAnnouncementImageUpload(any(String.class)))
-                .thenAnswer(invocation -> new PresignedUpload("https://s3.example/upload", invocation.getArgument(0), 123L));
+        when(storageGateway.presignUpload(eq(StorageArea.ANNOUNCEMENT_IMAGES), any(String.class), any(String.class), anyLong()))
+                .thenAnswer(invocation -> new PresignedUploadUrl("https://s3.example/upload", "PUT", Map.of("Content-Type", invocation.getArgument(2)), invocation.getArgument(1), Instant.now()));
 
         CreateAnnouncementPort.Output output = useCase.execute(new CreateAnnouncementPort.Input(
                 "Title",
@@ -67,12 +73,12 @@ class AnnouncementImageUseCaseTest {
         ), "token");
 
         assertThat(output.imageUpload()).isNotNull();
-        assertThat(output.imageUpload().fileKey()).startsWith("announcements/9/");
-        assertThat(output.imageUpload().fileKey()).endsWith(".png");
+        assertThat(output.imageUpload().key()).startsWith("announcements/9/");
+        assertThat(output.imageUpload().key()).endsWith(".png");
 
         ArgumentCaptor<Announcement> announcementCaptor = ArgumentCaptor.forClass(Announcement.class);
         verify(announcementGateway, times(2)).save(announcementCaptor.capture());
-        assertThat(announcementCaptor.getAllValues().get(1).getImageKey()).isEqualTo(output.imageUpload().fileKey());
+        assertThat(announcementCaptor.getAllValues().get(1).getImageKey()).isEqualTo(output.imageUpload().key());
         ArgumentCaptor<AnnouncementCreatedEvent> eventCaptor = ArgumentCaptor.forClass(AnnouncementCreatedEvent.class);
         verify(notificationGateway).handleAnnouncementCreated(eventCaptor.capture());
         assertThat(eventCaptor.getValue().token()).isEqualTo("token");
@@ -101,7 +107,7 @@ class AnnouncementImageUseCaseTest {
         ), "token");
 
         assertThat(output.imageUpload()).isNull();
-        verify(storageGateway, never()).presignAnnouncementImageUpload(any());
+        verify(storageGateway, never()).presignUpload(any(), any(), any(), anyLong());
     }
 
     @Test
@@ -125,7 +131,7 @@ class AnnouncementImageUseCaseTest {
 
         when(announcementGateway.findAllPaginated(0, 10, null))
                 .thenReturn(new PaginatedResult<>(List.of(withImage, withoutImage), 12L));
-        when(storageGateway.announcementImageReadUrl("announcements/1/cover.png"))
+        when(storageGateway.presignRead(StorageArea.ANNOUNCEMENT_IMAGES, "announcements/1/cover.png"))
                 .thenReturn("https://s3.example/read");
 
         GetAnnouncementsPort.Output output = useCase.execute(0, 10, null);
@@ -134,7 +140,7 @@ class AnnouncementImageUseCaseTest {
         assertThat(output.announcements().get(0).imageUrl()).isEqualTo("https://s3.example/read");
         assertThat(output.announcements().get(1).imageUrl()).isNull();
         assertThat(output.totalPages()).isEqualTo(2);
-        verify(storageGateway).announcementImageReadUrl("announcements/1/cover.png");
+        verify(storageGateway).presignRead(StorageArea.ANNOUNCEMENT_IMAGES, "announcements/1/cover.png");
     }
 
     @Test
@@ -145,7 +151,7 @@ class AnnouncementImageUseCaseTest {
                 .title("Feriado")
                 .imageKey("announcements/4/a.png")
                 .build()));
-        when(storageGateway.announcementImageReadUrl("announcements/4/a.png")).thenReturn("https://s3.example/a");
+        when(storageGateway.presignRead(StorageArea.ANNOUNCEMENT_IMAGES, "announcements/4/a.png")).thenReturn("https://s3.example/a");
 
         Optional<AnnouncementOutput> output = useCase.execute();
 
@@ -180,8 +186,8 @@ class AnnouncementImageUseCaseTest {
         assertThat(output.imageUrl()).isNull();
         assertThat(output.imageUpload()).isNull();
         assertThat(announcement.getImageKey()).isNull();
-        verify(storageGateway, never()).announcementImageReadUrl(any());
-        verify(storageGateway, never()).presignAnnouncementImageUpload(any());
+        verify(storageGateway, never()).presignRead(any(), any());
+        verify(storageGateway, never()).presignUpload(any(), any(), any(), anyLong());
     }
 
     @Test
@@ -190,9 +196,9 @@ class AnnouncementImageUseCaseTest {
         Announcement announcement = Announcement.builder().id(5).title("Old").content("Old").type(AnnouncementType.UPDATES).build();
         when(announcementGateway.findById(5)).thenReturn(Optional.of(announcement));
         when(announcementGateway.save(any(Announcement.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(storageGateway.presignAnnouncementImageUpload(any(String.class)))
-                .thenAnswer(invocation -> new PresignedUpload("https://s3.example/put", invocation.getArgument(0), 1L));
-        when(storageGateway.announcementImageReadUrl(any(String.class))).thenReturn("https://s3.example/get");
+        when(storageGateway.presignUpload(eq(StorageArea.ANNOUNCEMENT_IMAGES), any(String.class), any(String.class), anyLong()))
+                .thenAnswer(invocation -> new PresignedUploadUrl("https://s3.example/put", "PUT", Map.of("Content-Type", invocation.getArgument(2)), invocation.getArgument(1), Instant.now()));
+        when(storageGateway.presignRead(eq(StorageArea.ANNOUNCEMENT_IMAGES), any(String.class))).thenReturn("https://s3.example/get");
 
         UpdateAnnouncementPort.Output output = useCase.execute(5, new UpdateAnnouncementPort.Input(
                 "New",
@@ -205,9 +211,9 @@ class AnnouncementImageUseCaseTest {
         assertThat(output.title()).isEqualTo("New");
         assertThat(output.content()).isEqualTo("Body");
         assertThat(output.type()).isEqualTo(AnnouncementType.HOLIDAY);
-        assertThat(output.imageUpload().fileKey()).startsWith("announcements/5/").endsWith(".webp");
+        assertThat(output.imageUpload().key()).startsWith("announcements/5/").endsWith(".webp");
         assertThat(output.imageUrl()).isEqualTo("https://s3.example/get");
-        assertThat(announcement.getImageKey()).isEqualTo(output.imageUpload().fileKey());
+        assertThat(announcement.getImageKey()).isEqualTo(output.imageUpload().key());
     }
 
     @Test
@@ -246,11 +252,20 @@ class AnnouncementImageUseCaseTest {
     }
 
     @Test
-    void shouldResolveImageExtensionFromNameOrContentType() {
-        assertThat(AnnouncementImageKeys.resolveExtension("cover.PNG", null)).isEqualTo("png");
-        assertThat(AnnouncementImageKeys.resolveExtension("cover.", "image/jpeg")).isEqualTo("jpg");
-        assertThat(AnnouncementImageKeys.resolveExtension(null, "image/gif")).isEqualTo("gif");
-        assertThat(AnnouncementImageKeys.resolveExtension("", "application/pdf")).isEqualTo("bin");
-        assertThat(AnnouncementImageKeys.resolveExtension("noext", " ")).isEqualTo("bin");
+    void shouldRejectUnsupportedOrOversizedImagesBeforeSaving() {
+        CreateAnnouncementImpl useCase = new CreateAnnouncementImpl(
+                announcementGateway,
+                mock(NotificationGateway.class),
+                mock(MetricsGateway.class),
+                storageGateway
+        );
+
+        assertThatThrownBy(() -> useCase.execute(new CreateAnnouncementPort.Input("T", "C",
+                new AnnouncementImageUpload("a.gif", "image/gif", 10L), AnnouncementType.UPDATES), "t"))
+                .isInstanceOf(InvalidUploadException.class);
+        assertThatThrownBy(() -> useCase.execute(new CreateAnnouncementPort.Input("T", "C",
+                new AnnouncementImageUpload("a.png", "image/png", 6L * 1024 * 1024), AnnouncementType.UPDATES), "t"))
+                .isInstanceOf(InvalidUploadException.class);
+        verify(announcementGateway, never()).save(any());
     }
 }
